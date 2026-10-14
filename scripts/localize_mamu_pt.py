@@ -674,8 +674,8 @@ def patch_startup_compatibility():
         for required_import in required_imports:
             if required_import not in activity:
                 activity = activity.replace(
-                    "import androidx.activity.enableEdgeToEdge\\n",
-                    "import androidx.activity.enableEdgeToEdge\\n" + required_import + "\\n",
+                    "import androidx.activity.enableEdgeToEdge\n",
+                    "import androidx.activity.enableEdgeToEdge\n" + required_import + "\n",
                     1
                 )
         activity_file.write_text(activity, encoding="utf-8")
