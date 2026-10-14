@@ -41,7 +41,10 @@ jobs:
         with:
           gradle-version: "8.13"
 
-      - name: Build Android Resource Lab and original Mamu module
+      - name: Localize Mamu interface to Brazilian Portuguese
+        run: python3 scripts/localize_mamu_pt.py
+
+      - name: Build Android Resource Lab and localized Mamu module
         run: gradle --no-daemon clean assembleDebug
 
       - name: Show generated APKs
