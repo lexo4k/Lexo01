@@ -9,6 +9,9 @@ import android.os.StatFs
 import android.content.Intent
 import android.provider.Settings
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.WindowManager
+import android.graphics.PixelFormat
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
@@ -83,6 +86,15 @@ class MainActivity : Activity() {
         )
         content.addView(advancedStatusText.apply { setPadding(0, 0, 0, dp(12)) })
 
+        val overlayButton = Button(this).apply {
+            text = "ATIVAR JANELA FLUTUANTE"
+            isAllCaps = false
+            setOnClickListener { requestOverlayAndShow() }
+        }
+        content.addView(overlayButton, LinearLayout.LayoutParams(-1, dp(50)).apply {
+            bottomMargin = dp(8)
+        })
+
         val developerButton = Button(this).apply {
             text = "ABRIR OPÇÕES DO DESENVOLVEDOR"
             isAllCaps = false
@@ -154,7 +166,7 @@ class MainActivity : Activity() {
                 }.getOrNull()
             }
 
-        while (content.childCount > 9) content.removeViewAt(content.childCount - 1)
+        while (content.childCount > 11) content.removeViewAt(content.childCount - 1)
 
         content.addView(sectionTitle("MEMÓRIA"))
         content.addView(infoCard(
@@ -270,6 +282,92 @@ class MainActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    private fun requestOverlayAndShow() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            advancedStatusText.text = "Autorize a janela flutuante na tela de configurações que abriu. Depois volte ao app e toque novamente no botão."
+            runCatching {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")))
+            }.onFailure {
+                startActivity(Intent(Settings.ACTION_SETTINGS))
+            }
+            return
+        }
+        showFloatingPanel()
+    }
+
+    private fun showFloatingPanel() {
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = rounded(Color.rgb(20, 30, 49), 18)
+        }
+        val title = label("RESOURCE LAB • FLUTUANTE", 13f, Color.rgb(87, 213, 190), true)
+        panel.addView(title)
+        val values = label(floatingStatsText(), 13f, Color.WHITE, false).apply {
+            setPadding(0, dp(8), 0, dp(8))
+        }
+        panel.addView(values)
+        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val update = Button(this).apply {
+            text = "Atualizar"
+            isAllCaps = false
+            setOnClickListener { values.text = floatingStatsText() }
+        }
+        val close = Button(this).apply {
+            text = "Fechar"
+            isAllCaps = false
+            setOnClickListener { runCatching { wm.removeView(panel) } }
+        }
+        actions.addView(update, LinearLayout.LayoutParams(0, dp(44), 1f))
+        actions.addView(close, LinearLayout.LayoutParams(0, dp(44), 1f))
+        panel.addView(actions)
+
+        val params = WindowManager.LayoutParams(
+            dp(280),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = dp(12)
+            y = dp(100)
+        }
+        var startX = 0
+        var startY = 0
+        var touchX = 0f
+        var touchY = 0f
+        title.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    startX = params.x
+                    startY = params.y
+                    touchX = event.rawX
+                    touchY = event.rawY
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    params.x = startX + (event.rawX - touchX).toInt()
+                    params.y = startY + (event.rawY - touchY).toInt()
+                    runCatching { wm.updateViewLayout(panel, params) }
+                    true
+                }
+                else -> false
+            }
+        }
+        runCatching { wm.addView(panel, params) }
+            .onFailure { advancedStatusText.text = "Não foi possível abrir a janela flutuante: ${it.javaClass.simpleName}. Confira a permissão de sobreposição nas Configurações." }
+    }
+
+    private fun floatingStatsText(): String {
+        val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val memory = ActivityManager.MemoryInfo()
+        manager.getMemoryInfo(memory)
+        val stats = StatFs(Environment.getDataDirectory().absolutePath)
+        return "RAM total: ${formatBytes(memory.totalMem)}\nRAM disponível: ${formatBytes(memory.availMem)}\nArmazenamento total: ${formatBytes(stats.totalBytes)}\nArmazenamento livre: ${formatBytes(stats.availableBytes)}\n\nJanela de diagnóstico. Não lê nem modifica a memória de outros apps."
     }
 
     private fun readSwapStatus(): Pair<String, String> {
