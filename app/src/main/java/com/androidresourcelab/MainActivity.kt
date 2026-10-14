@@ -99,7 +99,7 @@ class MainActivity : Activity() {
         manager.getMemoryInfo(memory)
 
         val totalRam = memory.totalMem
-        val availableRam = memory.availMem
+        val availableRam = memory.availMem.coerceAtMost(totalRam)
         val usedRam = (totalRam - availableRam).coerceAtLeast(0L)
 
         val dataStats = StatFs(Environment.getDataDirectory().absolutePath)
@@ -109,45 +109,60 @@ class MainActivity : Activity() {
 
         val rootSignals = findRootSignals()
         val swapStatus = readSwapStatus()
+        val zramStatus = readZramStatus()
         val externalVolumes = getExternalFilesDirs(null)
             .filterNotNull()
-            .map { it.absolutePath }
-            .distinct()
+            .distinctBy { it.absolutePath }
+            .mapNotNull { dir ->
+                runCatching {
+                    val stats = StatFs(dir.absolutePath)
+                    val total = stats.totalBytes
+                    val free = stats.availableBytes
+                    val label = if (Environment.isExternalStorageRemovable(dir)) "Removível/cartão SD" else "Volume externo ou adotado"
+                    "$label\nCapacidade acessível: ${formatBytes(total)} • Livre: ${formatBytes(free)}"
+                }.getOrNull()
+            }
 
         while (content.childCount > 7) content.removeViewAt(content.childCount - 1)
 
         content.addView(sectionTitle("MEMÓRIA"))
         content.addView(infoCard(
-            "RAM reportada pelo Android",
+            "RAM física reportada pelo Android",
             formatBytes(totalRam),
-            "Disponível agora: ${formatBytes(availableRam)}\nEm uso aproximado: ${formatBytes(usedRam)}",
-            "A RAM disponível varia conforme os aplicativos abertos."
+            "Disponível agora: ${formatBytes(availableRam)}\nUso aproximado: ${formatBytes(usedRam)}",
+            "A RAM disponível muda conforme os aplicativos e o sistema. Esta é a RAM que o Android reporta, não uma estimativa de RAM virtual."
         ))
         content.addView(infoCard(
-            "Swap detectável",
+            "zRAM (compressão de memória)",
+            zramStatus.first,
+            zramStatus.second,
+            "zRAM comprime dados na própria RAM. A capacidade configurada não é RAM física adicional e os detalhes dependem do kernel."
+        ))
+        content.addView(infoCard(
+            "Swap do sistema",
             swapStatus.first,
             swapStatus.second,
-            "A leitura pode ser bloqueada pelo Android. Swap não equivale à RAM física e pode ser mais lento."
+            "Swap usa armazenamento como apoio quando configurado pelo sistema. Não equivale à RAM física e pode ser muito mais lento."
         ))
         content.addView(infoCard(
             "Expansão de RAM do fabricante",
-            "Verificação manual necessária",
-            "Confira em Configurações se o fabricante oferece RAM Boost, RAM Plus ou recurso equivalente.",
-            "O app não ativa opções ocultas nem altera o sistema sem suporte documentado."
+            "Não confirmável por API pública geral",
+            "Se o fabricante oferecer RAM Boost, RAM Plus ou expansão de memória, confira nas Configurações do aparelho.",
+            "O Android pode não expor esse ajuste ao aplicativo. Não vamos afirmar que está ativo sem evidência."
         ))
 
         content.addView(sectionTitle("ARMAZENAMENTO"))
         content.addView(infoCard(
-            "Partição de dados",
+            "Partição de dados interna",
             formatBytes(totalStorage),
             "Livre: ${formatBytes(freeStorage)}\nOcupado aproximadamente: ${formatBytes(usedStorage)}",
-            "Capacidade total e espaço livre são valores diferentes."
+            "Capacidade total e espaço livre são valores diferentes. O aplicativo não altera a capacidade física."
         ))
         content.addView(infoCard(
-            "Volumes acessíveis",
-            "${externalVolumes.size} encontrados",
-            if (externalVolumes.isEmpty()) "Nenhum volume adicional foi exposto ao aplicativo." else externalVolumes.joinToString("\n"),
-            "O Android pode ocultar volumes ou limitar o acesso a eles."
+            "Cartão SD / volumes acessíveis",
+            "${externalVolumes.size} volume(s) acessível(is)",
+            if (externalVolumes.isEmpty()) "Nenhum volume adicional foi exposto ao aplicativo." else externalVolumes.joinToString("\n\n"),
+            "O Android limita o acesso a alguns volumes. O cartão SD não pode ser tratado automaticamente como RAM."
         ))
         val recommendation = when {
             freeStorage < 2L * 1024 * 1024 * 1024 -> "Pouco espaço livre. Revise downloads e arquivos grandes nas Configurações."
@@ -161,13 +176,21 @@ class MainActivity : Activity() {
             "O app não apaga arquivos automaticamente. Você decide o que remover."
         ))
 
+        content.addView(sectionTitle("POSSIBILIDADES DE OTIMIZAÇÃO"))
+        content.addView(infoCard(
+            "Modo de otimização",
+            if (rootSignals.isEmpty()) "Modo seguro: sem root confirmado" else "Sinais de root encontrados",
+            "Esta versão mede RAM, zRAM, swap e volumes acessíveis. Ainda não altera parâmetros do kernel nem cria swap.",
+            "Antes de qualquer operação avançada, precisamos confirmar suporte do kernel, permissões de root e um método reversível. Nenhum ganho será simulado."
+        ))
+
         content.addView(sectionTitle("INTEGRIDADE"))
         content.addView(infoCard(
-            "Sinais básicos de root",
+            "Indicadores básicos de root",
             if (rootSignals.isEmpty()) "Nenhum sinal encontrado" else "${rootSignals.size} sinal(is) encontrado(s)",
             if (rootSignals.isEmpty()) "As verificações simples não encontraram os caminhos ou marcadores pesquisados."
             else rootSignals.joinToString("\n"),
-            "Verificação indicativa somente de leitura. Resultado negativo não prova ausência de root."
+            "Verificação indicativa somente de leitura. Resultado negativo não prova ausência de root nem confirma que o app pode executar comandos privilegiados."
         ))
         content.addView(infoCard(
             "Dispositivo",
@@ -176,22 +199,83 @@ class MainActivity : Activity() {
             "Informações fornecidas pelo próprio sistema."
         ))
 
-        statusText.text = "Atualizado agora • análise local • nenhum dado enviado"
+        statusText.text = "Atualizado agora • diagnóstico local • nenhuma alteração aplicada"
     }
 
     private fun readSwapStatus(): Pair<String, String> {
         return try {
             val lines = File("/proc/swaps").readLines()
             val entries = lines.drop(1).filter { it.isNotBlank() }
+            val memInfo = readMemInfo()
+            val totalKb = memInfo["SwapTotal"] ?: 0L
+            val freeKb = memInfo["SwapFree"] ?: 0L
             if (entries.isEmpty()) {
-                "Nenhum swap visível" to "O sistema não mostrou áreas de swap ativas para este aplicativo."
+                val summary = if (totalKb > 0L) {
+                    "MemInfo informa swap total de ${formatBytes(totalKb * 1024L)} e livre de ${formatBytes(freeKb * 1024L)}, mas /proc/swaps não expôs entradas."
+                } else {
+                    "Nenhuma área de swap ativa foi exposta pelas interfaces de leitura disponíveis."
+                }
+                "Nenhum swap listado" to summary
             } else {
-                val totalKb = entries.mapNotNull { it.trim().split(Regex("\\s+")).getOrNull(2)?.toLongOrNull() }.sum()
-                "Swap visível: ${formatBytes(totalKb * 1024L)}" to entries.joinToString("\n")
+                val listedKb = entries.mapNotNull {
+                    it.trim().split(Regex("\\s+")).getOrNull(2)?.toLongOrNull()
+                }.sum()
+                "Swap listado: ${formatBytes(listedKb * 1024L)}" to
+                    (entries.joinToString("\n") + "\nMemInfo: total ${formatBytes(totalKb * 1024L)}, livre ${formatBytes(freeKb * 1024L)}.")
             }
         } catch (_: Exception) {
             "Não disponível" to "O Android bloqueou a leitura de /proc/swaps ou não expôs essa informação."
         }
+    }
+
+    private fun readZramStatus(): Pair<String, String> {
+        return try {
+            val devices = File("/sys/block").listFiles()
+                ?.filter { it.isDirectory && it.name.matches(Regex("zram\\d+")) }
+                .orEmpty()
+
+            if (devices.isEmpty()) {
+                return "Nenhum dispositivo zRAM detectado" to
+                    "O kernel não expôs dispositivos zRAM em /sys/block, ou o acesso foi bloqueado."
+            }
+
+            val details = devices.map { device ->
+                val diskBytes = readLongFile(File(device, "disksize"))
+                val mmStats = runCatching { File(device, "mm_stat").readText().trim().split(Regex("\\s+")) }.getOrNull()
+                val originalBytes = mmStats?.getOrNull(0)?.toLongOrNull()
+                val compressedBytes = mmStats?.getOrNull(1)?.toLongOrNull()
+                val memoryBytes = mmStats?.getOrNull(2)?.toLongOrNull()
+                buildString {
+                    append(device.name)
+                    append(": capacidade configurada ")
+                    append(diskBytes?.let { formatBytes(it) } ?: "indisponível")
+                    if (originalBytes != null && compressedBytes != null && memoryBytes != null) {
+                        append("\nDados originais: ${formatBytes(originalBytes)}")
+                        append("\nDados comprimidos: ${formatBytes(compressedBytes)}")
+                        append("\nRAM usada pela zRAM: ${formatBytes(memoryBytes)}")
+                    } else {
+                        append("\nEstatísticas de compressão não acessíveis.")
+                    }
+                }
+            }
+            "zRAM detectada (${devices.size})" to details.joinToString("\n\n")
+        } catch (_: Exception) {
+            "Não disponível" to "Não foi possível ler as informações zRAM expostas pelo kernel."
+        }
+    }
+
+    private fun readLongFile(file: File): Long? =
+        runCatching { file.readText().trim().toLongOrNull() }.getOrNull()
+
+    private fun readMemInfo(): Map<String, Long> {
+        return runCatching {
+            File("/proc/meminfo").readLines().mapNotNull { line ->
+                val parts = line.split(Regex("\\s+"))
+                val key = parts.firstOrNull()?.removeSuffix(":") ?: return@mapNotNull null
+                val value = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
+                key to value
+            }.toMap()
+        }.getOrDefault(emptyMap())
     }
 
     private fun shareReport() {
@@ -199,16 +283,21 @@ class MainActivity : Activity() {
         val memory = ActivityManager.MemoryInfo()
         manager.getMemoryInfo(memory)
         val stats = StatFs(Environment.getDataDirectory().absolutePath)
+        val zram = readZramStatus()
+        val swap = readSwapStatus()
         val report = buildString {
             appendLine("Android Resource Lab")
             appendLine("Dispositivo: ${Build.MANUFACTURER} ${Build.MODEL}")
             appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
             appendLine("RAM total reportada: ${formatBytes(memory.totalMem)}")
             appendLine("RAM disponível: ${formatBytes(memory.availMem)}")
-            appendLine("Armazenamento de dados total: ${formatBytes(stats.totalBytes)}")
-            appendLine("Armazenamento disponível: ${formatBytes(stats.availableBytes)}")
-            appendLine("Swap: ${readSwapStatus().first}")
-            appendLine("Nota: valores reportados pelo sistema; RAM virtual pode não estar incluída.")
+            appendLine("zRAM: ${zram.first}")
+            appendLine(zram.second)
+            appendLine("Swap: ${swap.first}")
+            appendLine(swap.second)
+            appendLine("Armazenamento interno total: ${formatBytes(stats.totalBytes)}")
+            appendLine("Armazenamento interno disponível: ${formatBytes(stats.availableBytes)}")
+            appendLine("Nota: RAM virtual, swap e RAM física são conceitos diferentes; os dados dependem do que o sistema expõe.")
         }
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
