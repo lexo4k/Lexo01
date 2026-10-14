@@ -1,0 +1,3 @@
+[submodule "vendor/Mamu"]
+	path = vendor/Mamu
+	url = https://github.com/Shirasuki/MX.git
