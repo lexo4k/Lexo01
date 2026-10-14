@@ -293,10 +293,14 @@ def patch_strings():
 
 def patch_source_phrases():
     java_root = ROOT / "src/main/java"
+    layout_root = ROOT / "src/main/res/layout"
     changed_files = 0
     if not java_root.exists():
         raise SystemExit(f"Código Kotlin do Mamu não encontrado: {java_root}")
-    for path in java_root.rglob("*.kt"):
+    paths = list(java_root.rglob("*.kt"))
+    if layout_root.exists():
+        paths.extend(layout_root.rglob("*.xml"))
+    for path in paths:
         original = path.read_text(encoding="utf-8")
         updated = original
         for source, target in sorted(PHRASES.items(), key=lambda item: len(item[0]), reverse=True):
