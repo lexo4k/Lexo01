@@ -72,7 +72,7 @@ class MainActivity : Activity() {
             isAllCaps = false
             setOnClickListener {
                 runCatching { startActivity(Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)) }
-                    .onFailure { runCatching { startActivity(Intent(Settings.ACTION_STORAGE_SETTINGS)) } }
+                    .onFailure { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) } }
             }
         }
         content.addView(storageButton, LinearLayout.LayoutParams(-1, dp(50)).apply {
