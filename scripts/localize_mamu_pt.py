@@ -517,6 +517,178 @@ def patch_source_phrases():
             changed_files += 1
     print(f"PT-BR: textos embutidos traduzidos em {changed_files} arquivos Kotlin.")
 
+
+def patch_startup_compatibility():
+    """Prevent native initialization failures from silently terminating the app."""
+    app_file = ROOT / "src/main/java/moe/fuqiuluo/mamu/MamuApplication.kt"
+    activity_file = ROOT / "src/main/java/moe/fuqiuluo/mamu/PermissionSetupActivity.kt"
+    app = app_file.read_text(encoding="utf-8")
+
+    app = app.replace("import kotlin.system.exitProcess\n", "")
+    old_companion = """    companion object {
+        lateinit var instance: MamuApplication
+            private set
+
+        init {
+            System.loadLibrary("mamu_core")
+        }
+    }"""
+    new_companion = """    companion object {
+        lateinit var instance: MamuApplication
+            private set
+
+        @Volatile
+        var startupError: String? = null
+            private set
+
+        private var nativeLibraryLoaded = false
+
+        init {
+            try {
+                System.loadLibrary("mamu_core")
+                nativeLibraryLoaded = true
+            } catch (error: Throwable) {
+                startupError = "A biblioteca nativa do Mamu não está disponível para a arquitetura deste dispositivo."
+                Log.e(TAG, "Não foi possível carregar mamu_core", error)
+            }
+        }
+    }"""
+    if old_companion in app:
+        app = app.replace(old_companion, new_companion, 1)
+
+    old_core = """        if (!initMamuCore()) {
+            Log.e(TAG, "Failed to initialize Mamu Core")
+            exitProcess(1)
+        }"""
+    new_core = """        if (!nativeLibraryLoaded) {
+            Log.e(TAG, startupError ?: "Biblioteca nativa indisponível")
+            return
+        }
+
+        val coreReady = try {
+            initMamuCore()
+        } catch (error: Throwable) {
+            Log.e(TAG, "Falha ao inicializar o núcleo nativo do Mamu", error)
+            startupError = "O núcleo nativo não conseguiu iniciar neste dispositivo. Verifique a compatibilidade da arquitetura e a versão do Android."
+            false
+        }
+        if (!coreReady) {
+            if (startupError == null) {
+                startupError = "O núcleo nativo do Mamu não conseguiu inicializar neste dispositivo."
+            }
+            Log.e(TAG, startupError ?: "Falha ao inicializar Mamu Core")
+            return
+        }"""
+    if old_core in app:
+        app = app.replace(old_core, new_core, 1)
+
+    old_search = """        if (!SearchEngine.initSearchEngine(
+                bufferSize, cacheDir.absoluteFile.resolve("search_engine").also {
+                    if (!it.exists()) it.mkdirs()
+                }.absolutePath, chunkSizeBytes
+            )
+        ) {
+            Log.e(TAG, "Failed to initialize Search Engine")
+            exitProcess(1)
+        }"""
+    new_search = """        val searchReady = try {
+            SearchEngine.initSearchEngine(
+                bufferSize, cacheDir.absoluteFile.resolve("search_engine").also {
+                    if (!it.exists()) it.mkdirs()
+                }.absolutePath, chunkSizeBytes
+            )
+        } catch (error: Throwable) {
+            Log.e(TAG, "Falha ao inicializar o mecanismo de busca", error)
+            false
+        }
+        if (!searchReady) {
+            startupError = "O mecanismo de busca não conseguiu inicializar. Tente reiniciar o aplicativo; se continuar, o dispositivo pode não ser compatível."
+            Log.e(TAG, startupError ?: "Falha ao inicializar Search Engine")
+            return
+        }"""
+    if old_search in app:
+        app = app.replace(old_search, new_search, 1)
+
+    old_pointer = """        if (!PointerScanner.init(
+                cacheDir.absoluteFile.resolve("pointer_chain")
+                    .also { if (!it.exists()) it.mkdirs() }.absolutePath
+            )
+        ) {
+            Log.e(TAG, "Failed to initialize PointerScanner")
+            exitProcess(1)
+        }"""
+    new_pointer = """        val pointerReady = try {
+            PointerScanner.init(
+                cacheDir.absoluteFile.resolve("pointer_chain")
+                    .also { if (!it.exists()) it.mkdirs() }.absolutePath
+            )
+        } catch (error: Throwable) {
+            Log.e(TAG, "Falha ao inicializar o scanner de ponteiros", error)
+            false
+        }
+        if (!pointerReady) {
+            startupError = "O scanner de ponteiros não conseguiu inicializar neste dispositivo."
+            Log.e(TAG, startupError ?: "Falha ao inicializar PointerScanner")
+            return
+        }"""
+    if old_pointer in app:
+        app = app.replace(old_pointer, new_pointer, 1)
+
+    app_file.write_text(app, encoding="utf-8")
+
+    activity = activity_file.read_text(encoding="utf-8")
+    old_activity = """        enableEdgeToEdge()
+
+        setContent {
+            MXTheme {"""
+    new_activity = """        enableEdgeToEdge()
+
+        val startupError = MamuApplication.startupError
+        if (startupError != null) {
+            setContent {
+                MXTheme {
+                    androidx.compose.material3.Surface {
+                        androidx.compose.foundation.layout.Column(
+                            modifier = androidx.compose.ui.Modifier.padding(24.dp)
+                        ) {
+                            androidx.compose.material3.Text("O Mamu não conseguiu iniciar")
+                            androidx.compose.material3.Text(startupError)
+                            androidx.compose.material3.Text(
+                                "Este APK pode não incluir suporte à arquitetura do aparelho. Nenhum recurso nativo será executado até que a compatibilidade seja corrigida."
+                            )
+                        }
+                    }
+                }
+            }
+            return
+        }
+
+        setContent {
+            MXTheme {"""
+    if old_activity in activity:
+        activity = activity.replace(old_activity, new_activity, 1)
+        if "import androidx.compose.ui.unit.dp" not in activity:
+            activity = activity.replace(
+                "import androidx.activity.enableEdgeToEdge\n",
+                "import androidx.activity.enableEdgeToEdge\nimport androidx.compose.ui.unit.dp\n",
+                1
+            )
+        activity_file.write_text(activity, encoding="utf-8")
+
+    # Fail the build early if upstream changes prevent applying the expected guards.
+    checks = {
+        "native library guard": "nativeLibraryLoaded = true" in app,
+        "no process exit calls": "exitProcess(1)" not in app,
+        "search failure guard": "val searchReady = try" in app,
+        "pointer failure guard": "val pointerReady = try" in app,
+        "startup error screen": "O Mamu não conseguiu iniciar" in activity,
+    }
+    missing = [name for name, ok in checks.items() if not ok]
+    if missing:
+        raise SystemExit("Compatibilidade inicial não aplicada: " + ", ".join(missing))
+    print("Compatibilidade: falhas de inicialização agora exibem diagnóstico em vez de encerrar o processo abruptamente.")
+
 if __name__ == "__main__":
     patch_strings()
     patch_source_phrases()
+    patch_startup_compatibility()
