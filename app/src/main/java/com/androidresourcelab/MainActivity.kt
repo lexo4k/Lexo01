@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -55,6 +56,29 @@ class MainActivity : Activity() {
             "Diagnóstico real de memória e armazenamento. Sem números inventados.",
             15f, Color.rgb(183, 194, 213), false
         ).apply { setPadding(0, 0, 0, dp(18)) })
+
+        val mamuButton = Button(this).apply {
+            text = "ABRIR MAMU ORIGINAL"
+            textSize = 14f
+            isAllCaps = false
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(67, 91, 150), 16)
+            setOnClickListener {
+                val launch = packageManager.getLaunchIntentForPackage("moe.fuqiuluo.mamu")
+                if (launch != null) {
+                    startActivity(launch)
+                } else {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Instale também o APK Mamu-original-debug para abrir o app original.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+        content.addView(mamuButton, LinearLayout.LayoutParams(-1, dp(52)).apply {
+            bottomMargin = dp(12)
+        })
 
         val refresh = Button(this).apply {
             text = "VERIFICAR AGORA"
