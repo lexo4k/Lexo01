@@ -90,7 +90,7 @@ class MainActivity : Activity() {
             .map { it.absolutePath }
             .distinct()
 
-        while (content.childCount > 4) content.removeViewAt(content.childCount - 1)
+        while (content.childCount > 5) content.removeViewAt(content.childCount - 1)
 
         content.addView(sectionTitle("MEMÓRIA"))
         content.addView(infoCard(
