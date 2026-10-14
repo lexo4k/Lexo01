@@ -667,12 +667,17 @@ def patch_startup_compatibility():
             MXTheme {"""
     if old_activity in activity:
         activity = activity.replace(old_activity, new_activity, 1)
-        if "import androidx.compose.ui.unit.dp" not in activity:
-            activity = activity.replace(
-                "import androidx.activity.enableEdgeToEdge\n",
-                "import androidx.activity.enableEdgeToEdge\nimport androidx.compose.ui.unit.dp\n",
-                1
-            )
+        required_imports = [
+            "import androidx.compose.ui.unit.dp",
+            "import androidx.compose.foundation.layout.padding",
+        ]
+        for required_import in required_imports:
+            if required_import not in activity:
+                activity = activity.replace(
+                    "import androidx.activity.enableEdgeToEdge\\n",
+                    "import androidx.activity.enableEdgeToEdge\\n" + required_import + "\\n",
+                    1
+                )
         activity_file.write_text(activity, encoding="utf-8")
 
     # Fail the build early if upstream changes prevent applying the expected guards.
