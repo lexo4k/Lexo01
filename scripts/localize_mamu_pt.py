@@ -541,17 +541,10 @@ def patch_startup_compatibility():
         var startupError: String? = null
             private set
 
-        private var nativeLibraryLoaded = false
-
-        init {
-            try {
-                System.loadLibrary("mamu_core")
-                nativeLibraryLoaded = true
-            } catch (error: Throwable) {
-                startupError = "A biblioteca nativa do Mamu não está disponível para a arquitetura deste dispositivo."
-                Log.e(TAG, "Não foi possível carregar mamu_core", error)
-            }
-        }
+        // O carregamento nativo é adiado até depois da detecção do modo sem root.
+        // Assim, aparelhos incompatíveis não tentam carregar mamu_core só para abrir a tela inicial.
+        var nativeLibraryLoaded = false
+            private set
     }"""
     if old_companion in app:
         app = app.replace(old_companion, new_companion, 1)
@@ -569,6 +562,19 @@ def patch_startup_compatibility():
             startupError = "MODO_SEM_ROOT"
             Log.i(TAG, "Iniciando em modo limitado sem root")
             return
+        }
+
+        // Só tenta carregar a biblioteca nativa quando há indício local de root.
+        // Falhas de ABI/biblioteca são convertidas em diagnóstico, não em encerramento forçado.
+        if (!nativeLibraryLoaded) {
+            try {
+                System.loadLibrary("mamu_core")
+                nativeLibraryLoaded = true
+            } catch (error: Throwable) {
+                startupError = "A biblioteca nativa não é compatível com esta arquitetura do Android."
+                Log.e(TAG, "Não foi possível carregar mamu_core", error)
+                return
+            }
         }
 
         if (!nativeLibraryLoaded) {
@@ -713,7 +719,7 @@ def patch_startup_compatibility():
 
     # Fail the build early if upstream changes prevent applying the expected guards.
     checks = {
-        "native library guard": "nativeLibraryLoaded = true" in app,
+        "native library deferred load": "O carregamento nativo é adiado" in app and "System.loadLibrary(\"mamu_core\")" in app,
         "no process exit calls": "exitProcess(1)" not in app,
         "search failure guard": "val searchReady = try" in app,
         "pointer failure guard": "val pointerReady = try" in app,
@@ -723,7 +729,7 @@ def patch_startup_compatibility():
     missing = [name for name, ok in checks.items() if not ok]
     if missing:
         raise SystemExit("Compatibilidade inicial não aplicada: " + ", ".join(missing))
-    print("Compatibilidade: falhas de inicialização agora exibem diagnóstico em vez de encerrar o processo abruptamente.")
+    print("Compatibilidade: modo sem root evita carregar bibliotecas nativas; falhas de inicialização exibem diagnóstico.")
 
 if __name__ == "__main__":
     patch_strings()
