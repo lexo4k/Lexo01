@@ -560,7 +560,18 @@ def patch_startup_compatibility():
             Log.e(TAG, "Failed to initialize Mamu Core")
             exitProcess(1)
         }"""
-    new_core = """        if (!nativeLibraryLoaded) {
+    new_core = """        // Modo sem root: não inicialize o núcleo/driver que depende de acesso privilegiado.
+        // Isso mantém o app aberto, mas não habilita leitura/escrita de memória de outros processos.
+        val rootBinaryAvailable = listOf(
+            "/system/bin/su", "/system/xbin/su", "/sbin/su", "/debug_ramdisk/su"
+        ).any { File(it).canExecute() }
+        if (!rootBinaryAvailable) {
+            startupError = "MODO_SEM_ROOT"
+            Log.i(TAG, "Iniciando em modo limitado sem root")
+            return
+        }
+
+        if (!nativeLibraryLoaded) {
             Log.e(TAG, startupError ?: "Biblioteca nativa indisponível")
             return
         }
@@ -651,11 +662,31 @@ def patch_startup_compatibility():
                         androidx.compose.foundation.layout.Column(
                             modifier = androidx.compose.ui.Modifier.padding(24.dp)
                         ) {
-                            androidx.compose.material3.Text("O Mamu não conseguiu iniciar")
-                            androidx.compose.material3.Text(startupError)
+                            val noRootMode = startupError == "MODO_SEM_ROOT"
                             androidx.compose.material3.Text(
-                                "Este APK pode não incluir suporte à arquitetura do aparelho. Nenhum recurso nativo será executado até que a compatibilidade seja corrigida."
+                                if (noRootMode) "Mamu • Modo sem root" else "O Mamu não conseguiu iniciar"
                             )
+                            androidx.compose.material3.Text(
+                                if (noRootMode)
+                                    "O aplicativo abriu em modo limitado. O Android não permite que um app comum leia ou altere a memória de outros aplicativos."
+                                else startupError
+                            )
+                            if (noRootMode) {
+                                androidx.compose.material3.Text("Diagnóstico do dispositivo")
+                                androidx.compose.material3.Text("Modelo: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                                androidx.compose.material3.Text("Android: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
+                                androidx.compose.material3.Text("Arquitetura: ${android.os.Build.SUPPORTED_ABIS.joinToString()}")
+                                androidx.compose.material3.Text(
+                                    "Disponível sem root: abrir o app e consultar estas informações. Busca, leitura/gravação de memória, congelamento de valores e driver continuam desativados."
+                                )
+                                androidx.compose.material3.Text(
+                                    "Alternativa a testar: Shizuku com depuração sem fio. Ela pode conceder algumas operações via ADB, mas não substitui root nem garante compatibilidade com o driver nativo do Mamu."
+                                )
+                            } else {
+                                androidx.compose.material3.Text(
+                                    "Este APK pode não incluir suporte à arquitetura do aparelho. Nenhum recurso nativo será executado até que a compatibilidade seja corrigida."
+                                )
+                            }
                         }
                     }
                 }
@@ -687,6 +718,7 @@ def patch_startup_compatibility():
         "search failure guard": "val searchReady = try" in app,
         "pointer failure guard": "val pointerReady = try" in app,
         "startup error screen": "O Mamu não conseguiu iniciar" in activity,
+        "no-root limited mode": "MODO_SEM_ROOT" in app and "Mamu • Modo sem root" in activity,
     }
     missing = [name for name, ok in checks.items() if not ok]
     if missing:
