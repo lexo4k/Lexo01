@@ -6,6 +6,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
+import android.content.Intent
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -65,6 +67,27 @@ class MainActivity : Activity() {
         statusText = label("Preparando diagnóstico…", 13f, Color.rgb(183, 194, 213), false)
         content.addView(statusText.apply { setPadding(0, 0, 0, dp(14)) })
 
+        val storageButton = Button(this).apply {
+            text = "ABRIR CONFIGURAÇÕES DE ARMAZENAMENTO"
+            isAllCaps = false
+            setOnClickListener {
+                runCatching { startActivity(Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)) }
+                    .onFailure { runCatching { startActivity(Intent(Settings.ACTION_STORAGE_SETTINGS)) } }
+            }
+        }
+        content.addView(storageButton, LinearLayout.LayoutParams(-1, dp(50)).apply {
+            bottomMargin = dp(8)
+        })
+
+        val shareButton = Button(this).apply {
+            text = "COMPARTILHAR RELATÓRIO"
+            isAllCaps = false
+            setOnClickListener { shareReport() }
+        }
+        content.addView(shareButton, LinearLayout.LayoutParams(-1, dp(50)).apply {
+            bottomMargin = dp(12)
+        })
+
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
@@ -85,12 +108,13 @@ class MainActivity : Activity() {
         val usedStorage = (totalStorage - freeStorage).coerceAtLeast(0L)
 
         val rootSignals = findRootSignals()
+        val swapStatus = readSwapStatus()
         val externalVolumes = getExternalFilesDirs(null)
             .filterNotNull()
             .map { it.absolutePath }
             .distinct()
 
-        while (content.childCount > 5) content.removeViewAt(content.childCount - 1)
+        while (content.childCount > 7) content.removeViewAt(content.childCount - 1)
 
         content.addView(sectionTitle("MEMÓRIA"))
         content.addView(infoCard(
@@ -100,10 +124,16 @@ class MainActivity : Activity() {
             "A RAM disponível varia conforme os aplicativos abertos."
         ))
         content.addView(infoCard(
-            "Expansão virtual",
-            "Não confirmada",
-            "O Android não oferece uma leitura universal da RAM virtual de todos os fabricantes.",
-            "RAM virtual usa armazenamento como apoio e não equivale à RAM física."
+            "Swap detectável",
+            swapStatus.first,
+            swapStatus.second,
+            "A leitura pode ser bloqueada pelo Android. Swap não equivale à RAM física e pode ser mais lento."
+        ))
+        content.addView(infoCard(
+            "Expansão de RAM do fabricante",
+            "Verificação manual necessária",
+            "Confira em Configurações se o fabricante oferece RAM Boost, RAM Plus ou recurso equivalente.",
+            "O app não ativa opções ocultas nem altera o sistema sem suporte documentado."
         ))
 
         content.addView(sectionTitle("ARMAZENAMENTO"))
@@ -118,6 +148,17 @@ class MainActivity : Activity() {
             "${externalVolumes.size} encontrados",
             if (externalVolumes.isEmpty()) "Nenhum volume adicional foi exposto ao aplicativo." else externalVolumes.joinToString("\n"),
             "O Android pode ocultar volumes ou limitar o acesso a eles."
+        ))
+        val recommendation = when {
+            freeStorage < 2L * 1024 * 1024 * 1024 -> "Pouco espaço livre. Revise downloads e arquivos grandes nas Configurações."
+            freeStorage < 8L * 1024 * 1024 * 1024 -> "Espaço moderado. Remover arquivos que você não precisa pode ajudar."
+            else -> "O espaço livre parece confortável. Não é necessário limpar só por limpar."
+        }
+        content.addView(infoCard(
+            "Recomendação de armazenamento",
+            if (freeStorage < 2L * 1024 * 1024 * 1024) "Atenção" else "Análise concluída",
+            recommendation,
+            "O app não apaga arquivos automaticamente. Você decide o que remover."
         ))
 
         content.addView(sectionTitle("INTEGRIDADE"))
@@ -136,6 +177,45 @@ class MainActivity : Activity() {
         ))
 
         statusText.text = "Atualizado agora • análise local • nenhum dado enviado"
+    }
+
+    private fun readSwapStatus(): Pair<String, String> {
+        return try {
+            val lines = File("/proc/swaps").readLines()
+            val entries = lines.drop(1).filter { it.isNotBlank() }
+            if (entries.isEmpty()) {
+                "Nenhum swap visível" to "O sistema não mostrou áreas de swap ativas para este aplicativo."
+            } else {
+                val totalKb = entries.mapNotNull { it.trim().split(Regex("\\s+")).getOrNull(2)?.toLongOrNull() }.sum()
+                "Swap visível: ${formatBytes(totalKb * 1024L)}" to entries.joinToString("\n")
+            }
+        } catch (_: Exception) {
+            "Não disponível" to "O Android bloqueou a leitura de /proc/swaps ou não expôs essa informação."
+        }
+    }
+
+    private fun shareReport() {
+        val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val memory = ActivityManager.MemoryInfo()
+        manager.getMemoryInfo(memory)
+        val stats = StatFs(Environment.getDataDirectory().absolutePath)
+        val report = buildString {
+            appendLine("Android Resource Lab")
+            appendLine("Dispositivo: ${Build.MANUFACTURER} ${Build.MODEL}")
+            appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            appendLine("RAM total reportada: ${formatBytes(memory.totalMem)}")
+            appendLine("RAM disponível: ${formatBytes(memory.availMem)}")
+            appendLine("Armazenamento de dados total: ${formatBytes(stats.totalBytes)}")
+            appendLine("Armazenamento disponível: ${formatBytes(stats.availableBytes)}")
+            appendLine("Swap: ${readSwapStatus().first}")
+            appendLine("Nota: valores reportados pelo sistema; RAM virtual pode não estar incluída.")
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "Relatório Android Resource Lab")
+            putExtra(Intent.EXTRA_TEXT, report)
+        }
+        startActivity(Intent.createChooser(intent, "Compartilhar diagnóstico"))
     }
 
     private fun findRootSignals(): List<String> {
