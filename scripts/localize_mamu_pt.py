@@ -249,6 +249,14 @@ TRANSLATIONS = {
 # Translate common hard-coded Compose/View labels without changing logic.
 PHRASES = {
     "首页": "Início", "模块": "Módulos", "工具": "Ferramentas", "日志": "Registros",
+    "模糊搜索": "Busca aproximada", "初始扫描": "Busca inicial", "细化搜索": "Refinar busca",
+    "开始扫描": "Iniciar busca", "当前结果": "Resultados atuais", "搜索条件": "Condição de busca",
+    "选择数据类型": "Selecionar tipo de dado", "输入数值": "Digite um valor",
+    "内存区域": "Regiões de memória", "搜索结果": "Resultados da busca",
+    "权限设置": "Configurações de permissões", "权限不足": "Permissões insuficientes",
+    "正在加载": "Carregando", "请稍候": "Aguarde", "没有结果": "Nenhum resultado",
+    "搜索完成": "Busca concluída", "搜索失败": "Falha na busca", "修改成功": "Alterado com sucesso",
+    "修改失败": "Falha ao alterar", "进程列表": "Lista de processos", "选择目标进程": "Selecionar processo de destino",
     "设置": "Configurações", "搜索": "Buscar", "保存的地址": "Endereços salvos",
     "内存预览": "Prévia da memória", "断点": "Pontos de interrupção",
     "选择进程": "Selecionar processo", "未选择进程": "Nenhum processo selecionado",
@@ -291,7 +299,7 @@ def patch_source_phrases():
     for path in java_root.rglob("*.kt"):
         original = path.read_text(encoding="utf-8")
         updated = original
-        for source, target in PHRASES.items():
+        for source, target in sorted(PHRASES.items(), key=lambda item: len(item[0]), reverse=True):
             updated = updated.replace(source, target)
         if updated != original:
             path.write_text(updated, encoding="utf-8")
