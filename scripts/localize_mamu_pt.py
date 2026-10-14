@@ -524,6 +524,30 @@ def patch_startup_compatibility():
     activity_file = ROOT / "src/main/java/moe/fuqiuluo/mamu/PermissionSetupActivity.kt"
     app = app_file.read_text(encoding="utf-8")
 
+    # Decide the no-root path before MMKV or any JNI-backed component initializes.
+    old_mamvu_init = """        // 初始化 MMKV
+        MMKV.initialize(this)"""
+    new_mamvu_init = """        // Detectar modo limitado antes de inicializar MMKV ou qualquer biblioteca JNI.
+        val rootBinaryAvailable = listOf(
+            "/system/bin/su", "/system/xbin/su", "/sbin/su", "/debug_ramdisk/su"
+        ).any { File(it).canExecute() }
+        if (!rootBinaryAvailable) {
+            startupError = "MODO_SEM_ROOT"
+            Log.i(TAG, "Modo limitado sem root: bibliotecas nativas não serão carregadas")
+            return
+        }
+
+        // Inicializar MMKV somente no modo completo.
+        try {
+            MMKV.initialize(this)
+        } catch (error: Throwable) {
+            startupError = "O armazenamento interno não conseguiu inicializar neste dispositivo."
+            Log.e(TAG, "Falha ao inicializar MMKV", error)
+            return
+        }"""
+    if old_mamvu_init in app:
+        app = app.replace(old_mamvu_init, new_mamvu_init, 1)
+
     app = app.replace("import kotlin.system.exitProcess\n", "")
     old_companion = """    companion object {
         lateinit var instance: MamuApplication
@@ -553,18 +577,7 @@ def patch_startup_compatibility():
             Log.e(TAG, "Failed to initialize Mamu Core")
             exitProcess(1)
         }"""
-    new_core = """        // Modo sem root: não inicialize o núcleo/driver que depende de acesso privilegiado.
-        // Isso mantém o app aberto, mas não habilita leitura/escrita de memória de outros processos.
-        val rootBinaryAvailable = listOf(
-            "/system/bin/su", "/system/xbin/su", "/sbin/su", "/debug_ramdisk/su"
-        ).any { File(it).canExecute() }
-        if (!rootBinaryAvailable) {
-            startupError = "MODO_SEM_ROOT"
-            Log.i(TAG, "Iniciando em modo limitado sem root")
-            return
-        }
-
-        // Só tenta carregar a biblioteca nativa quando há indício local de root.
+    new_core = """        // Só tenta carregar a biblioteca nativa quando há indício local de root.
         // Falhas de ABI/biblioteca são convertidas em diagnóstico, não em encerramento forçado.
         if (!nativeLibraryLoaded) {
             try {
