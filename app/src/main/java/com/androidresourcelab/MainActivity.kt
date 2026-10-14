@@ -23,6 +23,7 @@ import java.util.Locale
 class MainActivity : Activity() {
     private lateinit var content: LinearLayout
     private lateinit var statusText: TextView
+    private lateinit var advancedStatusText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,7 +66,37 @@ class MainActivity : Activity() {
         })
 
         statusText = label("Preparando diagnóstico…", 13f, Color.rgb(183, 194, 213), false)
-        content.addView(statusText.apply { setPadding(0, 0, 0, dp(14)) })
+        content.addView(statusText.apply { setPadding(0, 0, 0, dp(8)) })
+
+        val rootButton = Button(this).apply {
+            text = "VERIFICAR PERMISSÃO AVANÇADA"
+            isAllCaps = false
+            setOnClickListener { testRootAccess() }
+        }
+        content.addView(rootButton, LinearLayout.LayoutParams(-1, dp(50)).apply {
+            bottomMargin = dp(8)
+        })
+
+        advancedStatusText = label(
+            "Acesso avançado ainda não testado. Toque no botão acima para verificar se o aparelho oferece acesso root.",
+            12f, Color.rgb(183, 194, 213), false
+        )
+        content.addView(advancedStatusText.apply { setPadding(0, 0, 0, dp(12)) })
+
+        val developerButton = Button(this).apply {
+            text = "ABRIR OPÇÕES DO DESENVOLVEDOR"
+            isAllCaps = false
+            setOnClickListener {
+                runCatching {
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
+                }.onFailure {
+                    runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }
+                }
+            }
+        }
+        content.addView(developerButton, LinearLayout.LayoutParams(-1, dp(48)).apply {
+            bottomMargin = dp(8)
+        })
 
         val storageButton = Button(this).apply {
             text = "ABRIR CONFIGURAÇÕES DE ARMAZENAMENTO"
@@ -123,7 +154,7 @@ class MainActivity : Activity() {
                 }.getOrNull()
             }
 
-        while (content.childCount > 7) content.removeViewAt(content.childCount - 1)
+        while (content.childCount > 9) content.removeViewAt(content.childCount - 1)
 
         content.addView(sectionTitle("MEMÓRIA"))
         content.addView(infoCard(
@@ -200,6 +231,44 @@ class MainActivity : Activity() {
         ))
 
         statusText.text = "Atualizado agora • diagnóstico local • nenhuma alteração aplicada"
+    }
+
+    /**
+     * Read-only root capability check. A root manager may display its own authorization prompt.
+     * This does not change RAM, swap, zRAM, partitions, or kernel settings.
+     */
+    private fun testRootAccess() {
+        advancedStatusText.text = "Verificando acesso privilegiado…"
+        Thread {
+            var process: Process? = null
+            val result = try {
+                process = ProcessBuilder("su", "-c", "id").redirectErrorStream(true).start()
+                val completed = process.waitFor(4, java.util.concurrent.TimeUnit.SECONDS)
+                if (!completed) {
+                    process.destroyForcibly()
+                    "Tempo esgotado. O aparelho não confirmou acesso root. Nenhuma alteração foi feita."
+                } else {
+                    val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+                    if (process.exitValue() == 0 && output.contains("uid=0")) {
+                        "ACESSO ROOT CONFIRMADO. O comando de teste foi somente leitura. Isso não garante que o kernel permita alterar zRAM/swap."
+                    } else {
+                        "Acesso root negado ou indisponível. ${output.take(180).ifBlank { "O Android não autorizou o comando." }} Nenhuma alteração foi feita."
+                    }
+                }
+            } catch (e: Exception) {
+                "Root não disponível para este app (${e.javaClass.simpleName}). Em Android sem root, não existe uma permissão comum que libere alterações no kernel."
+            } finally {
+                runCatching { process?.destroy() }
+            }
+            runOnUiThread {
+                advancedStatusText.text = result
+                statusText.text = if (result.startsWith("ACESSO ROOT CONFIRMADO")) {
+                    "Teste concluído • acesso privilegiado confirmado"
+                } else {
+                    "Teste concluído • nenhuma alteração aplicada"
+                }
+            }
+        }.start()
     }
 
     private fun readSwapStatus(): Pair<String, String> {
