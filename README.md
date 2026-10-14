@@ -12,6 +12,13 @@ Aplicativo Android independente para diagnosticar memória, armazenamento e algu
 - Interface em português, com botão para atualizar os dados.
 - Não envia dados do dispositivo para um servidor.
 
+## Laboratório de memória (sem root)
+
+- Tela de busca e edição de valores de teste mantidos dentro do próprio Android Resource Lab.
+- Os IDs exibidos são identificadores locais de demonstração, não endereços reais de memória.
+- O código do projeto MX não foi copiado. O MX declara exigir root; seus recursos de busca/modificação da memória de outros processos não ficam disponíveis num app comum sem root.
+- O Android isola os processos dos aplicativos. Esta tela não promete leitura ou alteração da memória de jogos ou de apps de terceiros.
+
 ## Limites técnicos
 
 - RAM virtual ou swap usa armazenamento como apoio e não equivale à RAM física.
