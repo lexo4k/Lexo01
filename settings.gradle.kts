@@ -11,8 +11,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
 rootProject.name = "AndroidResourceLab"
-include(":app")
+include(":app", ":mamu")
+project(":mamu").projectDir = file("vendor/Mamu/app")
