@@ -95,6 +95,17 @@ class MainActivity : Activity() {
             bottomMargin = dp(8)
         })
 
+        val memoryLabButton = Button(this).apply {
+            text = "ABRIR LABORATÓRIO DE MEMÓRIA"
+            isAllCaps = false
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, MemoryLabActivity::class.java))
+            }
+        }
+        content.addView(memoryLabButton, LinearLayout.LayoutParams(-1, dp(50)).apply {
+            bottomMargin = dp(8)
+        })
+
         val developerButton = Button(this).apply {
             text = "ABRIR OPÇÕES DO DESENVOLVEDOR"
             isAllCaps = false
