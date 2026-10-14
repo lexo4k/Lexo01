@@ -242,14 +242,15 @@ class MainActivity : Activity() {
         Thread {
             var process: Process? = null
             val result = try {
-                process = ProcessBuilder("su", "-c", "id").redirectErrorStream(true).start()
-                val completed = process.waitFor(4, java.util.concurrent.TimeUnit.SECONDS)
+                val p = ProcessBuilder("su", "-c", "id").redirectErrorStream(true).start()
+                process = p
+                val completed = p.waitFor(4, java.util.concurrent.TimeUnit.SECONDS)
                 if (!completed) {
-                    process.destroyForcibly()
+                    p.destroyForcibly()
                     "Tempo esgotado. O aparelho não confirmou acesso root. Nenhuma alteração foi feita."
                 } else {
-                    val output = process.inputStream.bufferedReader().use { it.readText().trim() }
-                    if (process.exitValue() == 0 && output.contains("uid=0")) {
+                    val output = p.inputStream.bufferedReader().use { it.readText().trim() }
+                    if (p.exitValue() == 0 && output.contains("uid=0")) {
                         "ACESSO ROOT CONFIRMADO. O comando de teste foi somente leitura. Isso não garante que o kernel permita alterar zRAM/swap."
                     } else {
                         "Acesso root negado ou indisponível. ${output.take(180).ifBlank { "O Android não autorizou o comando." }} Nenhuma alteração foi feita."
