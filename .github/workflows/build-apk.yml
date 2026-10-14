@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APKs
 
 on:
   push:
@@ -11,8 +11,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      AutoReleaseBuildRust: "1"
     steps:
-      - name: Checkout
+      - name: Checkout repository and original Mamu submodule
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -23,24 +25,37 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK and accept licenses
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Android API 35 and build tools
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android SDK platforms, build tools and NDK
+        run: sdkmanager "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" "ndk;27.2.12479018"
 
-      - name: Set up Gradle 8.9
+      - name: Set up Rust for Android
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.9"
+          gradle-version: "8.13"
 
-      - name: Build debug APK
+      - name: Build Android Resource Lab and original Mamu module
         run: gradle --no-daemon clean assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload Android Resource Lab APK
         uses: actions/upload-artifact@v4
         with:
           name: AndroidResourceLab-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload original Mamu APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mamu-original-debug
+          path: vendor/Mamu/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
