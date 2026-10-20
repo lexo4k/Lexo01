@@ -22,3 +22,7 @@ O GitHub Actions compila o APK de depuração automaticamente quando os arquivos
 - Não edita jogos ou aplicativos de terceiros.
 - `android:debuggable=true` não concede automaticamente permissão para ler a memória de outro processo.
 - A edição de memória entre processos depende das permissões e APIs autorizadas pelo Android; não é prometida em aparelhos sem root.
+
+## Compilação automatizada
+
+O workflow `.github/workflows/memdroid-build.yml` usa JDK 17, Android SDK Platform 35 e Gradle 8.7. Após um push que altere arquivos em `MemDroid/`, o GitHub Actions compila `app-debug.apk` e publica o arquivo como artefato por 14 dias. O APK de depuração não é uma versão assinada para distribuição na Play Store.
