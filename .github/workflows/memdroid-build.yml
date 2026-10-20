@@ -2,6 +2,8 @@ name: MemDroid Android build
 
 on:
   push:
+    branches:
+      - memdroid-0.1.0
     paths:
       - 'MemDroid/**'
       - '.github/workflows/memdroid-build.yml'
@@ -27,20 +29,27 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
+      - name: Install Gradle 8.7
+        run: |
+          curl --fail --location --retry 3 --output /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt
+          echo /opt/gradle-8.7/bin >> "$GITHUB_PATH"
+          gradle --version
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android platform
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android platform and build tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Compile debug APK
         working-directory: MemDroid
-        run: gradle assembleDebug
+        run: gradle --no-daemon clean assembleDebug
+
+      - name: Verify APK exists
+        run: test -s MemDroid/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
