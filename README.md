@@ -20,6 +20,12 @@ Aplicativo Android independente para diagnosticar memória, armazenamento e algu
 - O MX declara exigir root para suas funções de memória entre processos. O submódulo preserva o código original, mas ainda não está compilado nem ligado à tela principal deste app.
 - O Android isola os processos dos aplicativos. Esta tela não promete leitura ou alteração da memória de jogos ou de apps de terceiros.
 
+## Módulo MemDroid
+
+Há também um projeto Android independente em [`MemDroid/`](MemDroid/) com uma interface de laboratório para buscar, refinar, alterar e restaurar valores numéricos dentro do próprio processo do MemDroid. Ele não lê nem altera a memória de outros apps.
+
+O workflow [MemDroid Android build](.github/workflows/memdroid-build.yml) compila um APK de depuração e publica-o como artefato do GitHub Actions. Consulte [MemDroid/README.md](MemDroid/README.md) para as instruções de compilação e os limites técnicos.
+
 ## Limites técnicos
 
 - RAM virtual ou swap usa armazenamento como apoio e não equivale à RAM física.
