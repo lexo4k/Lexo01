@@ -79,6 +79,13 @@ class TaskUpdate(BaseModel):
 
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
+    image_data_url: str | None = Field(default=None, max_length=7_000_000)
+
+    @classmethod
+    def validate_image(cls, value):
+        if value is not None and not value.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
+            raise ValueError("Envie uma imagem JPEG, PNG ou WebP.")
+        return value
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -190,13 +197,21 @@ async def chat(item: ChatIn):
               "sentimentos reais, execução em segundo plano ou ações não realizadas. Diferencie fatos, "
               "inferências e incertezas. Use o contexto salvo apenas quando relevante.\n"
               f"MEMÓRIA E CONHECIMENTO DISPONÍVEIS:\n{context or '(ainda vazios)'}")
+    user_content: Any = item.message
+    if item.image_data_url:
+        if not item.image_data_url.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
+            raise HTTPException(400, "Formato de imagem não aceito. Use JPEG, PNG ou WebP.")
+        user_content = [
+            {"type": "text", "text": item.message or "Descreva esta imagem."},
+            {"type": "image_url", "image_url": {"url": item.image_data_url, "detail": "auto"}}
+        ]
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(f"{base}/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={"model": model, "messages": [
                     {"role": "system", "content": system},
-                    {"role": "user", "content": item.message}
+                    {"role": "user", "content": user_content}
                 ]})
             response.raise_for_status()
             answer = response.json()["choices"][0]["message"]["content"]

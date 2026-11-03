@@ -37,5 +37,10 @@ class CoreTests(unittest.TestCase):
                                     json={"status": "concluída"})
         self.assertEqual(updated.status_code, 200)
 
+    def test_image_mime_is_validated(self):
+        response = self.client.post("/api/chat", headers=self.headers,
+                                    json={"message": "teste", "image_data_url": "data:text/html;base64,abc"})
+        self.assertEqual(response.status_code, 422)
+
 if __name__ == "__main__":
     unittest.main()
