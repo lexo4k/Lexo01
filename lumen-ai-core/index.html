@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a1020"><title>LÚMEN AI CORE</title>
+<style>
+:root{color-scheme:dark;--bg:#080d19;--panel:#111a2b;--line:#26344d;--muted:#9aa9c0;--cyan:#65d9e8;--text:#edf4ff;--green:#8ce2b0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#1a3652 0,transparent 38%),var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:22px max(18px,calc((100% - 1100px)/2));border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}.orb{width:42px;height:42px;border:1px solid var(--cyan);border-radius:50%;display:grid;place-items:center;color:var(--cyan);box-shadow:0 0 24px #65d9e833;font-weight:800}
+h1{font-size:18px;letter-spacing:.16em;margin:0}small,.muted{color:var(--muted)}main{max-width:1100px;margin:auto;padding:22px 18px 60px}
+.status{font-size:12px;color:var(--green);border:1px solid #315a4b;border-radius:20px;padding:7px 11px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.stat,.panel{background:#111a2beF;border:1px solid var(--line);border-radius:16px;padding:16px}.stat b{font-size:27px;display:block;margin-top:5px}
+.tabs{display:flex;gap:8px;overflow:auto;margin:20px 0}.tab,button{border:1px solid var(--line);background:#17243a;color:var(--text);border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}.tab.active,button.primary{background:#174253;border-color:#347e8e}.tab.active{color:#aaf5ff}
+.panel{margin-bottom:14px}.panel h2{font-size:16px;margin:0 0 14px}.row{display:flex;gap:9px;flex-wrap:wrap}input,textarea,select{width:100%;background:#0b1424;border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--text);font:inherit;margin:6px 0 10px}textarea{min-height:90px;resize:vertical}.field{flex:1;min-width:180px}.entry{padding:12px 0;border-top:1px solid var(--line)}.entry:first-child{border:0}.entry p{white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0}.entry small{font-size:12px}.chatlog{height:300px;overflow:auto;background:#0b1424;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}.bubble{padding:10px 12px;border-radius:12px;margin:8px 0;max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere}.user{background:#18344a;margin-left:auto}.ai{background:#192438}.hidden{display:none}.notice{padding:12px;border:1px solid #6d5831;background:#352a17;border-radius:10px;color:#f2d59a;margin-bottom:14px}
+@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}header{padding:16px}.grid{gap:8px}.stat{padding:12px}}
+</style></head>
+<body>
+<header><div class="brand"><div class="orb">L</div><div><h1>LÚMEN AI CORE</h1><small>Memória • Conhecimento • Ação</small></div></div><span class="status" id="status">● verificando núcleo</span></header>
+<main>
+<div id="notice" class="notice">Informe o token de acesso configurado no servidor para abrir sua área privada. O token fica apenas nesta sessão do navegador.</div>
+<section class="panel"><h2>Conectar ao núcleo</h2><div class="row"><div class="field"><input id="token" type="password" autocomplete="off" placeholder="Token de acesso do servidor"></div><button class="primary" onclick="connect()">Conectar</button></div><small>O token é validado pelo servidor e não é enviado a serviços de terceiros.</small></section>
+<div id="workspace" class="hidden">
+<section class="grid"><div class="stat"><small>Memórias</small><b id="memCount">0</b></div><div class="stat"><small>Conhecimentos</small><b id="knowCount">0</b></div><div class="stat"><small>Tarefas abertas</small><b id="taskCount">0</b></div><div class="stat"><small>Modelo IA</small><b id="modelState">Não conectado</b></div></section>
+<nav class="tabs"><button class="tab active" data-tab="chat">Conversar</button><button class="tab" data-tab="memory">Memória</button><button class="tab" data-tab="knowledge">Conhecimento</button><button class="tab" data-tab="tasks">Tarefas</button><button class="tab" data-tab="journal">Registro</button></nav>
+<section id="chat" class="panel"><h2>Conversa com LÚMEN</h2><div id="chatlog" class="chatlog"><div class="bubble ai">Núcleo conectado. A memória persistente fica no banco SQLite do servidor. Para conversar, conecte uma chave de modelo no ambiente do servidor.</div></div><textarea id="message" placeholder="Escreva sua mensagem..."></textarea><button class="primary" onclick="sendChat()">Enviar mensagem</button></section>
+<section id="memory" class="panel hidden"><h2>Memória persistente</h2><textarea id="memoryText" placeholder="Informação que deve ficar salva no banco de dados"></textarea><input id="memoryCategory" placeholder="Categoria (ex.: preferência, projeto, contexto)"><button class="primary" onclick="saveMemory()">Salvar memória</button><div id="memories"></div></section>
+<section id="knowledge" class="panel hidden"><h2>Base de conhecimento</h2><input id="knowTitle" placeholder="Título"><textarea id="knowContent" placeholder="Conteúdo ou resumo verificado"></textarea><input id="knowSource" placeholder="Fonte / URL / referência"><button class="primary" onclick="saveKnowledge()">Arquivar conhecimento</button><div id="knowledgeList"></div></section>
+<section id="tasks" class="panel hidden"><h2>Gerenciador de tarefas</h2><input id="taskTitle" placeholder="O que precisa ser feito?"><textarea id="taskDetails" placeholder="Detalhes, objetivo e próximo passo"></textarea><button class="primary" onclick="saveTask()">Criar tarefa</button><div id="tasksList"></div></section>
+<section id="journal" class="panel hidden"><h2>Histórico de atividade</h2><div id="journalList"></div></section>
+</div></main>
+<script>
+let accessToken="";
+const $=id=>document.getElementById(id);
+async function api(path,options={}){const res=await fetch(path,{...options,headers:{"Content-Type":"application/json","Authorization":"Bearer "+accessToken,...(options.headers||{})}});const data=await res.json().catch(()=>({detail:"Resposta inválida"}));if(!res.ok)throw Error(data.detail||"Falha na API");return data}
+async function health(){try{const h=await fetch("/api/health").then(r=>r.json());$("status").textContent=h.status==="online"?"● núcleo online":"● indisponível";$("modelState").textContent=h.model_connected?"Conectado":"Pendente";}catch{$("status").textContent="● offline"}}
+async function connect(){accessToken=$("token").value.trim();try{await api("/api/overview");$("workspace").classList.remove("hidden");$("notice").classList.add("hidden");$("token").value="";await refreshAll()}catch(e){accessToken="";alert(e.message)}}
+function showTab(name){document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));["chat","memory","knowledge","tasks","journal"].forEach(id=>$(id).classList.toggle("hidden",id!==name))}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+async function refreshAll(){const [o,m,k,t,j]=await Promise.all([api("/api/overview"),api("/api/memories"),api("/api/knowledge"),api("/api/tasks"),api("/api/journal")]);$("memCount").textContent=o.memories;$("knowCount").textContent=o.knowledge;$("taskCount").textContent=o.open_tasks;render("memories",m,x=>'<b>'+esc(x.category)+'</b><p>'+esc(x.content)+'</p><small>'+esc(x.created_at)+'</small> <button onclick="removeMemory('+x.id+')">Excluir</button>');render("knowledgeList",k,x=>'<b>'+esc(x.title)+'</b><p>'+esc(x.content)+'</p><small>Fonte: '+esc(x.source||"não informada")+'</small>');render("tasksList",t,x=>'<b>'+esc(x.title)+'</b><p>'+esc(x.details)+'</p><small>'+esc(x.status)+'</small><div class="row"><select id="st'+x.id+'"><option>pendente</option><option>em andamento</option><option>concluída</option></select><button onclick="setTask('+x.id+')">Atualizar</button><button onclick="removeTask('+x.id+')">Excluir</button></div>');render("journalList",j,x=>'<b>'+esc(x.event)+'</b><p>'+esc(x.detail)+'</p><small>'+esc(x.created_at)+'</small>')}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function render(id,items,fn){$(id).innerHTML=items.length?items.map(x=>'<div class="entry">'+fn(x)+'</div>').join():'<p class="muted">Ainda não há registros.</p>'}
+async function saveMemory(){try{await api("/api/memories",{method:"POST",body:JSON.stringify({content:$("memoryText").value,category:$("memoryCategory").value||"geral"})});$("memoryText").value="";await refreshAll()}catch(e){alert(e.message)}}
+async function removeMemory(id){try{await api("/api/memories/"+id,{method:"DELETE"});await refreshAll()}catch(e){alert(e.message)}}
+async function saveKnowledge(){try{await api("/api/knowledge",{method:"POST",body:JSON.stringify({title:$("knowTitle").value,content:$("knowContent").value,source:$("knowSource").value})});$("knowTitle").value=$("knowContent").value=$("knowSource").value="";await refreshAll()}catch(e){alert(e.message)}}
+async function saveTask(){try{await api("/api/tasks",{method:"POST",body:JSON.stringify({title:$("taskTitle").value,details:$("taskDetails").value})});$("taskTitle").value=$("taskDetails").value="";await refreshAll()}catch(e){alert(e.message)}}
+async function setTask(id){try{await api("/api/tasks/"+id,{method:"PATCH",body:JSON.stringify({status:$("st"+id).value})});await refreshAll()}catch(e){alert(e.message)}}
+async function removeTask(id){try{await api("/api/tasks/"+id,{method:"DELETE"});await refreshAll()}catch(e){alert(e.message)}}
+async function sendChat(){const msg=$("message").value.trim();if(!msg)return;const log=$("chatlog");log.innerHTML+='<div class="bubble user">'+esc(msg)+'</div>'; $("message").value="";try{const result=await api("/api/chat",{method:"POST",body:JSON.stringify({message:msg})});log.innerHTML+='<div class="bubble ai">'+esc(result.answer)+'</div>'}catch(e){log.innerHTML+='<div class="bubble ai">'+esc(e.message)+'</div>'}log.scrollTop=log.scrollHeight}
+health();
+</script></body></html>
