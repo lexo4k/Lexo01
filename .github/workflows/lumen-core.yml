@@ -1,0 +1,36 @@
+name: LÚMEN AI CORE checks
+
+on:
+  push:
+    branches: ["lumen-ai-core"]
+    paths:
+      - "lumen-ai-core/**"
+      - ".github/workflows/lumen-core.yml"
+  pull_request:
+    paths:
+      - "lumen-ai-core/**"
+      - ".github/workflows/lumen-core.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lumen-ai-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: lumen-ai-core/requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
