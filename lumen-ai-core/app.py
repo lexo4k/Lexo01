@@ -11,7 +11,7 @@ from typing import Any
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 ROOT = Path(__file__).parent
 DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(ROOT / "data" / "lumen.db")))
@@ -81,6 +81,7 @@ class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     image_data_url: str | None = Field(default=None, max_length=7_000_000)
 
+    @field_validator("image_data_url")
     @classmethod
     def validate_image(cls, value):
         if value is not None and not value.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
