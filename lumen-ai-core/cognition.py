@@ -107,9 +107,7 @@ async def think(*, client, base: str, key: str, model: str, goal: str,
         "issues": issues[:10] if isinstance(issues, list) else [],
         "improvements": improvements[:10] if isinstance(improvements, list) else [],
     }
-    plan["approval_required"] = bool(
-        plan.get("approval_required", True) or review.get("approval_required", True)
-    )
+    # O motor só planeja. Qualquer execução externa depende de aprovação explícita.\n    plan["approval_required"] = True
     plan["execution_status"] = "not_executed"
     plan["engine"] = "lumen-cognitive-cycle-v1"
     return plan
