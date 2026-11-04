@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 from fastapi.testclient import TestClient
 
 tmp = tempfile.TemporaryDirectory()
@@ -36,6 +37,12 @@ class CoreTests(unittest.TestCase):
         updated = self.client.patch(f"/api/tasks/{task_id}", headers=self.headers,
                                     json={"status": "concluída"})
         self.assertEqual(updated.status_code, 200)
+
+    def test_web_research_requires_provider_key(self):
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
+            response = self.client.post("/api/research", headers=self.headers,
+                                        json={"query": "notícias sobre ciência"})
+        self.assertEqual(response.status_code, 503)
 
     def test_image_mime_is_validated(self):
         response = self.client.post("/api/chat", headers=self.headers,
