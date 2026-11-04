@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS journal (
  id INTEGER PRIMARY KEY AUTOINCREMENT, event TEXT NOT NULL,
  detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS conversation_messages (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL CHECK(role IN ('user','assistant')),
+ content TEXT NOT NULL, created_at TEXT NOT NULL
+);
 """
 
 @contextmanager
@@ -183,6 +187,16 @@ def journal():
     with db() as con:
         return [dict(r) for r in con.execute("SELECT * FROM journal ORDER BY id DESC LIMIT 100")]
 
+@app.get("/api/conversations", dependencies=[Depends(require_access)])
+def conversations(limit: int = 100):
+    limit = max(1, min(limit, 300))
+    with db() as con:
+        rows = con.execute(
+            "SELECT id,role,content,created_at FROM conversation_messages ORDER BY id DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        return [dict(row) for row in reversed(rows)]
+
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -193,11 +207,16 @@ async def chat(item: ChatIn):
     with db() as con:
         memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
         facts = [f'{r["title"]}: {r["content"]}' for r in con.execute("SELECT title,content FROM knowledge ORDER BY id DESC LIMIT 10")]
+        history = [dict(r) for r in con.execute(
+            "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 20"
+        )][::-1]
     context = "\n".join([*(f"- {m}" for m in memories), *(f"- {f}" for f in facts)])
     system = ("Você é LÚMEN, um assistente de IA claro, útil e honesto. Não alegue consciência, "
               "sentimentos reais, execução em segundo plano ou ações não realizadas. Diferencie fatos, "
               "inferências e incertezas. Use o contexto salvo apenas quando relevante.\n"
               f"MEMÓRIA E CONHECIMENTO DISPONÍVEIS:\n{context or '(ainda vazios)'}")
+    messages = [{"role": "system", "content": system}]
+    messages.extend(history)
     user_content: Any = item.message
     if item.image_data_url:
         if not item.image_data_url.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
@@ -206,14 +225,12 @@ async def chat(item: ChatIn):
             {"type": "text", "text": item.message or "Descreva esta imagem."},
             {"type": "image_url", "image_url": {"url": item.image_data_url, "detail": "auto"}}
         ]
+    messages.append({"role": "user", "content": user_content})
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(f"{base}/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
-                json={"model": model, "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user_content}
-                ]})
+                json={"model": model, "messages": messages})
             response.raise_for_status()
             answer = response.json()["choices"][0]["message"]["content"]
     except httpx.HTTPStatusError as exc:
@@ -221,8 +238,13 @@ async def chat(item: ChatIn):
     except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
         raise HTTPException(502, "Não foi possível obter uma resposta válida do provedor de IA.") from exc
     with db() as con:
+        stamp = now()
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)",
+                    (item.message, stamp))
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)",
+                    (answer, stamp))
         con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
-                    ("Conversa com o modelo", item.message[:180], now()))
+                    ("Conversa com o modelo", item.message[:180], stamp))
     return {"answer": answer, "model": model}
 
 @app.on_event("startup")
