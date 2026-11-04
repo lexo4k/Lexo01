@@ -42,5 +42,14 @@ class CoreTests(unittest.TestCase):
                                     json={"message": "teste", "image_data_url": "data:text/html;base64,abc"})
         self.assertEqual(response.status_code, 422)
 
+    def test_conversation_history_endpoint_is_protected_and_empty(self):
+        response = self.client.get("/api/conversations", headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
+
+    def test_conversation_history_requires_token(self):
+        response = self.client.get("/api/conversations")
+        self.assertEqual(response.status_code, 401)
+
 if __name__ == "__main__":
     unittest.main()
