@@ -13,6 +13,8 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator
 
+from cognition import think as cognitive_cycle
+
 ROOT = Path(__file__).parent
 DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(ROOT / "data" / "lumen.db")))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -80,6 +82,9 @@ class TaskIn(BaseModel):
 
 class TaskUpdate(BaseModel):
     status: str = Field(pattern="^(pendente|em andamento|concluída)$")
+
+class ThinkIn(BaseModel):
+    goal: str = Field(min_length=1, max_length=8000)
 
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
@@ -196,6 +201,39 @@ def conversations(limit: int = 100):
             (limit,)
         ).fetchall()
         return [dict(row) for row in reversed(rows)]
+
+@app.post("/api/think", dependencies=[Depends(require_access)])
+async def think_endpoint(item: ThinkIn):
+    """Planeja e avalia um objetivo sem executar ações externas."""
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(503, "O motor cognitivo está implementado, mas depende de um provedor de IA conectado.")
+    base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+    with db() as con:
+        memories = [r["content"] for r in con.execute(
+            "SELECT content FROM memories ORDER BY id DESC LIMIT 40"
+        )]
+        knowledge = [f'{r["title"]}: {r["content"]}' for r in con.execute(
+            "SELECT title,content FROM knowledge ORDER BY id DESC LIMIT 30"
+        )]
+        history = [dict(r) for r in con.execute(
+            "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 12"
+        )][::-1]
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            result = await cognitive_cycle(
+                client=client, base=base, key=api_key, model=model, goal=item.goal,
+                memories=memories, knowledge=knowledge, recent_history=history
+            )
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Provedor de IA respondeu com erro HTTP {exc.response.status_code}.") from exc
+    except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
+        raise HTTPException(502, "O ciclo cognitivo não conseguiu concluir uma avaliação válida.") from exc
+    with db() as con:
+        con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
+                    ("Ciclo cognitivo concluído", item.goal[:180], now()))
+    return result
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
