@@ -8,7 +8,8 @@ Primeiro núcleo funcional do LÚMEN: uma aplicação web adaptada para celular,
 - Memórias persistidas no banco SQLite do servidor, com categoria e exclusão.
 - Base de conhecimento com título, conteúdo e campo de fonte.
 - Tarefas com estados pendente, em andamento e concluída.
-- Registro de eventos importantes.\n- Histórico persistente das conversas: mensagens do usuário e respostas do modelo ficam salvas e as últimas 20 entram no contexto das próximas conversas.
+- Registro de eventos importantes.
+- Histórico persistente das conversas: mensagens do usuário e respostas do modelo ficam salvas e as últimas 20 entram no contexto das próximas conversas.
 - Integração opcional com uma API compatível com OpenAI para conversação. Sem chave, o sistema informa que o modelo não está conectado, em vez de simular inteligência.
 - Proteção da API por token configurado no servidor.
 - Testes automatizados para saúde, autenticação, memória e tarefas.
