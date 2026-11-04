@@ -1,18 +1,24 @@
 # LÚMEN AI CORE
 
-Primeiro núcleo funcional do LÚMEN: uma aplicação web adaptada para celular, com API Python e memória persistente em SQLite.
+Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web com fontes. Interface em português, adaptada para celular, API Python e banco SQLite.
 
-## O que já funciona nesta versão
+## Capacidades implementadas
 
-- Interface em português com abas para conversa, memória, conhecimento, tarefas e histórico.
-- Memórias persistidas no banco SQLite do servidor, com categoria e exclusão.
-- Base de conhecimento com título, conteúdo e campo de fonte.
-- Tarefas com estados pendente, em andamento e concluída.
-- Registro de eventos importantes.
-- Histórico persistente das conversas: mensagens do usuário e respostas do modelo ficam salvas e as últimas 20 entram no contexto das próximas conversas.
-- Integração opcional com uma API compatível com OpenAI para conversação. Sem chave, o sistema informa que o modelo não está conectado, em vez de simular inteligência.
-- Proteção da API por token configurado no servidor.
-- Testes automatizados para saúde, autenticação, memória e tarefas.
+- Conversação com modelo externo compatível com a API OpenAI.
+- Memória pessoal explícita e base de conhecimento persistidas em SQLite.
+- Histórico de conversas, tarefas e diário de atividade.
+- Ciclo cognitivo limitado: compreensão do objetivo, planejamento estruturado e avaliação independente do plano.
+- Pesquisa web pelo endpoint `POST /api/research`, usando a ferramenta `web_search` da API OpenAI Responses. Retorna síntese e links das fontes encontradas.
+- Interface com abas **Pensar**, **Web**, **Conversar**, **Memória**, **Conhecimento**, **Tarefas** e **Registro**.
+- Possibilidade de arquivar uma pesquisa e suas fontes na base de conhecimento.
+- Proteção dos endpoints privados por token.
+- Testes automatizados, incluindo validação do endpoint de pesquisa sem credencial.
+
+## Pesquisa na web
+
+A aba **Web** envia a pergunta ao servidor. O servidor chama a API Responses com a ferramenta `web_search`, recolhe as citações/URLs devolvidas e apresenta os links para consulta. Uma pesquisa só é considerada realizada quando o provedor responde com sucesso; o sistema não simula resultados.
+
+Requer uma chave de API com acesso à API Responses e à ferramenta `web_search`. Modelos e provedores compatíveis apenas com Chat Completions podem não oferecer essa ferramenta. Se o provedor retornar erro, a interface apresenta a falha em vez de inventar fontes.
 
 ## Executar localmente
 
@@ -24,17 +30,22 @@ Requisitos: Python 3.11 ou superior.
     pip install -r requirements.txt
     cp .env.example .env
 
-Defina no ambiente os valores de `LUMEN_ACCESS_TOKEN` e, se quiser conversação por IA, `OPENAI_API_KEY`. Carregue as variáveis do arquivo .env com seu gerenciador de ambiente e execute:
+Configure no ambiente do servidor:
+- `LUMEN_ACCESS_TOKEN`: token forte para proteger a API.
+- `OPENAI_API_KEY`: chave mantida somente no servidor.
+- `OPENAI_MODEL`: modelo de conversa e planejamento.
+- `LUMEN_RESEARCH_MODEL`: opcional; modelo usado na pesquisa web, por padrão `OPENAI_MODEL` ou `gpt-4.1`.
+- `OPENAI_BASE_URL`: opcional, padrão `https://api.openai.com/v1`. A pesquisa web exige compatibilidade com a API Responses e a ferramenta `web_search`.
+
+Execute:
 
     uvicorn app:app --host 127.0.0.1 --port 8000
 
 Abra http://127.0.0.1:8000 e informe o token configurado no servidor.
 
-No Windows, ative o ambiente com `.venv\\Scripts\\activate`.
-
 ## Testes
 
-    pip install httpx
+    pip install -r requirements.txt
     python -m unittest discover -s tests -v
 
 ## Variáveis de ambiente
@@ -42,24 +53,27 @@ No Windows, ative o ambiente com `.venv\\Scripts\\activate`.
 | Variável | Função |
 |---|---|
 | LUMEN_ACCESS_TOKEN | Token obrigatório para proteger a API |
-| OPENAI_API_KEY | Chave do provedor de IA, mantida apenas no servidor |
-| OPENAI_MODEL | Modelo usado pelo endpoint de chat |
-| OPENAI_BASE_URL | URL base de uma API compatível com OpenAI |
+| OPENAI_API_KEY | Chave do provedor, mantida apenas no servidor |
+| OPENAI_MODEL | Modelo usado na conversa e no planejamento |
+| LUMEN_RESEARCH_MODEL | Modelo opcional para pesquisa web |
+| OPENAI_BASE_URL | URL base do provedor compatível |
 | LUMEN_DB_PATH | Caminho do banco SQLite |
 
-## Segurança e limites atuais
+## Segurança, limites e honestidade operacional
 
-- Não publique o servidor sem configurar um token forte e HTTPS.
-- Não coloque chaves de API no HTML, no Git ou no aplicativo cliente.
-- Esta primeira versão não tem cadastro multiusuário, recuperação de senha nem permissões granulares.
-- A memória é persistente no banco do servidor, mas não é ilimitada. Faça backups do arquivo SQLite.
-- O servidor não executa tarefas arbitrárias no dispositivo nem opera em segundo plano por conta própria.
-- Voz, visão, pesquisa web com fontes, agendamento e automações externas ainda não foram implementados.
-- As conversas ficam registradas separadamente da memória pessoal; isso preserva continuidade sem transformar automaticamente cada mensagem em fato sobre o usuário.
-- A conexão com o modelo depende da chave e da disponibilidade do provedor configurado.
+- Não publique o servidor sem token forte e HTTPS.
+- Nunca coloque chaves no HTML, no Git ou no aplicativo cliente.
+- O ciclo cognitivo planeja e avalia, mas não executa ações externas automaticamente.
+- Pesquisa web depende de chave, acesso ao serviço Responses e disponibilidade da ferramenta `web_search`.
+- Memórias não são ilimitadas. Faça backups do banco SQLite.
+- O sistema não opera em segundo plano depois que a sessão termina.
+- Voz e visão dependem do navegador e do modelo configurado; automações externas e execução geral de ferramentas ainda não estão implementadas.
+- O modelo configurado é um serviço externo. Este projeto não copia nem transforma o ChatGPT em uma instância independente.
+- Conversas ficam separadas das memórias explícitas para evitar transformar automaticamente cada mensagem em fato pessoal.
 
 ## Estrutura
 
-- `app.py`: API, banco de dados, autenticação e integração com modelo.
+- `app.py`: API, autenticação, armazenamento, chat, planejamento e endpoint de pesquisa web.
+- `cognition.py`: ciclo de planejamento e avaliação cognitiva.
 - `index.html`: interface web responsiva.
-- `tests/`: testes básicos do núcleo.
+- `tests/`: testes automatizados.
