@@ -86,6 +86,9 @@ class TaskUpdate(BaseModel):
 class ThinkIn(BaseModel):
     goal: str = Field(min_length=1, max_length=8000)
 
+class ResearchIn(BaseModel):
+    query: str = Field(min_length=2, max_length=2000)
+
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     image_data_url: str | None = Field(default=None, max_length=7_000_000)
@@ -201,6 +204,73 @@ def conversations(limit: int = 100):
             (limit,)
         ).fetchall()
         return [dict(row) for row in reversed(rows)]
+
+@app.post("/api/research", dependencies=[Depends(require_access)])
+async def research_web(item: ResearchIn):
+    """Pesquisa na web usando a ferramenta web_search do provedor e devolve fontes."""
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(503, "Pesquisa web indisponível: conecte OPENAI_API_KEY ao servidor.")
+    base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    model = os.getenv("LUMEN_RESEARCH_MODEL", os.getenv("OPENAI_MODEL", "gpt-4.1"))
+    payload = {
+        "model": model,
+        "tools": [{"type": "web_search"}],
+        "tool_choice": "auto",
+        "include": ["web_search_call.action.sources"],
+        "input": (
+            "Pesquise na web a pergunta a seguir. Priorize fontes primárias e confiáveis, "
+            "compare informações quando necessário, informe datas relevantes, diferencie "
+            "fatos de inferências e não invente dados. Responda em português claro e cite "
+            "as fontes consultadas. Pergunta: " + item.query
+        )
+    }
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            response = await client.post(
+                f"{base}/responses",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=payload
+            )
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Pesquisa web falhou no provedor (HTTP {exc.response.status_code}). Verifique se o modelo e a API oferecem web_search.") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Não foi possível acessar o serviço de pesquisa web.") from exc
+
+    answer_parts = []
+    sources = []
+    for output in data.get("output", []):
+        if output.get("type") == "message":
+            for part in output.get("content", []):
+                if part.get("type") in ("output_text", "text") and part.get("text"):
+                    answer_parts.append(part["text"])
+                for annotation in part.get("annotations", []):
+                    if annotation.get("type") == "url_citation":
+                        sources.append({
+                            "title": annotation.get("title") or annotation.get("url", ""),
+                            "url": annotation.get("url", "")
+                        })
+        action = output.get("action", {})
+        for source in action.get("sources", []):
+            sources.append({"title": source.get("title") or source.get("url", ""),
+                            "url": source.get("url", "")})
+    answer = data.get("output_text") or "\\n".join(answer_parts)
+    unique = []
+    seen = set()
+    for source in sources:
+        url = source.get("url", "")
+        if url.startswith("https://") and url not in seen:
+            seen.add(url)
+            unique.append(source)
+    if not answer:
+        raise HTTPException(502, "A pesquisa foi concluída sem texto de resposta.")
+    with db() as con:
+        con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
+                    ("Pesquisa web concluída", item.query[:180], now()))
+    return {"query": item.query, "answer": answer, "sources": unique[:20],
+            "model": model, "web_search_used": True}
 
 @app.post("/api/think", dependencies=[Depends(require_access)])
 async def think_endpoint(item: ThinkIn):
