@@ -108,7 +108,7 @@ def home():
 def health():
     return {"app": "LÚMEN AI CORE", "status": "online", "version": app.version,
             "model_connected": bool(os.getenv("OPENAI_API_KEY")),
-            "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN"))}
+            "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),\n            "web_research_key_configured": bool(os.getenv("OPENAI_API_KEY")),\n            "primary_experience": "chat"}
 
 @app.get("/api/overview", dependencies=[Depends(require_access)])
 def overview():
@@ -212,7 +212,7 @@ async def research_web(item: ResearchIn):
     if not api_key:
         raise HTTPException(503, "Pesquisa web indisponível: conecte OPENAI_API_KEY ao servidor.")
     base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    model = os.getenv("LUMEN_RESEARCH_MODEL", os.getenv("OPENAI_MODEL", "gpt-4.1"))
+    model = os.getenv("LUMEN_RESEARCH_MODEL", "gpt-4.1")
     payload = {
         "model": model,
         "tools": [{"type": "web_search"}],
@@ -256,7 +256,7 @@ async def research_web(item: ResearchIn):
         for source in action.get("sources", []):
             sources.append({"title": source.get("title") or source.get("url", ""),
                             "url": source.get("url", "")})
-    answer = data.get("output_text") or "\\n".join(answer_parts)
+    answer = data.get("output_text") or "\n".join(answer_parts)
     unique = []
     seen = set()
     for source in sources:
