@@ -94,7 +94,7 @@ O deploy não pode ser concluído por este repositório sozinho: é necessário 
 
 A interface entregue nesta branch é um PWA instalável pelo navegador Android depois que o servidor estiver publicado em HTTPS: abra o endereço do serviço no Chrome e use **Instalar app** ou **Adicionar à tela inicial**, conforme a opção exibida pelo navegador.
 
-**Importante:** o workflow Android existente na raiz do repositório compila o Android Resource Lab e o módulo Mamu, não o LÚMEN AI CORE. Os APKs publicados por aquele workflow não são o aplicativo LÚMEN e não devem ser instalados como se fossem. O PWA desta pasta é o cliente LÚMEN atualmente implementado.
+Agora existe também o módulo Android próprio em `lumen-android/`. Ele abre a interface HTTPS do núcleo em um WebView seguro, permite escolher imagem e guarda o endereço do servidor no aparelho. O endereço do servidor é solicitado na primeira abertura porque ainda não há uma instância Render publicada. O workflow `Build Android APKs` compila o módulo `:lumen` e publica o artefato `Lumen-AI-debug`, além dos outros APKs antigos. O APK é um cliente Android do núcleo web, não contém um modelo de IA offline.
 
 ## Estado real da entrega
 
@@ -103,7 +103,7 @@ A interface entregue nesta branch é um PWA instalável pelo navegador Android d
 - Serviço público Render: ainda não criado/publicado por esta entrega.
 - IA e pesquisa web: implementadas, mas só ficam operacionais após configurar a chave do provedor no servidor.
 - Memória durável hospedada: depende de disco persistente ou banco gerenciado; o plano gratuito com disco efêmero não garante retenção.
-- APK próprio do LÚMEN: ainda não produzido. Não confundir com os APKs de outros módulos do repositório.
+- APK próprio do LÚMEN: módulo Android criado; compilação e artefato `Lumen-AI-debug` dependem da conclusão bem-sucedida do workflow Android mais recente.
 - Anúncios: não integrados; exigem conta de editor e aprovação em uma rede de anúncios.
 
 ## Estrutura
@@ -111,4 +111,5 @@ A interface entregue nesta branch é um PWA instalável pelo navegador Android d
 - `app.py`: API, autenticação, armazenamento, chat, planejamento e endpoint de pesquisa web.
 - `cognition.py`: ciclo de planejamento e avaliação cognitiva.
 - `index.html`: interface web responsiva.
+- `lumen-android/`: aplicativo Android nativo que conecta ao servidor HTTPS.
 - `tests/`: testes automatizados.
