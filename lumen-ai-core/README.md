@@ -9,7 +9,7 @@ Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web c
 - Histórico de conversas, tarefas e diário de atividade.
 - Ciclo cognitivo limitado: compreensão do objetivo, planejamento estruturado e avaliação independente do plano.
 - Pesquisa web pelo endpoint `POST /api/research`, usando a ferramenta `web_search` da API OpenAI Responses. Retorna síntese e links das fontes encontradas.
-- Interface com abas **Pensar**, **Web**, **Conversar**, **Memória**, **Conhecimento**, **Tarefas** e **Registro**.
+- Interface centrada na conversa: o chat é a tela inicial. Pedidos explícitos de pesquisa e perguntas sobre fatos atuais podem acionar a pesquisa web dentro da mesma conversa. Planejamento, memória e organização ficam como recursos secundários.
 - Possibilidade de arquivar uma pesquisa e suas fontes na base de conhecimento.
 - Proteção dos endpoints privados por token.
 - Testes automatizados, incluindo validação do endpoint de pesquisa sem credencial.
@@ -34,7 +34,7 @@ Configure no ambiente do servidor:
 - `LUMEN_ACCESS_TOKEN`: token forte para proteger a API.
 - `OPENAI_API_KEY`: chave mantida somente no servidor.
 - `OPENAI_MODEL`: modelo de conversa e planejamento.
-- `LUMEN_RESEARCH_MODEL`: opcional; modelo usado na pesquisa web, por padrão `OPENAI_MODEL` ou `gpt-4.1`.
+- `LUMEN_RESEARCH_MODEL`: opcional; modelo usado na pesquisa web, por padrão `gpt-4.1`.
 - `OPENAI_BASE_URL`: opcional, padrão `https://api.openai.com/v1`. A pesquisa web exige compatibilidade com a API Responses e a ferramenta `web_search`.
 
 Execute:
