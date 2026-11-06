@@ -295,11 +295,11 @@ async def research_web(item: ResearchIn):
         raise HTTPException(502, "A pesquisa foi concluída sem texto de resposta.")
     with db() as con:
         stamp = now()
-        source_text = "\\n".join(
+        source_text = "\n".join(
             f'{source.get("title") or source["url"]}: {source["url"]}'
             for source in unique[:20]
         )
-        stored_answer = answer + (("\\n\\nFontes consultadas:\\n" + source_text) if source_text else "")
+        stored_answer = answer + (("\n\nFontes consultadas:\n" + source_text) if source_text else "")
         con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)",
                     (item.query, stamp))
         con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)",
