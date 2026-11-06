@@ -70,7 +70,7 @@ Abra http://127.0.0.1:8000 e informe o token configurado no servidor.
 - Pesquisa web depende de chave, acesso ao serviço Responses e disponibilidade da ferramenta `web_search`.
 - A interface PWA pode abrir offline, mas chat, pesquisa, memória sincronizada e voz online exigem servidor e conexão.
 - O projeto não inclui anúncios ativos: publicidade exige conta de editor, aprovação e integração com uma rede. Não há anúncios simulados.
-- Memórias não são ilimitadas. Faça backups do banco SQLite.
+- Memórias não são ilimitadas. O SQLite guarda os dados no disco configurado. Em hospedagem com disco efêmero (incluindo instâncias gratuitas comuns), os dados podem ser perdidos ao reiniciar ou implantar novamente. Para persistência real, configure armazenamento persistente e backups.
 - O sistema não opera em segundo plano depois que a sessão termina.
 - Voz e visão dependem do navegador e do modelo configurado; automações externas e execução geral de ferramentas ainda não estão implementadas.
 - O modelo configurado é um serviço externo. Este projeto não copia nem transforma o ChatGPT em uma instância independente.
