@@ -108,7 +108,9 @@ def home():
 def health():
     return {"app": "LÚMEN AI CORE", "status": "online", "version": app.version,
             "model_connected": bool(os.getenv("OPENAI_API_KEY")),
-            "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),\n            "web_research_key_configured": bool(os.getenv("OPENAI_API_KEY")),\n            "primary_experience": "chat"}
+            "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
+            "web_research_key_configured": bool(os.getenv("OPENAI_API_KEY")),
+            "primary_experience": "chat"}
 
 @app.get("/api/overview", dependencies=[Depends(require_access)])
 def overview():
