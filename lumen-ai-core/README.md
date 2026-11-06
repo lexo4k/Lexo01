@@ -76,6 +76,36 @@ Abra http://127.0.0.1:8000 e informe o token configurado no servidor.
 - O modelo configurado é um serviço externo. Este projeto não copia nem transforma o ChatGPT em uma instância independente.
 - Conversas ficam separadas das memórias explícitas para evitar transformar automaticamente cada mensagem em fato pessoal.
 
+
+## Publicar no Render
+
+O arquivo `render.yaml` já define o serviço Docker e a rota de saúde. Para publicar:
+
+1. Entre no Render e escolha **New → Blueprint**.
+2. Selecione o repositório `lexo4k/Lexo01` e a branch `lumen-ai-core`.
+3. Confirme o serviço `lumen-ai-core`. O diretório raiz é `lumen-ai-core`.
+4. No painel do serviço, preencha `OPENAI_API_KEY` com uma chave válida do provedor. A chave deve ficar somente no ambiente do servidor.
+5. Aguarde o deploy e confira `https://SEU-DOMINIO/api/health`. O campo `model_connected` precisa aparecer como `true`.
+6. Use o valor gerado para `LUMEN_ACCESS_TOKEN` no formulário **Conectar ao núcleo**.
+
+O deploy não pode ser concluído por este repositório sozinho: é necessário autorizar a criação do serviço na conta Render e fornecer uma credencial válida do provedor. O plano gratuito não oferece disco persistente para SQLite. Para conservar memórias entre reinicializações, configure um disco persistente em um plano que o ofereça ou substitua SQLite por um banco gerenciado; faça backup antes de migrar.
+
+## Aplicativo Android
+
+A interface entregue nesta branch é um PWA instalável pelo navegador Android depois que o servidor estiver publicado em HTTPS: abra o endereço do serviço no Chrome e use **Instalar app** ou **Adicionar à tela inicial**, conforme a opção exibida pelo navegador.
+
+**Importante:** o workflow Android existente na raiz do repositório compila o Android Resource Lab e o módulo Mamu, não o LÚMEN AI CORE. Os APKs publicados por aquele workflow não são o aplicativo LÚMEN e não devem ser instalados como se fossem. O PWA desta pasta é o cliente LÚMEN atualmente implementado.
+
+## Estado real da entrega
+
+- Código e interface PWA: presentes nesta branch.
+- Testes automatizados do núcleo: aprovados no GitHub Actions (run 42313671953).
+- Serviço público Render: ainda não criado/publicado por esta entrega.
+- IA e pesquisa web: implementadas, mas só ficam operacionais após configurar a chave do provedor no servidor.
+- Memória durável hospedada: depende de disco persistente ou banco gerenciado; o plano gratuito com disco efêmero não garante retenção.
+- APK próprio do LÚMEN: ainda não produzido. Não confundir com os APKs de outros módulos do repositório.
+- Anúncios: não integrados; exigem conta de editor e aprovação em uma rede de anúncios.
+
 ## Estrutura
 
 - `app.py`: API, autenticação, armazenamento, chat, planejamento e endpoint de pesquisa web.
