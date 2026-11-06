@@ -60,7 +60,7 @@ Abra http://127.0.0.1:8000 e informe o token configurado no servidor.
 | OPENAI_MODEL | Modelo usado na conversa e no planejamento |
 | LUMEN_RESEARCH_MODEL | Modelo opcional para pesquisa web |
 | OPENAI_BASE_URL | URL base do provedor compatível |
-| LUMEN_DB_PATH | Caminho do banco SQLite |
+| LUMEN_DB_PATH | Caminho do banco SQLite quando PostgreSQL não está configurado |\n| DATABASE_URL | URL privada de conexão PostgreSQL; opcional |
 
 ## Segurança, limites e honestidade operacional
 
@@ -70,7 +70,7 @@ Abra http://127.0.0.1:8000 e informe o token configurado no servidor.
 - Pesquisa web depende de chave, acesso ao serviço Responses e disponibilidade da ferramenta `web_search`.
 - A interface PWA pode abrir offline, mas chat, pesquisa, memória sincronizada e voz online exigem servidor e conexão.
 - O projeto não inclui anúncios ativos: publicidade exige conta de editor, aprovação e integração com uma rede. Não há anúncios simulados.
-- Memórias não são ilimitadas. O SQLite guarda os dados no disco configurado. Em hospedagem com disco efêmero (incluindo instâncias gratuitas comuns), os dados podem ser perdidos ao reiniciar ou implantar novamente. Para persistência real, configure armazenamento persistente e backups.
+- Memórias não são ilimitadas. SQLite guarda os dados no disco configurado e pode perder dados em instâncias efêmeras. Para persistência gerenciada, configure `DATABASE_URL` com um PostgreSQL compatível e mantenha backups. A aplicação não cria uma conta de banco nem provisiona o banco externo automaticamente.
 - O sistema não opera em segundo plano depois que a sessão termina.
 - Voz e visão dependem do navegador e do modelo configurado; automações externas e execução geral de ferramentas ainda não estão implementadas.
 - O modelo configurado é um serviço externo. Este projeto não copia nem transforma o ChatGPT em uma instância independente.
@@ -88,7 +88,7 @@ O arquivo `render.yaml` já define o serviço Docker e a rota de saúde. Para pu
 5. Aguarde o deploy e confira `https://SEU-DOMINIO/api/health`. O campo `model_connected` precisa aparecer como `true`.
 6. Use o valor gerado para `LUMEN_ACCESS_TOKEN` no formulário **Conectar ao núcleo**.
 
-O deploy não pode ser concluído por este repositório sozinho: é necessário autorizar a criação do serviço na conta Render e fornecer uma credencial válida do provedor. O plano gratuito não oferece disco persistente para SQLite. Para conservar memórias entre reinicializações, configure um disco persistente em um plano que o ofereça ou substitua SQLite por um banco gerenciado; faça backup antes de migrar.
+O deploy não pode ser concluído por este repositório sozinho: é necessário autorizar a criação do serviço na conta Render e fornecer uma credencial válida do provedor. O plano gratuito não oferece disco persistente para SQLite. O núcleo agora também aceita PostgreSQL por `DATABASE_URL`: crie um banco gerenciado (por exemplo, um PostgreSQL externo compatível), copie a URL de conexão para a variável `DATABASE_URL` no ambiente do serviço Render e faça um novo deploy. Quando essa variável existe, o app usa PostgreSQL; sem ela, continua usando SQLite. A criação do banco e a inclusão da URL ainda exigem acesso à conta do provedor. Não cole a URL em código público.
 
 ## Aplicativo Android
 
