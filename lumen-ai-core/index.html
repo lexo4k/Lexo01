@@ -35,7 +35,7 @@ h1{font-size:18px;letter-spacing:.16em;margin:0}small,.muted{color:var(--muted)}
 let accessToken=sessionStorage.getItem("lumen_access_token")||"";
 const $=id=>document.getElementById(id);
 async function api(path,options={}){const res=await fetch(path,{...options,headers:{"Content-Type":"application/json","Authorization":"Bearer "+accessToken,...(options.headers||{})}});const data=await res.json().catch(()=>({detail:"Resposta inválida"}));if(!res.ok)throw Error(data.detail||"Falha na API");return data}
-async function health(){try{const h=await fetch("/api/health").then(r=>r.json());$("status").textContent=h.status==="online"?"● núcleo online":"● indisponível";$("modelState").textContent=h.model_connected?"Conectado":"Pendente";}catch{$("status").textContent="● offline"}}
+async function health(){try{const h=await fetch("/api/health").then(r=>r.json());$("status").textContent=h.status==="online"?"● núcleo online":"● indisponível";$("modelState").textContent=h.model_key_configured?"Chave configurada":"Não configurada";}catch{$("status").textContent="● offline"}}
 async function connect(){accessToken=$("token").value.trim()||accessToken;try{await api("/api/overview");sessionStorage.setItem("lumen_access_token",accessToken);$("workspace").classList.remove("hidden");$("notice").classList.add("hidden");$("token").value="";await refreshAll()}catch(e){accessToken="";alert(e.message)}}
 function showTab(name){document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));["think","research","chat","memory","knowledge","tasks","journal"].forEach(id=>$(id).classList.toggle("hidden",id!==name))}
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
