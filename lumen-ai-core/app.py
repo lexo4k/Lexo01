@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel, Field, field_validator
 
 from cognition import think as cognitive_cycle
@@ -103,6 +103,31 @@ class ChatIn(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 def home():
     return (ROOT / "index.html").read_text(encoding="utf-8")
+
+@app.get("/manifest.webmanifest")
+def web_manifest():
+    return FileResponse(ROOT / "manifest.webmanifest", media_type="application/manifest+json")
+
+@app.get("/sw.js")
+def service_worker():
+    return FileResponse(ROOT / "sw.js", media_type="application/javascript", headers={"Service-Worker-Allowed": "/"})
+
+@app.get("/icon.svg")
+def app_icon():
+    return FileResponse(ROOT / "icon.svg", media_type="image/svg+xml")
+
+@app.get("/api/capabilities", dependencies=[Depends(require_access)])
+def capabilities():
+    ready = bool(os.getenv("OPENAI_API_KEY", "").strip())
+    return {"chat": {"implemented": True, "configured": ready},
+            "web_research": {"implemented": True, "configured": ready},
+            "memory": {"implemented": True, "configured": True},
+            "voice_input": {"implemented": True, "configured": True, "depends_on": "browser"},
+            "voice_output": {"implemented": True, "configured": True, "depends_on": "browser"},
+            "image_input": {"implemented": True, "configured": ready},
+            "planning": {"implemented": True, "configured": ready},
+            "ads": {"implemented": False, "configured": False},
+            "persistent_storage": {"implemented": True, "configured": True, "durability": "depends_on_server_disk"}}
 
 @app.get("/api/health")
 def health():
@@ -269,8 +294,18 @@ async def research_web(item: ResearchIn):
     if not answer:
         raise HTTPException(502, "A pesquisa foi concluída sem texto de resposta.")
     with db() as con:
+        stamp = now()
+        source_text = "\\n".join(
+            f'{source.get("title") or source["url"]}: {source["url"]}'
+            for source in unique[:20]
+        )
+        stored_answer = answer + (("\\n\\nFontes consultadas:\\n" + source_text) if source_text else "")
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)",
+                    (item.query, stamp))
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)",
+                    (stored_answer, stamp))
         con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
-                    ("Pesquisa web concluída", item.query[:180], now()))
+                    ("Pesquisa web concluída", item.query[:180], stamp))
     return {"query": item.query, "answer": answer, "sources": unique[:20],
             "model": model, "web_search_used": True}
 
