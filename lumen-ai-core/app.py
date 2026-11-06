@@ -180,12 +180,13 @@ def capabilities():
             "image_input": {"implemented": True, "configured": ready},
             "planning": {"implemented": True, "configured": ready},
             "ads": {"implemented": False, "configured": False},
-            "persistent_storage": {"implemented": True, "configured": True, "durability": "managed_postgresql" if DATABASE_URL else "depends_on_server_disk"}}
+            "persistent_storage": {"implemented": True, "configured": bool(DATABASE_URL), "durability": "managed_postgresql" if DATABASE_URL else "depends_on_server_disk"}}
 
 @app.get("/api/health")
 def health():
     return {"app": "LÚMEN AI CORE", "status": "online", "version": app.version,
-            "model_connected": bool(os.getenv("OPENAI_API_KEY")),
+            "model_connected": False,
+            "model_key_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
             "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
             "web_research_key_configured": bool(os.getenv("OPENAI_API_KEY")),
             "primary_experience": "chat", "storage_backend": "postgresql" if DATABASE_URL else "sqlite"}
