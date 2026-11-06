@@ -18,6 +18,8 @@ class CoreTests(unittest.TestCase):
         response = self.client.get("/api/health")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["app"], "LÚMEN AI CORE")
+        self.assertFalse(response.json()["model_connected"])
+        self.assertIn(response.json()["storage_backend"], ("sqlite", "postgresql"))
 
     def test_memory_persists_and_lists(self):
         saved = self.client.post("/api/memories", headers=self.headers,
