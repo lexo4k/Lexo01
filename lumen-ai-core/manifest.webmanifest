@@ -1,0 +1,14 @@
+{
+  "id": "/",
+  "name": "LÚMEN AI CORE",
+  "short_name": "LÚMEN",
+  "description": "Assistente inteligente com conversa, memória, pesquisa e voz",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080d19",
+  "theme_color": "#0a1020",
+  "icons": [{"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+}
