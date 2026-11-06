@@ -44,6 +44,17 @@ class CoreTests(unittest.TestCase):
                                         json={"query": "notícias sobre ciência"})
         self.assertEqual(response.status_code, 503)
 
+    def test_pwa_assets_are_served(self):
+        self.assertEqual(self.client.get("/manifest.webmanifest").status_code, 200)
+        self.assertEqual(self.client.get("/sw.js").status_code, 200)
+        self.assertEqual(self.client.get("/icon.svg").status_code, 200)
+
+    def test_capabilities_are_protected_and_explicit(self):
+        response = self.client.get("/api/capabilities", headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("web_research", response.json())
+        self.assertFalse(response.json()["ads"]["implemented"])
+
     def test_image_mime_is_validated(self):
         response = self.client.post("/api/chat", headers=self.headers,
                                     json={"message": "teste", "image_data_url": "data:text/html;base64,abc"})
