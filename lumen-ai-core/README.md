@@ -94,7 +94,7 @@ O deploy não pode ser concluído por este repositório sozinho: é necessário 
 
 A interface entregue nesta branch é um PWA instalável pelo navegador Android depois que o servidor estiver publicado em HTTPS: abra o endereço do serviço no Chrome e use **Instalar app** ou **Adicionar à tela inicial**, conforme a opção exibida pelo navegador.
 
-Agora existe também o módulo Android próprio em `lumen-android/`. Ele abre a interface HTTPS do núcleo em um WebView seguro, permite escolher imagem e guarda o endereço do servidor no aparelho. O endereço do servidor é solicitado na primeira abertura porque ainda não há uma instância Render publicada. O workflow `Build Android APKs` compila o módulo `:lumen` e publica o artefato `Lumen-AI-debug`, além dos outros APKs antigos. O APK é um cliente Android do núcleo web, não contém um modelo de IA offline.
+Agora existe também o módulo Android próprio em `lumen-android/`. Ele abre a interface HTTPS do núcleo em um WebView seguro, permite escolher imagem e guarda o endereço do servidor no aparelho. O endereço do servidor é solicitado na primeira abertura porque ainda não há uma instância Render publicada. O workflow dedicado `LÚMEN Android APK` compila somente o módulo `:lumen` e publica o artefato `Lumen-AI-debug` por 14 dias. Abra a aba Actions do GitHub, selecione a execução mais recente desse workflow, aguarde `success` e baixe o artefato `Lumen-AI-debug`. O workflow antigo `Build Android APKs` continua separado para os demais aplicativos do repositório. O APK é um cliente Android do núcleo web, não contém um modelo de IA offline.
 
 ## Estado real da entrega
 
