@@ -9,14 +9,17 @@ Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web c
 - Histórico de conversas, tarefas e diário de atividade.
 - Ciclo cognitivo limitado: compreensão do objetivo, planejamento estruturado e avaliação independente do plano.
 - Pesquisa web pelo endpoint `POST /api/research`, usando a ferramenta `web_search` da API OpenAI Responses. Retorna síntese e links das fontes encontradas.
-- Interface centrada na conversa: o chat é a tela inicial. Pedidos explícitos de pesquisa e perguntas sobre fatos atuais podem acionar a pesquisa web dentro da mesma conversa. Planejamento, memória e organização ficam como recursos secundários.
+- Interface centrada na conversa: o chat é a tela inicial e os demais recursos ficam recolhidos em um menu secundário. Pedidos explícitos de pesquisa e perguntas sobre fatos atuais podem acionar a pesquisa web dentro da mesma conversa.
+- PWA instalável em navegadores compatíveis, com manifesto, ícone e cache limitado da interface para abertura offline. As operações de IA exigem conexão.
+- Histórico persistente de conversas e pesquisas, incluindo as fontes consultadas.
+- Endpoint de capacidades para distinguir recursos implementados de recursos configurados.
 - Possibilidade de arquivar uma pesquisa e suas fontes na base de conhecimento.
 - Proteção dos endpoints privados por token.
 - Testes automatizados, incluindo validação do endpoint de pesquisa sem credencial.
 
 ## Pesquisa na web
 
-A aba **Web** envia a pergunta ao servidor. O servidor chama a API Responses com a ferramenta `web_search`, recolhe as citações/URLs devolvidas e apresenta os links para consulta. Uma pesquisa só é considerada realizada quando o provedor responde com sucesso; o sistema não simula resultados.
+A pesquisa integrada envia a pergunta ao servidor. O servidor chama a API Responses com a ferramenta `web_search`, recolhe as citações/URLs devolvidas e apresenta os links para consulta. Uma pesquisa só é considerada realizada quando o provedor responde com sucesso; o sistema não simula resultados.
 
 Requer uma chave de API com acesso à API Responses e à ferramenta `web_search`. Modelos e provedores compatíveis apenas com Chat Completions podem não oferecer essa ferramenta. Se o provedor retornar erro, a interface apresenta a falha em vez de inventar fontes.
 
@@ -65,6 +68,8 @@ Abra http://127.0.0.1:8000 e informe o token configurado no servidor.
 - Nunca coloque chaves no HTML, no Git ou no aplicativo cliente.
 - O ciclo cognitivo planeja e avalia, mas não executa ações externas automaticamente.
 - Pesquisa web depende de chave, acesso ao serviço Responses e disponibilidade da ferramenta `web_search`.
+- A interface PWA pode abrir offline, mas chat, pesquisa, memória sincronizada e voz online exigem servidor e conexão.
+- O projeto não inclui anúncios ativos: publicidade exige conta de editor, aprovação e integração com uma rede. Não há anúncios simulados.
 - Memórias não são ilimitadas. Faça backups do banco SQLite.
 - O sistema não opera em segundo plano depois que a sessão termina.
 - Voz e visão dependem do navegador e do modelo configurado; automações externas e execução geral de ferramentas ainda não estão implementadas.
