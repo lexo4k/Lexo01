@@ -17,6 +17,7 @@ from cognition import think as cognitive_cycle
 
 ROOT = Path(__file__).parent
 DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(ROOT / "data" / "lumen.db")))
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="LÚMEN AI CORE", version="0.1.0", description="Núcleo pessoal de IA com memória persistente.")
@@ -45,14 +46,66 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
 );
 """
 
+def _pg_row_factory(cursor, values):
+    class Row(dict):
+        def __getitem__(self, key):
+            if isinstance(key, int):
+                return list(self.values())[key]
+            return super().__getitem__(key)
+    return Row((column.name, value) for column, value in zip(cursor.description, values))
+
+class _PgCursor:
+    def __init__(self, cursor, lastrowid=None):
+        self._cursor = cursor
+        self.lastrowid = lastrowid
+        self.rowcount = cursor.rowcount
+    def fetchone(self):
+        return self._cursor.fetchone()
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+class _PgConnection:
+    def __init__(self, connection):
+        self._connection = connection
+    def execute(self, sql, params=()):
+        statement = sql.replace("?", "%s")
+        is_insert = statement.lstrip().upper().startswith("INSERT")
+        if is_insert and " RETURNING " not in statement.upper():
+            statement = statement.rstrip().rstrip(";") + " RETURNING id"
+        cursor = self._connection.cursor()
+        cursor.execute(statement, params)
+        lastrowid = None
+        if is_insert:
+            row = cursor.fetchone()
+            lastrowid = row["id"] if row else None
+        return _PgCursor(cursor, lastrowid)
+    def executescript(self, script):
+        for statement in script.split(";"):
+            if statement.strip():
+                statement = statement.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "BIGSERIAL PRIMARY KEY")
+                self._connection.execute(statement)
+    def commit(self):
+        self._connection.commit()
+    def rollback(self):
+        self._connection.rollback()
+    def close(self):
+        self._connection.close()
+
 @contextmanager
 def db():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
+    if DATABASE_URL:
+        import psycopg
+        con = _PgConnection(psycopg.connect(DATABASE_URL, row_factory=_pg_row_factory))
+    else:
+        con = sqlite3.connect(DB_PATH)
+        con.row_factory = sqlite3.Row
     try:
         con.executescript(SCHEMA)
         yield con
         con.commit()
+    except Exception:
+        con.rollback()
+        raise
     finally:
         con.close()
 
@@ -127,7 +180,7 @@ def capabilities():
             "image_input": {"implemented": True, "configured": ready},
             "planning": {"implemented": True, "configured": ready},
             "ads": {"implemented": False, "configured": False},
-            "persistent_storage": {"implemented": True, "configured": True, "durability": "depends_on_server_disk"}}
+            "persistent_storage": {"implemented": True, "configured": True, "durability": "managed_postgresql" if DATABASE_URL else "depends_on_server_disk"}}
 
 @app.get("/api/health")
 def health():
@@ -135,7 +188,7 @@ def health():
             "model_connected": bool(os.getenv("OPENAI_API_KEY")),
             "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
             "web_research_key_configured": bool(os.getenv("OPENAI_API_KEY")),
-            "primary_experience": "chat"}
+            "primary_experience": "chat", "storage_backend": "postgresql" if DATABASE_URL else "sqlite"}
 
 @app.get("/api/overview", dependencies=[Depends(require_access)])
 def overview():
