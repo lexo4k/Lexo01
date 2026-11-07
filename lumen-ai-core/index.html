@@ -472,6 +472,17 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
  window.AurionNative.sendLocalMessage(msg,history);return;
 }
+if(activeMode==="research"){
+ const pending={role:"assistant",content:"Pesquisando na web…",at:stamp()};data.messages.push(pending);saveData();renderMessages();
+ try{
+  const payload={query:msg};
+  if(useLocationForNextResearch&&data.lastLocation){payload.latitude=data.lastLocation.latitude;payload.longitude=data.lastLocation.longitude;}
+  useLocationForNextResearch=false;
+  const r=await api("/api/research/public",{method:"POST",body:JSON.stringify(payload)});
+  pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url+(x.snippet?"\n"+x.snippet:"")).join("\n\n"):"\n\nO mecanismo não retornou links de fontes.");
+ }catch(e){useLocationForNextResearch=false;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
+ pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);return;
+}
 if(!connected){const answer="Nenhum servidor remoto está conectado. Para conversar sem configurar servidor, ative a IA local em Configurar. Pesquisa na internet e sincronização em nuvem continuam sendo recursos opcionais.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
 if(apiCaps&&activeMode==="chat"&&apiCaps.chat&&!apiCaps.chat.configured){const answer="O servidor está conectado, mas a chave do modelo ainda não foi configurada no servidor. A chave deve permanecer nas variáveis privadas da hospedagem, nunca no aplicativo.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
 const pending={role:"assistant",content:activeMode==="research"?"Pesquisando fontes na web…":activeMode==="think"?"Analisando objetivo e avaliando o plano…":"Consultando o modelo de IA…",at:stamp()};data.messages.push(pending);renderMessages();
