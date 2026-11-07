@@ -55,6 +55,13 @@ class UiContractTests(unittest.TestCase):
         self.assertNotIn("const command=(!modelReady&&!nativeLocalReady&&msg)?localCommand(msg):null;", html)
         self.assertIn("No modo offline, execute ferramentas locais", html)
 
+    def test_offline_agent_executes_compound_local_task_requests(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("Executor local de tarefas compostas", html)
+        self.assertIn("Criada pelo executor local AURION", html)
+        self.assertIn("Pendentes primeiro", html)
+        self.assertIn("tarefas concluidas", html)
+
     def test_on_device_model_has_priority_and_receives_local_context(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn("const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()===" + '"ready"' + "||localModelState()===" + '"downloaded"' + "))", html)
