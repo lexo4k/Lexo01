@@ -160,11 +160,13 @@ def provider_registry() -> dict[str, dict[str, Any]]:
                 key_env = str(cfg.get("api_key_env", "")).strip()
                 key = os.getenv(key_env, "").strip() if key_env else ""
                 models = cfg.get("models", [])
+                fallbacks = cfg.get("fallbacks", [])
                 if base and isinstance(models, list):
                     providers[str(name).lower()] = {
                         "base_url": base, "api_key": key,
                         "models": [str(m) for m in models if str(m).strip()],
                         "protocol": str(cfg.get("protocol", "openai-chat-completions")),
+                        "fallbacks": [str(m).strip() for m in fallbacks if str(m).strip()] if isinstance(fallbacks, list) else [],
                     }
         except (ValueError, TypeError, json.JSONDecodeError):
             return {}
@@ -652,7 +654,7 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/v1/models", dependencies=[Depends(require_access)])
 async def gateway_models():
-    """Lista apenas identificadores públicos; nunca revela chaves nem configuração secreta."""
+    """Lista modelos públicos sem expor segredos."""
     data = []
     for provider_name, provider in provider_registry().items():
         for model_name in provider["models"]:
@@ -660,36 +662,81 @@ async def gateway_models():
     return {"object": "list", "data": data}
 
 
+@app.get("/v1/providers", dependencies=[Depends(require_access)])
+async def gateway_providers():
+    """Estado seguro do catálogo de provedores, sem revelar URLs privadas ou chaves."""
+    data = []
+    for name, provider in provider_registry().items():
+        data.append({
+            "id": name,
+            "protocol": provider["protocol"],
+            "models": provider["models"],
+            "credential_configured": bool(provider["api_key"]) or "ollama" in provider["base_url"].lower(),
+            "fallback_models": provider.get("fallbacks", []),
+        })
+    return {"object": "list", "data": data}
+
+
 @app.post("/v1/chat/completions", dependencies=[Depends(require_access)])
 async def gateway_chat(item: GatewayChatIn):
-    """Gateway NEXORA com contrato Chat Completions compatível e roteamento por provedor/modelo."""
+    """Gateway com failover apenas para modelos alternativos explicitamente permitidos."""
     if item.stream:
         raise HTTPException(501, "Streaming ainda não está disponível nesta versão da API NEXORA.")
-    provider_name, model_name, provider = resolve_gateway_model(item.model)
-    payload: dict[str, Any] = {
-        "model": model_name,
-        "messages": item.messages,
-    }
+
+    candidates = [item.model]
+    requested_provider_name, _, requested_provider = resolve_gateway_model(item.model)
+    candidates.extend(requested_provider.get("fallbacks", []))
+    errors = []
+    result = None
+    selected_model = None
+    selected_provider_name = None
+    selected_provider = None
+
+    payload: dict[str, Any] = {"messages": item.messages}
     for field in ("temperature", "max_tokens", "top_p", "tools", "tool_choice"):
         value = getattr(item, field)
         if value is not None:
             payload[field] = value
-    headers = {"Content-Type": "application/json"}
-    if provider["api_key"]:
-        headers["Authorization"] = f"Bearer {provider['api_key']}"
-    try:
-        async with httpx.AsyncClient(timeout=120) as client:
-            response = await client.post(provider["base_url"] + "/chat/completions", headers=headers, json=payload)
-            response.raise_for_status()
-            result = response.json()
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(502, f"O provedor {provider_name} retornou HTTP {exc.response.status_code}.") from exc
-    except (httpx.HTTPError, ValueError) as exc:
-        raise HTTPException(502, f"Falha ao comunicar com o provedor {provider_name}.") from exc
-    if not isinstance(result, dict) or not isinstance(result.get("choices"), list):
-        raise HTTPException(502, "O provedor retornou uma resposta fora do contrato Chat Completions.")
-    result["model"] = f"{provider_name}/{model_name}"
-    result["nexora_gateway"] = {"provider": provider_name, "protocol": provider["protocol"]}
+
+    for candidate in candidates:
+        try:
+            provider_name, model_name, provider = resolve_gateway_model(candidate)
+            request_payload = {**payload, "model": model_name}
+            headers = {"Content-Type": "application/json"}
+            if provider["api_key"]:
+                headers["Authorization"] = f"Bearer {provider['api_key']}"
+            async with httpx.AsyncClient(timeout=120) as client:
+                response = await client.post(
+                    provider["base_url"] + "/chat/completions",
+                    headers=headers,
+                    json=request_payload,
+                )
+                response.raise_for_status()
+                candidate_result = response.json()
+            if not isinstance(candidate_result, dict) or not isinstance(candidate_result.get("choices"), list):
+                raise ValueError("Resposta fora do contrato Chat Completions.")
+            result = candidate_result
+            selected_model = model_name
+            selected_provider_name = provider_name
+            selected_provider = provider
+            break
+        except HTTPException as exc:
+            errors.append(f"{candidate}: configuração indisponível ({exc.status_code})")
+        except httpx.HTTPStatusError as exc:
+            errors.append(f"{candidate}: HTTP {exc.response.status_code}")
+        except (httpx.HTTPError, ValueError) as exc:
+            errors.append(f"{candidate}: falha de comunicação ou resposta inválida")
+
+    if result is None or selected_provider is None:
+        raise HTTPException(502, "Nenhum modelo principal ou alternativo configurado respondeu. " + "; ".join(errors[:5]))
+
+    result["model"] = f"{selected_provider_name}/{selected_model}"
+    result["nexora_gateway"] = {
+        "provider": selected_provider_name,
+        "protocol": selected_provider["protocol"],
+        "requested_model": item.model,
+        "fallback_used": item.model != f"{selected_provider_name}/{selected_model}",
+    }
     return result
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
