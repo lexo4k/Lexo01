@@ -287,6 +287,10 @@ class ChatIn(BaseModel):
             raise ValueError("Envie uma imagem JPEG, PNG ou WebP.")
         return value
 
+class ImageGenerateIn(BaseModel):
+    prompt: str = Field(min_length=3, max_length=2000)
+
+
 
 class GatewayChatIn(BaseModel):
     model: str = Field(min_length=1, max_length=240)
@@ -953,6 +957,38 @@ async def gateway_chat(item: GatewayChatIn):
     }
     return result
 
+
+@app.post("/api/images/generate", dependencies=[Depends(require_access)])
+async def generate_image(item: ImageGenerateIn):
+    """Gera uma imagem usando credencial privada configurada somente no servidor."""
+    api_key = (os.getenv("AURION_IMAGE_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise HTTPException(503, "Configure AURION_IMAGE_API_KEY ou OPENAI_API_KEY nas variáveis privadas do servidor para ativar a geração de imagens.")
+    base = (os.getenv("AURION_IMAGE_BASE_URL") or "https://api.openai.com/v1").strip().rstrip("/")
+    model = (os.getenv("AURION_IMAGE_MODEL") or "gpt-image-1").strip()
+    try:
+        async with httpx.AsyncClient(timeout=180) as client:
+            response = await client.post(
+                base + "/images/generations",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={"model": model, "prompt": item.prompt, "size": "1024x1024", "n": 1}
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code
+        if status in (401, 403):
+            raise HTTPException(502, "O provedor de imagens recusou a credencial configurada. Confira a chave e as permissões no servidor.") from exc
+        raise HTTPException(502, f"O provedor de imagens respondeu com HTTP {status}.") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(503, "Não foi possível alcançar o provedor de imagens.") from exc
+    images = payload.get("data") or []
+    encoded = images[0].get("b64_json") if images and isinstance(images[0], dict) else None
+    if not encoded:
+        raise HTTPException(502, "O provedor não retornou a imagem em formato base64.")
+    return {"image_data_url": "data:image/png;base64," + encoded, "model": model, "generated": True}
+
+
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
     own_model_url = (os.getenv("AURION_MODEL_URL") or os.getenv("NEXORA_MODEL_URL") or "").strip().rstrip("/")
@@ -973,7 +1009,7 @@ async def chat(item: ChatIn):
         history = [dict(r) for r in con.execute(
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 20"
         )][::-1]
-    if own_model_url:
+    if own_model_url and not item.image_data_url:
         if not own_model_token:
             raise HTTPException(503, "Modelo próprio selecionado, mas AURION_MODEL_TOKEN (ou NEXORA_MODEL_TOKEN legado) não foi configurado.")
         prompt_parts = ["Você é AURION, um modelo experimental próprio. Responda com honestidade e não invente capacidades."]
