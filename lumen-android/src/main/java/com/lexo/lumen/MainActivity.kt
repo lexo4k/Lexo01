@@ -3,6 +3,9 @@ package com.lexo.lumen
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.content.ContentValues
+import android.provider.MediaStore
+import android.os.Environment
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -237,7 +240,67 @@ class MainActivity : Activity() {
                 localModel != null -> "ready"
                 modelBusy -> "working"
                 modelFile.exists() && modelFile.length() >= profile.minBytes -> "downloaded"
+                findSharedModelUri(profile) != null -> "shared"
                 else -> "missing"
+            }
+        }
+
+        private fun findSharedModelUri(profile: LocalModelProfile): Uri? {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            val relativePath = Environment.DIRECTORY_DOWNLOADS + "/AURION AI/"
+            return try {
+                contentResolver.query(
+                    collection,
+                    arrayOf(android.provider.MediaStore.MediaColumns._ID),
+                    android.provider.MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + android.provider.MediaStore.MediaColumns.RELATIVE_PATH + "=?",
+                    arrayOf(profile.fileName, relativePath),
+                    android.provider.MediaStore.MediaColumns.DATE_MODIFIED + " DESC"
+                )?.use { cursor ->
+                    if (!cursor.moveToFirst()) null
+                    else Uri.withAppendedPath(collection, cursor.getLong(0).toString())
+                }
+            } catch (_: Exception) { null }
+        }
+
+        private fun restoreSharedModel(profile: LocalModelProfile, target: File) {
+            val uri = findSharedModelUri(profile) ?: throw IllegalStateException("Modelo não encontrado em Downloads/AURION AI.")
+            val temp = File(target.parentFile, target.name + ".restore")
+            target.parentFile?.let { if (!it.exists() && !it.mkdirs()) throw IllegalStateException("Não foi possível criar a pasta temporária do modelo.") }
+            contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(temp).use { output ->
+                    input.copyTo(output, 64 * 1024)
+                    output.fd.sync()
+                }
+            } ?: throw IllegalStateException("Não foi possível ler o modelo salvo em Downloads.")
+            if (temp.length() < profile.minBytes) {
+                temp.delete()
+                throw IllegalStateException("A cópia guardada em Downloads está incompleta ou foi removida.")
+            }
+            if (target.exists()) target.delete()
+            if (!temp.renameTo(target)) throw IllegalStateException("Não foi possível preparar o modelo para esta instalação.")
+        }
+
+        private fun preserveModelAfterDownload(profile: LocalModelProfile, source: File) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || findSharedModelUri(profile) != null) return
+            val values = ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, profile.fileName)
+                put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/AURION AI/")
+                put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw IllegalStateException("Não foi possível criar a cópia persistente em Downloads/AURION AI.")
+            try {
+                contentResolver.openOutputStream(uri, "w")?.use { output ->
+                    source.inputStream().buffered().use { input -> input.copyTo(output, 64 * 1024) }
+                    output.flush()
+                } ?: throw IllegalStateException("Não foi possível gravar o modelo na pasta compartilhada.")
+                val ready = ContentValues().apply { put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0) }
+                contentResolver.update(uri, ready, null, null)
+            } catch (e: Exception) {
+                contentResolver.delete(uri, null, null)
+                throw e
             }
         }
 
@@ -248,7 +311,17 @@ class MainActivity : Activity() {
                     localScope.launch { try { loadLocalModel() } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao carregar o modelo local") } }
                     return
                 }
-                else -> notifyModel("missing", "O modelo ainda não está salvo neste aparelho. Baixe uma única vez usando Wi-Fi. Depois ele ficará guardado e será carregado automaticamente ao abrir o AURION.")
+                "shared" -> {
+                    localScope.launch {
+                        try {
+                            notifyModel("restoring", "Modelo encontrado em Downloads/AURION AI. Preparando para esta instalação sem novo download da internet…")
+                            withContext(Dispatchers.IO) { restoreSharedModel(selectedProfile(), modelFile) }
+                            loadLocalModel()
+                        } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao recuperar o modelo salvo") }
+                    }
+                    return
+                }
+                else -> notifyModel("missing", "O modelo ainda não está salvo. Baixe uma vez no Wi-Fi. O AURION também guardará uma cópia em Downloads/AURION AI para reaproveitar após desinstalar e instalar novamente.")
             }
         }
 
@@ -258,6 +331,16 @@ class MainActivity : Activity() {
             val target = modelFile
             if (target.exists() && target.length() >= profile.minBytes) {
                 localScope.launch { try { loadLocalModel() } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao carregar o modelo") } }
+                return
+            }
+            if (findSharedModelUri(profile) != null) {
+                localScope.launch {
+                    try {
+                        notifyModel("restoring", "Modelo já guardado no aparelho. Recuperando sem baixar novamente…")
+                        withContext(Dispatchers.IO) { restoreSharedModel(profile, target) }
+                        loadLocalModel()
+                    } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao recuperar o modelo salvo") }
+                }
                 return
             }
             val manager = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
@@ -328,7 +411,9 @@ class MainActivity : Activity() {
                             connection.disconnect()
                         }
                     }
+                    withContext(Dispatchers.IO) { preserveModelAfterDownload(profile, target) }
                     loadLocalModel()
+                    notifyModel("ready", profile.name + " pronto. Cópia persistente salva em Downloads/AURION AI; reinstalações poderão reutilizá-la sem novo download.")
                 } catch (e: Exception) {
                     modelBusy = false
                     notifyModel("error", e.message ?: "Falha ao baixar ou carregar o modelo. O trecho baixado foi preservado para continuar depois.")
