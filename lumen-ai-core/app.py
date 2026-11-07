@@ -203,7 +203,7 @@ def resolve_gateway_model(model_id: str) -> tuple[str, str, dict[str, Any]]:
         model_name = model_id
     provider = providers.get(provider_name.lower())
     if not provider or model_name not in provider["models"]:
-        raise HTTPException(404, "Modelo não cadastrado na API NEXORA. Consulte GET /v1/models.")
+        raise HTTPException(404, "Modelo não cadastrado na API LÚMEN. Consulte GET /v1/models.")
     if provider["protocol"] != "openai-chat-completions":
         raise HTTPException(501, "Este adaptador ainda não está disponível. Protocolo suportado nesta versão: OpenAI Chat Completions compatível.")
     if not provider["api_key"] and "ollama" not in provider["base_url"].lower():
@@ -345,7 +345,7 @@ async def health():
             own_status = "unreachable"
     provider_configured = model_is_configured()
     return {
-        "app": "NEXORA AI",
+        "app": "LÚMEN AI",
         "status": "online",
         "version": app.version,
         "model_connected": own_ready,
@@ -768,7 +768,7 @@ async def gateway_providers():
 async def gateway_chat(item: GatewayChatIn):
     """Gateway com failover apenas para modelos alternativos explicitamente permitidos."""
     if item.stream:
-        raise HTTPException(501, "Streaming ainda não está disponível nesta versão da API NEXORA.")
+        raise HTTPException(501, "Streaming ainda não está disponível nesta versão da API LÚMEN.")
 
     candidates = [item.model]
     requested_provider_name, _, requested_provider = resolve_gateway_model(item.model)
@@ -844,7 +844,7 @@ async def chat(item: ChatIn):
     if own_model_url:
         if not own_model_token:
             raise HTTPException(503, "Modelo próprio selecionado, mas NEXORA_MODEL_TOKEN não foi configurado.")
-        prompt_parts = ["Você é NEXORA, um modelo experimental próprio. Responda com honestidade e não invente capacidades."]
+        prompt_parts = ["Você é LÚMEN, um modelo experimental próprio. Responda com honestidade e não invente capacidades."]
         if memories:
             prompt_parts.append("MEMÓRIAS:\n" + "\n".join("- " + x for x in memories))
         if facts:
@@ -854,7 +854,7 @@ async def chat(item: ChatIn):
                 f"- Erro: {item['error_signature']} | Causa: {item['root_cause']} | Solução: {item['resolution']}" for item in corrections
             ))
         for turn in history[-8:]:
-            prompt_parts.append(("Usuário: " if turn["role"] == "user" else "NEXORA: ") + turn["content"])
+            prompt_parts.append(("Usuário: " if turn["role"] == "user" else "LÚMEN: ") + turn["content"])
         prompt_parts.append("Usuário: " + (item.message or "Analise a imagem enviada."))
         if item.image_data_url:
             raise HTTPException(415, "O modelo próprio atual ainda não aceita imagens. Envie texto por enquanto.")
@@ -878,7 +878,7 @@ async def chat(item: ChatIn):
             stamp = now()
             con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)", (item.message, stamp))
             con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)", (answer, stamp))
-            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Conversa com NEXORA-1 próprio", item.message[:180], stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Conversa com LÚMEN-1 próprio", item.message[:180], stamp))
         return {"answer": answer, "model": "nexora-transformer-byte-v1", "own_model": True, "warning": own_result.get("warning"), "tools_used": []}
     config = model_config()
     api_key, base, model = config["api_key"], config["base_url"], config["model"]
@@ -890,7 +890,7 @@ async def chat(item: ChatIn):
         f"- Erro: {item['error_signature']} | Causa: {item['root_cause']} | Solução: {item['resolution']}"
         for item in corrections
     )
-    system = ("Você é NEXORA, uma assistente de IA pessoal. Sua prioridade é responder corretamente à "
+    system = ("Você é LÚMEN, uma assistente de IA pessoal. Sua prioridade é responder corretamente à "
               "MENSAGEM MAIS RECENTE do usuário, no idioma em que ele escreveu, normalmente português brasileiro. "
               "Identifique o pedido central e confira se cada frase da resposta serve a esse pedido. Não misture "
               "assuntos antigos com a pergunta atual. Use o histórico apenas para resolver referências como 'isso', "
