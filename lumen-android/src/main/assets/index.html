@@ -123,7 +123,7 @@ const url=$("serverUrl").value.trim().replace(/\/+$/,""),token=$("accessToken").
 if(!/^https:\/\/[^/]+$/i.test(url)){setSettingsStatus("Informe um endereço HTTPS válido, sem caminho adicional.",false);return}
 if(!token){setSettingsStatus("Informe o token privado configurado no servidor.",false);return}
 const btn=document.querySelector("#settings .btn.primary");btn.disabled=true;btn.textContent="Testando conexão...";
-try{const h=await fetch(url+"/api/health").then(r=>{if(!r.ok)throw Error("Servidor respondeu HTTP "+r.status);return r.json()});if(h.status!=="online")throw Error("O servidor não informou estado online.");const prev=config;config={url,token};try{await api("/api/overview")}catch(e){config=prev;throw e}saveConfig();connected=true;apiCaps=await api("/api/capabilities").catch(()=>null);setConnection(true);setSettingsStatus("Conexão validada. O núcleo respondeu e a autenticação foi aceita.",true);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · chave de IA configurada":"Núcleo conectado · IA aguarda chave no servidor";$("lastCheck").textContent="VERIFICADO AGORA";activity("Núcleo conectado",url);saveData();renderCapabilities();await syncWorkspace()}catch(e){connected=false;setConnection(false);setSettingsStatus("Não foi possível conectar: "+e.message,false)}finally{btn.disabled=false;btn.textContent="Testar e conectar"}
+try{const h=await fetch(url+"/api/health").then(r=>{if(!r.ok)throw Error("Servidor respondeu HTTP "+r.status);return r.json()});if(h.status!=="online")throw Error("O servidor não informou estado online.");const prev=config;config={url,token};try{await api("/api/overview")}catch(e){config=prev;throw e}saveConfig();connected=true;apiCaps=await api("/api/capabilities").catch(()=>null);setConnection(true);setSettingsStatus("Conexão e token validados. A IA e a retenção permanente ainda dependem das configurações do servidor.",true);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · chave de IA configurada":"Núcleo conectado · IA aguarda chave no servidor";$("lastCheck").textContent="VERIFICADO AGORA";activity("Núcleo conectado",url);saveData();renderCapabilities();await syncWorkspace()}catch(e){connected=false;setConnection(false);setSettingsStatus("Não foi possível conectar: "+e.message,false)}finally{btn.disabled=false;btn.textContent="Testar e conectar"}
 }
 async function syncWorkspace(){
 if(!connected||syncingWorkspace)return;
@@ -141,38 +141,22 @@ const localMemoryKeys=new Set(data.memories.map(memoryKey));for(const x of cloud
 const localKnowledgeKeys=new Set(data.knowledge.map(knowledgeKey));for(const x of cloudKnowledge){if(!localKnowledgeKeys.has(knowledgeKey(x)))data.knowledge.push({id:"cloud-knowledge-"+x.id,title:x.title,content:x.content,source:x.source,at:x.created_at||""});}
 const localTaskKeys=new Set(data.tasks.map(taskKey));for(const x of cloudTasks){if(!localTaskKeys.has(taskKey(x)))data.tasks.push({id:"cloud-task-"+x.id,title:x.title,details:x.details,done:x.status==="concluída",at:x.created_at||""});}
 localStorage.setItem(KEY,JSON.stringify(data));renderAll();
-$("chatState").textContent="Núcleo conectado · memória sincronizada";
+$("chatState").textContent=apiCaps&&apiCaps.persistent_storage&&apiCaps.persistent_storage.configured?"Núcleo conectado · memória persistente":"Núcleo conectado · nuvem temporária";
 }catch(e){$("chatState").textContent="Núcleo conectado · falha ao sincronizar memória";activity("Falha na sincronização",e.message);localStorage.setItem(KEY,JSON.stringify(data));renderAll();}
 finally{syncingWorkspace=false;}
 }
 function setSettingsStatus(msg,ok){$("settingsStatus").textContent=msg;$("settingsStatus").className="statusbox "+(ok?"good":"warn")}
 function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está aberto em modo local. Memórias e tarefas podem ser guardadas neste aparelho. Para respostas de IA e pesquisa na internet, conecte o servidor nas configurações.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
 function disconnectServer(){config={url:"",token:""};saveConfig();connected=false;apiCaps=null;setConnection(false);$("chatState").textContent="Modo local · IA ainda não conectada";$("settingsStatus").textContent="Servidor desconectado. Os dados locais continuam disponíveis.";renderCapabilities()}
-function renderCapabilities(){const c=apiCaps;if(!c){$("capabilityList").innerHTML='<div class="item"><b>Interface e organização local</b><p>Disponíveis neste aparelho.</p></div><div class="item"><b>Modelo de IA e pesquisa web</b><p>Dependem de servidor publicado e chave válida no servidor.</p></div><div class="item"><b>Memória na nuvem</b><p>Ainda depende de um banco de dados persistente conectado ao servidor. Seus registros locais ficam neste aparelho.</p></div>';return}const rows=[["Conversa IA",c.chat],["Pesquisa web",c.web_research],["Memória sincronizada",c.memory],["Entrada por voz",c.voice_input],["Análise de imagem",c.image_input],["Planejamento",c.planning],["Armazenamento persistente",c.persistent_storage]];$("capabilityList").innerHTML=rows.map(([name,v])=>'<div class="item"><b>'+name+'</b><p>'+((v&&v.configured)?"Configurado":(v&&v.implemented)?"Implementado, aguardando configuração":"Não disponível")+'</p></div>').join("")}
-function setMode(mode){
-activeMode=mode;
-const names={chat:"MODO CONVERSA",research:"PESQUISA NA WEB",think:"PLANEJAMENTO COGNITIVO"};
-$("modeLabel").textContent=names[mode]||names.chat;
-["chat","research","think"].forEach(x=>$(x+"Mode").classList.toggle("selected",x===mode));
-$("message").placeholder=mode==="research"?"O que devo pesquisar na internet?":mode==="think"?"Qual objetivo devo analisar e planejar?":"Converse com o LÚMEN...";
-}
-function selectImage(event){
-const file=event.target.files&&event.target.files[0];if(!file)return;
-if(!/^image\/(jpeg|png|webp)$/.test(file.type)){ $("attachPreview").textContent="Formato não aceito. Use JPEG, PNG ou WebP.";return; }
-if(file.size>5*1024*1024){$("attachPreview").textContent="Imagem acima de 5 MB. Escolha uma menor.";return;}
-const reader=new FileReader();reader.onload=()=>{pendingImageData=String(reader.result);$("attachPreview").textContent="Imagem pronta para enviar: "+file.name;};reader.readAsDataURL(file);event.target.value="";
-}
-function startVoiceInput(){
-const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(!SpeechRecognition){$("attachPreview").textContent="Reconhecimento de voz não disponível neste navegador. Use o teclado por voz do Android.";return;}
-const recognition=new SpeechRecognition();recognition.lang="pt-BR";recognition.interimResults=false;recognition.maxAlternatives=1;
-$("attachPreview").textContent="Ouvindo…";recognition.onresult=e=>{$("message").value=($("message").value+" "+e.results[0][0].transcript).trim();$("attachPreview").textContent="Voz convertida em texto.";};
-recognition.onerror=()=>{$("attachPreview").textContent="Não foi possível reconhecer a voz.";};recognition.onend=()=>{if($("attachPreview").textContent==="Ouvindo…")$("attachPreview").textContent="";};recognition.start();
-}
-function speakLastAnswer(){
-if(!lastAssistantText){$("attachPreview").textContent="Ainda não há resposta para reproduzir.";return;}
-if(!("speechSynthesis"in window)){ $("attachPreview").textContent="Leitura em voz alta não disponível neste aparelho.";return;}
-window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(lastAssistantText);utterance.lang="pt-BR";window.speechSynthesis.speak(utterance);
+function renderCapabilities(){
+const c=apiCaps;
+if(!c){$("capabilityList").innerHTML='<div class="item"><b>Interface e organização local</b><p>Disponíveis neste aparelho.</p></div><div class="item"><b>Modelo de IA e pesquisa web</b><p>Dependem de servidor publicado e chave válida no servidor.</p></div><div class="item"><b>Memória na nuvem</b><p>Ainda depende de um banco de dados persistente conectado ao servidor. Seus registros locais ficam neste aparelho.</p></div>';return}
+const rows=[["Conversa IA",c.chat],["Pesquisa web",c.web_research],["Memória sincronizada",c.memory],["Entrada por voz",c.voice_input],["Análise de imagem",c.image_input],["Planejamento",c.planning],["Armazenamento persistente",c.persistent_storage]];
+$("capabilityList").innerHTML=rows.map(([name,v])=>{
+let status=(v&&v.configured)?"Configurado":(v&&v.implemented)?"Implementado, aguardando configuração":"Não disponível";
+if(name==="Armazenamento persistente"&&v&&!v.configured)status="Não configurado: banco temporário";
+return '<div class="item"><b>'+name+'</b><p>'+status+'</p></div>';
+}).join("");
 }
 async function sendMessage(){
 const field=$("message"),msg=field.value.trim();if(!msg&&!pendingImageData)return;
