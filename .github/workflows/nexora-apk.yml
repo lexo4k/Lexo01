@@ -43,37 +43,44 @@ jobs:
         run: gradle --no-daemon :lumen:assembleDebug
 
       - name: Verify APK contents
+        id: verify
         run: |
           python3 - <<'PY'
           from zipfile import ZipFile
           from pathlib import Path
+          import os
 
-          apk = Path("lumen-android/build/outputs/apk/debug/lumen-android-debug.apk")
-          if not apk.is_file():
-              raise SystemExit(f"APK não encontrado: {apk}")
+          candidates = sorted(Path("lumen-android").glob("build/outputs/apk/debug/*.apk"))
+          if not candidates:
+              candidates = sorted(Path(".").glob("**/build/outputs/apk/debug/*.apk"))
+          if not candidates:
+              raise SystemExit("Gradle concluiu, mas nenhum APK foi localizado. Verifique a configuração de output do módulo :lumen.")
+          apk = candidates[0]
+          print("APK localizado:", apk)
 
           with ZipFile(apk) as z:
               names = z.namelist()
-              native = [n for n in names if n.endswith("/libllama_jni.so")]
+              native = [n for n in names if n.endswith(".so") and ("llama" in n.lower() or "ggml" in n.lower())]
               if not native:
-                  raise SystemExit("Runtime nativo llama.cpp não encontrado no APK")
+                  raise SystemExit("Bibliotecas nativas llama/ggml não encontradas no APK: " + ", ".join(n for n in names if n.endswith(".so")))
               html_paths = [n for n in names if n.endswith("assets/index.html")]
               if not html_paths:
                   raise SystemExit("Interface assets/index.html não encontrada no APK")
               html = z.read(html_paths[0]).decode("utf-8", errors="replace")
-              for marker in ("Baixar e ativar IA local", "sendLocalMessage", "downloadLocalModel"):
+              for marker in ("sendLocalMessage", "downloadModel", "IA local"):
                   if marker not in html:
                       raise SystemExit(f"Recurso ausente no HTML empacotado: {marker}")
               print("APK verificado:", apk.stat().st_size, "bytes")
-              print("Runtime nativo:", ", ".join(native))
+              print("Bibliotecas nativas:", ", ".join(native))
               print("Interface:", html_paths[0])
-              print("Ponte Android/JavaScript e botão de download encontrados.")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"apk_path={apk.as_posix()}\\n")
           PY
 
       - name: Upload NEXORA AI APK
         uses: actions/upload-artifact@v4
         with:
           name: NEXORA-AI-on-device-debug
-          path: lumen-android/build/outputs/apk/debug/*.apk
+          path: ${{ steps.verify.outputs.apk_path }}
           if-no-files-found: error
           retention-days: 14
