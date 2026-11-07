@@ -413,6 +413,17 @@ const taskKey=x=>(x.title||"").trim().toLocaleLowerCase("pt-BR")+"|"+(x.details|
 for(const m of data.memories){if(!cloudMemories.some(x=>memoryKey(x)===memoryKey(m)))await api("/api/memories",{method:"POST",body:JSON.stringify({content:m.content,category:m.category||"geral"})});}
 for(const k of data.knowledge){if(!cloudKnowledge.some(x=>knowledgeKey(x)===knowledgeKey(k)))await api("/api/knowledge",{method:"POST",body:JSON.stringify({title:k.title,content:k.content,source:k.source||""})});}
 for(const t of data.tasks){const match=cloudTasks.find(x=>taskKey(x)===taskKey(t));if(!match)await api("/api/tasks",{method:"POST",body:JSON.stringify({title:t.title,details:t.details||""})});else{const desired=t.done?"concluída":"pendente";if(match.status!==desired)await api("/api/tasks/"+match.id,{method:"PATCH",body:JSON.stringify({status:desired})});}}
+ // Sincroniza somente experiências que receberam avaliação explícita no aparelho.
+ const cloudExperiences=await api("/api/experiences");
+ const experienceKey=x=>(x.user_message||"")+"|"+(x.assistant_answer||"")+"|"+String(x.rating||"");
+ for(const experience of (data.experiences||[])){
+  const match=cloudExperiences.find(x=>experienceKey(x)===experienceKey(experience));
+  if(match){experience.cloudId=match.id;continue}
+  if(!experience.cloudId){
+   const saved=await api("/api/experiences",{method:"POST",body:JSON.stringify({user_message:experience.user_message,assistant_answer:experience.assistant_answer,rating:experience.rating,correction:experience.correction||"",lesson:experience.lesson||""})});
+   experience.cloudId=saved.id;
+  }
+ }
 [cloudMemories,cloudKnowledge,cloudTasks]=await Promise.all([api("/api/memories"),api("/api/knowledge"),api("/api/tasks")]);
 for(const m of data.memories){const remote=cloudMemories.find(x=>memoryKey(x)===memoryKey(m));if(remote)m.cloudId=remote.id;}
 for(const k of data.knowledge){const remote=cloudKnowledge.find(x=>knowledgeKey(x)===knowledgeKey(k));if(remote)k.cloudId=remote.id;}
