@@ -1,4 +1,4 @@
-name: LÚMEN model checks
+name: AURION model checks
 on:
   push:
     branches: [lumen-ai-core]
