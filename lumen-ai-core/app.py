@@ -189,6 +189,8 @@ def capabilities():
             "voice_output": {"implemented": True, "configured": True, "depends_on": "browser"},
             "image_input": {"implemented": True, "configured": ready},
             "planning": {"implemented": True, "configured": ready},
+            "agent_tools": {"implemented": True, "configured": ready,
+                            "available_tools": ["save_memory", "create_task", "list_tasks", "search_memory", "save_knowledge", "complete_task", "get_overview"]},
             "ads": {"implemented": False, "configured": False},
             "persistent_storage": {"implemented": True, "configured": bool(DATABASE_URL), "durability": "managed_postgresql" if DATABASE_URL else "depends_on_server_disk"}}
 
