@@ -1,6 +1,8 @@
 package com.lexo.lumen
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -11,6 +13,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.PermissionRequest
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -20,6 +23,7 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private lateinit var progress: ProgressBar
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+    private var pendingWebPermission: PermissionRequest? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +85,22 @@ class MainActivity : Activity() {
                     this@MainActivity.progress.progress = newProgress
                     this@MainActivity.progress.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
                 }
+                override fun onPermissionRequest(request: PermissionRequest) {
+                    runOnUiThread {
+                        val audioOnly = request.resources.all { it == PermissionRequest.RESOURCE_AUDIO_CAPTURE }
+                        if (!audioOnly) {
+                            request.deny()
+                            return@runOnUiThread
+                        }
+                        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+                        } else {
+                            pendingWebPermission?.deny()
+                            pendingWebPermission = request
+                            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), AUDIO_PERMISSION_REQUEST)
+                        }
+                    }
+                }
                 override fun onShowFileChooser(webView: WebView?, callback: ValueCallback<Array<Uri>>?, params: FileChooserParams?): Boolean {
                     fileCallback?.onReceiveValue(null)
                     fileCallback = callback
@@ -102,6 +122,21 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == AUDIO_PERMISSION_REQUEST) {
+            val request = pendingWebPermission
+            pendingWebPermission = null
+            if (request != null) {
+                if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+                    request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+                } else {
+                    request.deny()
+                }
+            }
+        }
+    }
+
     @Deprecated("Deprecated in Android API, retained for broad device compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -121,5 +156,5 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
-    companion object { private const val FILE_REQUEST = 7104 }
+    companion object { private const val FILE_REQUEST = 7104; private const val AUDIO_PERMISSION_REQUEST = 7105 }
 }
