@@ -15,7 +15,8 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
-from cognition import think as cognitive_cycle\nfrom public_research import search_web
+from cognition import think as cognitive_cycle
+from public_research import search_web
 
 ROOT = Path(__file__).parent
 DEFAULT_DB_PATH = (Path("/var/data/nexora.db") if os.getenv("RENDER") else Path("/tmp/lumen.db")) if os.getenv("VERCEL") or os.getenv("RENDER") else ROOT / "data" / "lumen.db"
@@ -563,7 +564,9 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
-    own_model_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")\n    if own_model_url and not own_model_url.startswith(("http://", "https://")):\n        own_model_url = "https://" + own_model_url
+    own_model_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
+    if own_model_url and not own_model_url.startswith(("http://", "https://")):
+        own_model_url = "https://" + own_model_url
     own_model_token = os.getenv("NEXORA_MODEL_TOKEN", "").strip()
     with db() as con:
         memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
