@@ -188,6 +188,24 @@ class MainActivity : Activity() {
             }
         }
 
+        @JavascriptInterface fun prepareLocalModel() {
+            when (modelState()) {
+                "ready", "working" -> return
+                "downloaded" -> {
+                    localScope.launch { try { loadLocalModel() } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao carregar o modelo local") } }
+                    return
+                }
+            }
+            val manager = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val network = manager.activeNetwork
+            val capabilities = network?.let { manager.getNetworkCapabilities(it) }
+            if (capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true) {
+                downloadModel()
+            } else {
+                notifyModel("waiting_network", "A NEXORA está pronta para preparar a IA local. O modelo ocupa cerca de 450 MB; o download começará automaticamente quando houver Wi-Fi, para não consumir seus dados móveis.")
+            }
+        }
+
         @JavascriptInterface fun downloadModel() {
             if (modelBusy || localModel != null) return
             if (modelFile.exists() && modelFile.length() >= selectedProfile().minBytes) {
