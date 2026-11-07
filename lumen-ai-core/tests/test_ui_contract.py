@@ -32,6 +32,16 @@ class UiContractTests(unittest.TestCase):
             'planejar|plano',
             'function exportData()',
             'function handleImport(e)',
+            'id="researchMode"',
+            'id="thinkMode"',
+            'function startVoiceInput()',
+            'function speakLastAnswer()',
+            'function selectImage(event)',
+            'api("/api/research"',
+            'api("/api/think"',
+            'image_data_url:imageData',
+            'PESQUISA NA WEB',
+            'PLANEJAMENTO COGNITIVO',
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, html)
