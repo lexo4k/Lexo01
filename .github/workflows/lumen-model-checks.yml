@@ -1,0 +1,36 @@
+name: LÚMEN model checks
+on:
+  push:
+    branches: [lumen-ai-core]
+    paths:
+      - "lumen-model/**"
+      - ".github/workflows/lumen-model-checks.yml"
+  pull_request:
+    paths:
+      - "lumen-model/**"
+      - ".github/workflows/lumen-model-checks.yml"
+  workflow_dispatch:
+jobs:
+  train-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install CPU PyTorch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch
+      - name: Test tokenizer and Transformer
+        working-directory: lumen-model
+        run: python -m unittest -v test_model.py
+      - name: Train a tiny model from scratch
+        working-directory: lumen-model
+        run: |
+          python train.py --data corpus --out /tmp/lumen-smoke.pt --steps 3 --batch 2 --context 32 --width 32 --layers 1 --heads 2
+      - name: Run inference from the trained checkpoint
+        working-directory: lumen-model
+        run: python infer.py --model /tmp/lumen-smoke.pt --prompt "LÚMEN:" --tokens 12
