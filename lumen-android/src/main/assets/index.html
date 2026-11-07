@@ -677,6 +677,9 @@ pending.content="ANÁLISE DO AURION\n\nObjetivo: "+(r.goal||msg)+"\n\nEntendimen
 }else{
 r=await api("/api/chat",{method:"POST",body:JSON.stringify({message:msg||"Analise a imagem anexada.",image_data_url:imageData})});
 pending.content=r.answer||"O núcleo não retornou texto.";
+if(Array.isArray(r.tools_used)&&r.tools_used.length){const labels={web_research:"pesquisa na web",search_memory:"busca na memória",save_memory:"memória",create_task:"tarefa",save_knowledge:"conhecimento",complete_task:"conclusão de tarefa",list_tasks:"consulta de tarefas",get_overview:"painel",get_capabilities:"capacidades"};pending.content+="\\n\\nFerramentas utilizadas: "+[...new Set(r.tools_used)].map(x=>labels[x]||x).join(", ")+ ".";}
+if(Array.isArray(r.agent_trace)&&r.agent_trace.length){pending.content+="\\n\\nCICLO DO AURION\\n"+r.agent_trace.map(x=>"• "+x.phase+": "+x.detail).join("\\n");}
+if(r.verification){pending.content+="\\nVerificação das ferramentas: "+(r.verification.tools_succeeded?"sem erros reportados":"atenção, consulte os resultados")+". "+r.verification.claim_scope;}
 }
 pending.at=stamp();lastAssistantText=pending.content;
 }catch(e){pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;}
