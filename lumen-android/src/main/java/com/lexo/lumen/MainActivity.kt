@@ -257,8 +257,9 @@ class MainActivity : Activity() {
                     try {
                         val active = localModel ?: loadLocalModel()
                         val system = "Você é a NEXORA, uma assistente de IA independente que funciona localmente no aparelho. Responda em português brasileiro, com clareza, honestidade e utilidade. Não invente pesquisas, ações executadas, fatos ou capacidades. Se não souber, diga. Use o contexto recente apenas como histórico da conversa.\n\nHistórico recente:\n" + history
+                        val inputBudget = if (selectedProfile().contextSize >= 4096) 9000 else 4500
                         val result = withContext(Dispatchers.IO) {
-                            Llama.complete(active, prompt.take(12000), systemPrompt = system.take(12000), maxTokens = selectedProfile().maxTokens)
+                            Llama.complete(active, prompt.take(inputBudget / 2), systemPrompt = system.take(inputBudget), maxTokens = selectedProfile().maxTokens)
                         }
                         notifyAnswer(result.text.ifBlank { "O modelo não gerou uma resposta. Tente reformular a mensagem." }, false)
                     } catch (e: Exception) {
