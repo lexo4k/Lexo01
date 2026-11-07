@@ -46,6 +46,21 @@ class NEXORAGatewayTests(unittest.TestCase):
         self.assertEqual(model_name, "model-a")
         self.assertEqual(provider["api_key"], "test-secret")
 
+    def test_provider_registry_keeps_allowlisted_fallbacks(self):
+        env = {
+            "NEXORA_PROVIDERS": (
+                '{"alpha":{"base_url":"https://a.example/v1","api_key_env":"KEY_A",'
+                '"models":["model-a"],"fallbacks":["beta/model-b"]},'
+                '"beta":{"base_url":"https://b.example/v1","api_key_env":"KEY_B",'
+                '"models":["model-b"]}}'
+            ),
+            "KEY_A": "secret-a",
+            "KEY_B": "secret-b",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            provider = app.provider_registry()["alpha"]
+        self.assertEqual(provider["fallbacks"], ["beta/model-b"])
+
     def test_provider_registry_rejects_unlisted_model(self):
         env = {
             "NEXORA_PROVIDERS": (
