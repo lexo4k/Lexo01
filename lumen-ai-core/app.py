@@ -250,7 +250,8 @@ def resolve_gateway_model(model_id: str) -> tuple[str, str, dict[str, Any]]:
 
 def model_is_configured() -> bool:
     config = model_config()
-    return bool(config["api_key"] and (os.getenv("AURION_MODEL_API_KEY") or os.getenv("LUMEN_MODEL_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("TOGETHER_API_KEY") or config["provider"] == "ollama"))
+    return bool(config["api_key"])
+
 
 def require_access(authorization: str | None = Header(default=None)) -> None:
     expected = (os.getenv("AURION_ACCESS_TOKEN") or os.getenv("LUMEN_ACCESS_TOKEN") or "").strip()
