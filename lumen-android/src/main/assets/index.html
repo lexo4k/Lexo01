@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111f"><meta name="description" content="AURION, seu espaço pessoal de inteligência, memória e organização.">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>AURION AI</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#101e30;--panel2:#14263b;--line:#263d56;--text:#edf7ff;--muted:#91a8bc;--cyan:#72e4ef;--mint:#8ce8c2;--gold:#f2cf83;--danger:#ff9b9b}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:15px Inter,system-ui,-apple-system,Segoe UI,sans-serif}body{background:radial-gradient(ellipse at 50% -15%,#16405a 0,transparent 46%),var(--bg);padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+button,input,textarea{font:inherit}button{cursor:pointer;color:inherit}.app{max-width:760px;margin:auto;min-height:100vh}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#07111feF;border-bottom:1px solid #20374d;backdrop-filter:blur(16px)}
+.brand{display:flex;align-items:center;gap:11px}.orb{width:42px;height:42px;border:1px solid #69d9e7;border-radius:50%;display:grid;place-items:center;color:#8cf3fa;font-weight:800;font-size:21px;box-shadow:0 0 26px #54d8e733,inset 0 0 18px #54d8e71c}.brand strong{letter-spacing:.19em;font-size:16px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.12em;margin-top:2px}
+.head-actions{display:flex;align-items:center;gap:8px}.iconbtn{width:40px;height:40px;border:1px solid var(--line);border-radius:13px;background:#102136;font-size:17px}.pill{font-size:11px;color:var(--gold);border:1px solid #6d5b35;padding:7px 10px;border-radius:30px;white-space:nowrap}.pill.online{color:var(--mint);border-color:#286c5b}
+main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.eyebrow{color:var(--cyan);font-size:10px;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
+.hero{position:relative;overflow:hidden;border:1px solid #28506a;border-radius:24px;padding:22px;background:linear-gradient(140deg,#12334a,#102238 58%,#102033);box-shadow:0 18px 45px #0003}.hero:after{content:"";position:absolute;width:190px;height:190px;border:1px solid #62ddeb35;border-radius:50%;right:-70px;top:-70px;box-shadow:0 0 0 22px #62ddeb0b,0 0 0 48px #62ddeb08}.hero h2{font-size:25px;line-height:1.15;margin:10px 0 8px;max-width:360px}.hero p{color:#b7cad8;line-height:1.5;margin:0;max-width:430px;font-size:13px}.hero-foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.btn{border:1px solid var(--line);background:#172b40;padding:11px 14px;border-radius:12px;font-weight:650;font-size:13px}.btn.primary{background:linear-gradient(135deg,#1e6674,#174b60);border-color:#4ca9b5;color:#eaffff}.btn.ghost{background:#0c1b2b}.btn:disabled{opacity:.5;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.metric{border:1px solid var(--line);background:#0e1b2b;border-radius:16px;padding:13px}.metric span{display:block;color:var(--muted);font-size:11px}.metric b{font-size:23px;display:block;margin-top:5px}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin:22px 2px 10px}.section-title h3{font-size:14px;margin:0}.section-title span{font-size:11px;color:var(--muted)}
+.quick{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.quick button{display:flex;align-items:center;gap:12px;text-align:left;background:#102035;border:1px solid var(--line);border-radius:16px;padding:14px;min-height:72px}.quick .glyph{width:37px;height:37px;border-radius:12px;display:grid;place-items:center;background:#183b50;color:var(--cyan);font-size:18px}.quick b{display:block;font-size:13px}.quick small{color:var(--muted);font-size:10px}
+.panel{border:1px solid var(--line);background:#0e1b2b;border-radius:18px;padding:15px;margin:12px 0}.panel h3{font-size:15px;margin:0 0 10px}.muted{color:var(--muted);font-size:12px;line-height:1.5}
+.chatbox{display:flex;flex-direction:column;min-height:calc(100dvh - 180px)}.chat-head{display:flex;align-items:center;gap:10px;margin:2px 0 12px}.mini-orb{width:34px;height:34px;border:1px solid #5dcbd8;border-radius:50%;display:grid;place-items:center;color:var(--cyan);font-weight:800}.chat-head b{font-size:13px}.chat-head small{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.messages{flex:1;min-height:250px;max-height:calc(100dvh - 330px);overflow:auto;padding:4px 0 12px;display:flex;flex-direction:column;gap:10px}.msg{max-width:88%;padding:12px 14px;border-radius:16px;line-height:1.5;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.msg.ai{align-self:flex-start;background:#14283b;border:1px solid #25435a;border-bottom-left-radius:5px}.msg.user{align-self:flex-end;background:#1a4b5b;border:1px solid #2c7180;border-bottom-right-radius:5px}.msg small{display:block;color:#a7bfcd;font-size:10px;margin-top:6px}
+.composer{position:sticky;bottom:78px;background:#07111f;padding:10px 0 4px}.compose-wrap{border:1px solid #31516a;background:#0e1d2d;border-radius:18px;padding:8px}.compose-wrap textarea{width:100%;min-height:54px;max-height:140px;resize:vertical;border:0;outline:0;background:transparent;color:var(--text);padding:7px;font-size:14px}.compose-actions{display:flex;justify-content:space-between;align-items:center}.compose-actions small{color:var(--muted);font-size:10px}.send{width:40px;height:40px;border:0;border-radius:13px;background:#1d6a78;color:white;font-size:18px}.toolrow{display:flex;gap:7px;flex-wrap:wrap;padding:7px 2px 2px}.toolrow button{border:1px solid var(--line);background:#102237;color:#b9d3e2;border-radius:10px;padding:7px 10px;font-size:11px}.toolrow button.selected{border-color:#55c8d5;background:#174253;color:#eaffff}.attach-preview{font-size:11px;color:var(--mint);padding:4px 7px}.mode-label{font-size:10px;color:var(--cyan);letter-spacing:.1em;margin:0 0 5px 7px}
+.field{margin:12px 0}.field label{display:block;font-size:12px;color:#b7cad8;margin-bottom:6px}.field input,.field textarea{width:100%;background:#091726;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;outline:none}.field input:focus,.field textarea:focus{border-color:#57c7d5}
+.list{display:flex;flex-direction:column;gap:9px}.item{padding:13px;border:1px solid var(--line);background:#101f31;border-radius:14px}.item b{font-size:13px}.item p{font-size:12px;color:#b8c9d6;white-space:pre-wrap;margin:7px 0}.item small{font-size:10px;color:var(--muted)}.item-actions{display:flex;gap:7px;margin-top:10px}.item-actions button{font-size:11px;padding:7px 9px}
+.empty{border:1px dashed #2a4358;border-radius:14px;padding:20px;text-align:center;color:var(--muted);font-size:12px}
+.bottom{position:fixed;bottom:0;left:0;right:0;z-index:8;background:#081421f2;border-top:1px solid #233a50;backdrop-filter:blur(16px);padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;justify-content:center}.nav{width:min(760px,100%);display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.nav button{border:0;background:transparent;color:#8fa5b9;padding:7px 2px;border-radius:12px;font-size:10px}.nav button span{display:block;font-size:19px;margin-bottom:3px}.nav button.active{background:#15374a;color:#8deaf0}
+.statusbox{border-radius:14px;padding:12px;background:#102538;border:1px solid #29465c;font-size:12px;line-height:1.5}.statusbox.warn{border-color:#705b35;background:#2a2418;color:#f4d99f}.statusbox.good{border-color:#2c6656;background:#102a27;color:#a5e9ce}
+.hidden{display:none!important}.divider{height:1px;background:var(--line);margin:15px 0}.tag{font-size:10px;padding:5px 8px;border:1px solid var(--line);border-radius:20px;color:var(--muted)}
+@media(min-width:620px){main{padding:24px}.hero{padding:30px}.hero h2{font-size:31px}.quick{grid-template-columns:repeat(4,1fr)}.chatbox{min-height:650px}.messages{max-height:540px}.composer{bottom:0}}
+
+/* AURION visual identity: animated core and cinematic command deck */
+.hero{min-height:360px;padding:26px 22px 22px;background:radial-gradient(circle at 50% 40%,#164e68 0,#102d43 30%,#0a1b2c 72%);border-color:#32728b;display:flex;flex-direction:column;align-items:center;text-align:center}
+.hero:after{width:260px;height:260px;right:calc(50% - 130px);top:38px;border-color:#75eaff24;box-shadow:0 0 0 18px #62ddeb0b,0 0 0 38px #62ddeb08,0 0 55px #35cbe51a}
+.hero .eyebrow{position:relative;z-index:1;letter-spacing:.24em}
+.hero h2{position:relative;z-index:1;max-width:520px;margin:15px 0 8px;font-size:27px;text-shadow:0 0 24px #68e8ff35}
+.hero p{position:relative;z-index:1;max-width:440px}
+.hero-foot{position:relative;z-index:1;justify-content:center}
+.core-visual{position:relative;z-index:1;width:158px;height:158px;margin:17px auto 10px;display:grid;place-items:center}
+.core-visual .ring{position:absolute;inset:4px;border:1px solid #65e5f7a8;border-radius:50%;box-shadow:0 0 25px #40d8ed25,inset 0 0 24px #40d8ed18}
+.core-visual .ring.r2{inset:17px;border-style:dashed;border-color:#8befff70;animation:core-spin 24s linear infinite}
+.core-visual .ring.r3{inset:31px;border-color:#a2f8ff55;box-shadow:0 0 28px #62e9ff25}
+.core-visual .core{width:66px;height:66px;border-radius:50%;display:grid;place-items:center;font-size:31px;font-weight:800;color:#eaffff;background:radial-gradient(circle at 35% 28%,#d9ffff 0,#74e9f3 16%,#268da8 48%,#102f50 76%);border:1px solid #b7fbff;box-shadow:0 0 22px #62eaff9c,0 0 65px #28c9ee58,inset 0 0 15px #e9ffff9c;animation:core-pulse 3.2s ease-in-out infinite}
+.core-visual .orbit-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:#a8f8ff;box-shadow:0 0 14px #64edff}
+.core-visual .orbit-dot.d1{top:16px;right:25px}.core-visual .orbit-dot.d2{bottom:19px;left:20px;width:5px;height:5px}
+@keyframes core-spin{to{transform:rotate(360deg)}}@keyframes core-pulse{0%,100%{transform:scale(.96);filter:brightness(.92)}50%{transform:scale(1.06);filter:brightness(1.22)}}
+.metric,.panel,.quick button,.item{background:linear-gradient(145deg,#11263aee,#0b1929f2);border-color:#294c65;box-shadow:0 8px 24px #0002}
+.metric{border-radius:17px}.metric b{color:#a3f1f5}.quick button{transition:transform .18s ease,border-color .18s ease,background .18s ease}.quick button:active{transform:scale(.98);border-color:#65dce9}
+.btn.primary{background:linear-gradient(135deg,#237e8e,#16465e);box-shadow:0 5px 22px #36c9df24}
+.orb,.mini-orb{box-shadow:0 0 25px #54d8e755,inset 0 0 18px #54d8e733}
+@media(min-width:620px){.hero{min-height:410px;padding:30px}.core-visual{width:180px;height:180px}.core-visual .core{width:76px;height:76px;font-size:36px}}
+</style></head>
+<body><div class="app">
+<header><div class="brand"><div class="orb">A</div><div><strong>AURION AI</strong><small>NÚCLEO DE INTELIGÊNCIA</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
+<main>
+<section id="home" class="screen active">
+<div class="hero"><div class="eyebrow">NÚCLEO DE INTELIGÊNCIA PESSOAL</div><div class="core-visual" aria-label="Núcleo AURION"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">A</div></div><h2>Seu núcleo de inteligência, reunido em um só lugar.</h2><p>Conversa local, memória, voz, imagens, pesquisa e ferramentas. O cérebro local precisa ser baixado e ativado antes da primeira conversa inteligente.</p><div class="hero-foot"><button class="btn primary" onclick="prepareBrain()">🧠 Preparar IA no aparelho</button><button class="btn ghost" onclick="show('chat')">✦ Abrir conversa</button><button class="btn ghost" onclick="activateFullMind()">◎ Diagnosticar módulos</button></div></div>
+<div class="grid"><div class="metric"><span>Memórias</span><b id="memoryCount">0</b></div><div class="metric"><span>Planos / tarefas abertas</span><b id="taskCount">0</b></div><div class="metric"><span>Mensagens salvas</span><b id="chatCount">0</b></div></div>
+<div class="section-title"><h3>Centro de capacidades</h3><span>ACESSO DIRETO</span></div>
+<div class="quick">
+<button onclick="show('chat');setMode('chat')"><span class="glyph">✧</span><span><b>Inteligência conversacional</b><small>Dialogar e resolver problemas</small></span></button>
+<button onclick="show('chat');setMode('think')"><span class="glyph">◎</span><span><b>Raciocínio e planejamento</b><small>Analisar objetivos e etapas</small></span></button>
+<button onclick="show('chat');setMode('research')"><span class="glyph">⌕</span><span><b>Pesquisa pública</b><small>Buscar informações e fontes</small></span></button>
+<button onclick="show('memory')"><span class="glyph">◈</span><span><b>Memória de longo prazo</b><small>Guardar contexto e conhecimento</small></span></button>
+<button onclick="show('knowledge')"><span class="glyph">▤</span><span><b>Base de conhecimento</b><small>Organizar referências</small></span></button>
+<button onclick="show('tasks')"><span class="glyph">✓</span><span><b>Execução acompanhada</b><small>Gerenciar tarefas e progresso</small></span></button>
+<button onclick="show('chat');setMode('chat');startVoiceInput()"><span class="glyph">🎙</span><span><b>Interface por voz</b><small>Falar com o sistema</small></span></button>
+<button onclick="show('settings')"><span class="glyph">⌘</span><span><b>Conexões e ferramentas</b><small>Ver integrações disponíveis</small></span></button>
+</div>
+<div class="section-title"><h3>Arquitetura AURION</h3><span>ESTADO HONESTO</span></div>
+<div class="panel"><h3>🧠 Modelo próprio</h3><p class="muted">O projeto já contém uma arquitetura Transformer e um servidor de inferência próprios. Para se tornar um modelo conversacional útil, ainda precisa de corpus amplo e licenciado, treinamento, checkpoint válido e avaliação independente.</p><div class="statusbox warn">Em desenvolvimento · não declarar inteligência própria pronta até o checkpoint passar nos testes de qualidade.</div></div>
+<div class="panel"><h3>♻ Memória e aprendizagem contextual</h3><p class="muted">Memórias, tarefas e conhecimento podem ser armazenados localmente. A sincronização permanente depende de servidor autenticado e armazenamento persistente configurado.</p><button class="btn" onclick="show('memory')">Abrir memória</button></div>
+<div class="panel"><h3>⚙ Planejamento e ferramentas</h3><p class="muted">O planejador local pode estruturar objetivos e indicar próximos passos. Ações externas exigem integração, permissão e confirmação apropriadas. Planejar não significa executar.</p><button class="btn" onclick="show('chat');setMode('think')">Testar planejamento</button></div>
+<div class="panel"><h3>🌐 Pesquisa e conexão</h3><p class="muted">A pesquisa pública e o núcleo remoto dependem da conexão configurada. Confira o estado antes de contar com resultados online.</p><button class="btn" onclick="show('chat');setMode('research')">Abrir pesquisa</button><button class="btn" onclick="show('settings')" style="margin-left:6px">Configurar núcleo</button></div>
+<div class="section-title"><h3>Saúde do sistema</h3><span id="lastCheck">AGUARDANDO VERIFICAÇÃO</span></div>
+<div id="homeStatus" class="statusbox warn">Modo local. Verifique a conexão para saber quais recursos remotos estão realmente ativos.</div>
+<div class="section-title"><h3>Atividade recente</h3><span>REGISTRO DO SISTEMA</span></div><div id="recentList" class="list"><div class="empty">Sua atividade aparecerá aqui.</div></div>
+</section>
+<section id="chat" class="screen"><div class="chatbox">
+<div class="chat-head"><div class="mini-orb">A</div><div><b>AURION · Assistente</b><small id="chatState">Modo local · IA ainda não conectada</small></div><span class="tag" style="margin-left:auto">PRIVADO</span></div>
+<div id="messages" class="messages"><div class="msg ai">Olá. Este é o seu espaço AURION. Posso guardar tarefas e notas localmente neste aparelho. Para conversar com o modelo de IA, conecte o núcleo nas configurações. Não vou fingir que uma resposta automática é uma resposta de IA.</div></div>
+<div class="composer"><div class="mode-label" id="modeLabel">MODO CONVERSA</div><div class="compose-wrap"><textarea id="message" placeholder="Converse com o AURION..." rows="2"></textarea><div class="attach-preview" id="attachPreview"></div><div class="compose-actions"><small>Enter para enviar · Shift + Enter para nova linha</small><button class="send" onclick="sendMessage()" aria-label="Enviar">➤</button></div></div><div class="toolrow"><button id="chatMode" class="selected" onclick="setMode('chat')">✧ Conversar</button><button id="researchMode" onclick="setMode('research')">⌕ Pesquisar</button><button id="thinkMode" onclick="setMode('think')">◎ Planejar</button><button onclick="startVoiceInput()">🎙 Voz</button><button onclick="$('imageFile').click()">▧ Imagem</button><button onclick="speakLastAnswer()">🔊 Ouvir</button><button id="autoSpeakButton" onclick="toggleAutoSpeak()">🔊 Voz automática: ligada</button><button onclick="requestLocationForResearch()">📍 Localização</button><input id="imageFile" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" onchange="selectImage(event)"></div></div>
+</div></section>
+<section id="memory" class="screen"><div class="eyebrow">MEMÓRIA PESSOAL</div><h2>O que vale guardar?</h2><p class="muted">Os registros ficam guardados neste aparelho. Exporte seus dados nas configurações para manter uma cópia de segurança.</p>
+<div class="panel"><div class="field"><label>Nova memória</label><textarea id="memoryInput" rows="3" placeholder="Escreva uma ideia, preferência ou informação importante..."></textarea></div><div class="field"><label>Categoria</label><input id="memoryCategory" placeholder="Ex.: projetos, preferências, ideias"></div><button class="btn primary" onclick="saveMemory()">Guardar memória</button></div><div class="section-title"><h3>Memórias guardadas</h3><span id="memoryLabel">0 REGISTROS</span></div><div id="memoryList" class="list"></div>
+</section>
+<section id="tasks" class="screen"><div class="eyebrow">ORGANIZAÇÃO</div><h2>Suas tarefas</h2><p class="muted">Planeje o próximo passo e acompanhe o andamento.</p>
+<div class="panel"><div class="field"><label>Nova tarefa</label><input id="taskInput" placeholder="O que precisa ser feito?"></div><div class="field"><label>Detalhes</label><textarea id="taskDetails" rows="2" placeholder="Contexto ou próximo passo (opcional)"></textarea></div><button class="btn primary" onclick="saveTask()">＋ Criar tarefa</button></div><div class="section-title"><h3>Lista de tarefas</h3><span id="taskLabel">0 ABERTAS</span></div><div id="taskList" class="list"></div>
+</section>
+<section id="knowledge" class="screen"><div class="eyebrow">ARQUIVO PESSOAL</div><h2>Base de conhecimento</h2><p class="muted">Guarde referências, resumos e informações para consultar depois.</p>
+<div class="panel"><div class="field"><label>Título</label><input id="knowTitle" placeholder="Nome do registro"></div><div class="field"><label>Conteúdo</label><textarea id="knowContent" rows="4" placeholder="Escreva ou cole o conteúdo..."></textarea></div><div class="field"><label>Fonte (opcional)</label><input id="knowSource" placeholder="Link ou referência"></div><button class="btn primary" onclick="saveKnowledge()">Arquivar conhecimento</button></div><div id="knowledgeList" class="list"></div>
+</section>
+<section id="settings" class="screen"><div class="eyebrow">AURION INDEPENDENTE</div><h2>Seu núcleo de IA</h2><p class="muted">A conversa principal pode rodar no próprio Android, sem token, servidor ou conta externa. Recursos online continuam opcionais.</p>
+<div class="panel"><h3>🧠 Núcleo local expansível</h3><p class="muted">Escolha o tamanho do modelo. O compacto é mais leve; o avançado pode responder melhor, mas exige mais RAM, armazenamento e bateria. A conversa local não envia suas mensagens para a nuvem.</p><div class="field"><label for="localModelSelect">Modelo local</label><select id="localModelSelect" onchange="selectLocalModel()"><option value="qwen-0.5b">Qwen 0.5B · econômico</option><option value="qwen-1.5b">Qwen 1.5B · recomendado</option><option value="qwen-3b">Qwen 3B · experimental (≈2,1 GB)</option></select></div><div id="localModelNote" class="muted">Carregando opções do aparelho…</div><div id="localModelStatus" class="statusbox warn">Verificando disponibilidade da IA local…</div><button class="btn primary" onclick="downloadLocalModel()">Baixar e ativar modelo selecionado</button><p class="muted">O modelo fica no armazenamento privado do app. O Qwen 1.5B é o padrão recomendado. O Qwen 3B é experimental, ocupa cerca de 2,1 GB e pode não carregar ou ficar lento em celulares com pouca RAM. Use Wi-Fi e mantenha espaço livre.</p></div>
+<div id="settingsStatus" class="statusbox warn">Nenhum servidor conectado. Seus dados locais continuam disponíveis.</div>
+<div class="panel"><h3>Conexão remota opcional</h3><div class="field"><label>Endereço HTTPS do servidor</label><input id="serverUrl" inputmode="url" placeholder="https://seu-servico.exemplo.com"></div><div class="field"><label>Token privado de acesso</label><input id="accessToken" type="password" autocomplete="off" placeholder="Token configurado no servidor"></div><button class="btn primary" onclick="connectServer()">Testar e conectar</button><button class="btn" onclick="disconnectServer()" style="margin-left:6px">Desconectar</button><p class="muted">O endereço e o token ficam armazenados apenas no armazenamento privado do aplicativo/navegador. Nunca coloque a chave do provedor de IA aqui. Ela pertence somente ao servidor.</p></div>
+<div class="panel"><h3>Recursos e disponibilidade</h3><div id="capabilityList" class="list"><div class="item"><b>Interface local</b><p>Disponível neste aparelho.</p></div><div class="item"><b>Modelo de IA e pesquisa</b><p>Exigem servidor publicado e chave de provedor configurada.</p></div><div class="item"><b>Memória sincronizada</b><p>Exige conexão e banco persistente no servidor.</p></div></div></div>
+<div class="panel"><h3>Memória de correções</h3><p class="muted">A AURION guarda erros, causas e soluções. Só experiências com evidência de testes são priorizadas como verificadas.</p><div id="correctionMemoryList" class="list"><div class="item">Conecte ao núcleo para consultar a memória técnica.</div></div><details style="margin-top:12px"><summary>Registrar uma experiência técnica</summary><div style="display:grid;gap:8px;margin-top:10px"><input id="correctionSignature" placeholder="Erro ou mensagem identificadora" style="width:100%;padding:11px;border-radius:10px"><textarea id="correctionCause" placeholder="Causa-raiz identificada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><textarea id="correctionResolution" placeholder="Correção aplicada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><input id="correctionEvidence" placeholder="Evidência do teste (opcional)" style="width:100%;padding:11px;border-radius:10px"><label style="display:flex;gap:8px;align-items:center"><input id="correctionTestsPassed" type="checkbox"> Testes passaram com essa correção</label><button class="btn primary" onclick="saveCorrectionMemory()">Salvar experiência</button></div></details></div>
+<div class="panel"><h3>Dados neste aparelho</h3><p class="muted">Você pode exportar suas memórias, tarefas e registros locais em um arquivo JSON.</p><button class="btn" onclick="exportData()">Exportar meus dados</button><button class="btn" onclick="importData()">Importar arquivo</button><input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)"></div>
+</section>
+</main>
+<nav class="bottom"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
+</div>
+<script>
+const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
+let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",pendingImageData=null,lastAssistantText="",syncingWorkspace=false,autoSpeakEnabled=localStorage.getItem("aurion_auto_speak_v1")!=="false",useLocationForNextResearch=false;
+function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}catch{return{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}}
+function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
+function loadConfig(){const defaultUrl="https://nexora-ai-core.onrender.com";try{const saved=JSON.parse(localStorage.getItem(CFG));if(!saved)return{url:defaultUrl,token:""};if(!saved.url||saved.url==="https://lumen-ai-core.vercel.app"||saved.url==="https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app")return{url:defaultUrl,token:""};return{url:saved.url,token:saved.token||""}}catch{return{url:defaultUrl,token:""}}}
+function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
+function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities();loadCorrectionMemory();refreshLocalModel()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
+function demo(prompt){show("chat");$("message").value=prompt;sendMessage()}
+function prepareBrain(){
+ if(!window.AurionNative){show("settings");$("localModelStatus").textContent="O motor local só está disponível no APK Android.";return}
+ show("settings");
+ try{window.AurionNative.prepareLocalModel()}catch(e){$("localModelStatus").textContent="Falha ao iniciar o motor local: "+e.message}
+}
+function localModelState(){
+ try{return window.AurionNative?window.AurionNative.modelState():"unavailable"}catch{return "unavailable"}
+}
+function selectLocalModel(){
+ if(!window.AurionNative)return;
+ const id=$("localModelSelect").value;
+ const state=window.AurionNative.selectModel(id);
+ if(state==="busy"){$("localModelStatus").textContent="Aguarde o modelo atual terminar de carregar ou responder.";return}
+ refreshLocalModel();
+}
+function downloadLocalModel(){
+ if(!window.AurionNative){$("localModelStatus").textContent="A IA local está disponível na versão Android instalada, não na prévia do navegador.";return}
+ window.AurionNative.downloadModel();
+}
+window.onAurionModelState=function(state,detail){
+ const el=$("localModelStatus");
+ const home=$("homeStatus");
+ if(home){home.textContent=detail;home.className="statusbox "+(state==="ready"?"good":"warn");}
+ if(el){el.textContent=detail;el.className="statusbox "+(state==="ready"?"good":state==="error"?"warn":"warn")}
+ if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online")}
+ else if(state==="downloading"||state==="loading"){$("chatState").textContent=detail}
+ else if(state==="waiting_network"||state==="wifi_required"){$("chatState").textContent=detail;$("connectionPill").textContent="● download só no Wi-Fi";$("connectionPill").classList.remove("online")}
+ else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
+};
+window.onAurionNativeAnswer=function(answer,failed){
+ const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
+ if(pending){pending.content=answer;pending.at=stamp();delete pending.pendingLocal}
+ lastAssistantText=answer;saveData();renderMessages();if(autoSpeakEnabled&&!failed)speakText(answer);
+ $("chatState").textContent=failed?"IA local · verifique a mensagem":"IA local · resposta gerada no aparelho";
+};
+function refreshLocalModel(){
+ if(window.AurionNative){try{const options=JSON.parse(window.AurionNative.modelOptions());const select=$("localModelSelect");if(select&&options.selected){select.value=options.selected}const chosen=(options.models||[]).find(x=>x.id===options.selected);if(chosen)$("localModelNote").textContent=chosen.note+" Contexto: "+chosen.context+" tokens · saída máxima configurada: "+chosen.maxTokens+" tokens.";}catch(e){}}
+ const state=localModelState();
+ if(state==="ready")window.onAurionModelState("ready","IA local pronta neste aparelho.");
+ else if(state==="downloaded")window.onAurionModelState("loading","Modelo salvo neste aparelho. Preparando automaticamente…");
+ else if(state==="working")window.onAurionModelState("loading","A IA local está sendo preparada.");
+ else if(state==="missing")window.onAurionModelState("missing","Modelo ainda não baixado. Toque no botão para ativar a IA local.");
+ else if(state==="unavailable")window.onAurionModelState("unavailable","A IA local roda no aplicativo Android. A prévia web não tem acesso ao motor nativo.");
+}
+function setMode(mode){
+ if(!["chat","research","think"].includes(mode))return;
+ activeMode=mode;
+ $("chatMode").classList.toggle("selected",mode==="chat");
+ $("researchMode").classList.toggle("selected",mode==="research");
+ $("thinkMode").classList.toggle("selected",mode==="think");
+ $("modeLabel").textContent=mode==="research"?"PESQUISA NA WEB":mode==="think"?"PLANEJAMENTO COGNITIVO":"MODO CONVERSA";
+}
+function toggleAutoSpeak(){
+ autoSpeakEnabled=!autoSpeakEnabled;localStorage.setItem("aurion_auto_speak_v1",String(autoSpeakEnabled));
+ const b=$("autoSpeakButton");if(b)b.textContent=autoSpeakEnabled?"🔊 Voz automática: ligada":"🔇 Voz automática: desligada";
+ $("chatState").textContent=autoSpeakEnabled?"As próximas respostas serão lidas em voz alta.":"Leitura automática desativada.";
+}
+function speakText(text){
+ const clean=String(text||"").trim();if(!clean)return;
+ if(window.AurionNative&&typeof window.AurionNative.speakText==="function"){window.AurionNative.speakText(clean);return}
+ if("speechSynthesis"in window&&typeof SpeechSynthesisUtterance!=="undefined"){window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(clean);utterance.lang="pt-BR";window.speechSynthesis.speak(utterance)}
+}
+function requestLocationForResearch(){
+ if(!window.AurionNative||typeof window.AurionNative.requestCurrentLocation!=="function"){$("chatState").textContent="A localização GPS está disponível no APK Android.";return}
+ $("chatState").textContent="Solicitando localização precisa para pesquisar lugares próximos…";window.AurionNative.requestCurrentLocation();
+}
+window.onAurionLocation=function(latitude,longitude,accuracy,error){
+ if(error){$("chatState").textContent=error;return}
+ data.lastLocation={latitude:Number(latitude),longitude:Number(longitude),accuracy:Number(accuracy),at:stamp()};
+ useLocationForNextResearch=true;activity("Localização GPS obtida para pesquisa",Number(latitude).toFixed(5)+", "+Number(longitude).toFixed(5));saveData();
+ setMode("research");if(!$("message").value.trim())$("message").value="Pesquise lugares próximos";
+ $("chatState").textContent="GPS obtido. Escreva o que procura e envie. As coordenadas serão usadas somente nesta pesquisa.";$("message").focus();
+};
+window.onAurionSpeechStatus=function(message){$("chatState").textContent=message};
+window.onAurionVoiceResult=function(transcript,error){
+ if(error){$("chatState").textContent=error;return}
+ $("message").value=transcript;$("chatState").textContent="Fala convertida em texto. Enviando e guardando a transcrição…";sendMessage();
+};
+function startVoiceInput(){
+ if(window.AurionNative&&typeof window.AurionNative.startVoiceRecognition==="function"){window.AurionNative.startVoiceRecognition();return}
+ const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!Speech){$("chatState").textContent="Reconhecimento de voz não disponível neste navegador.";return}
+ const recognition=new Speech();recognition.lang="pt-BR";recognition.interimResults=false;recognition.maxAlternatives=1;
+ recognition.onstart=()=>{$("chatState").textContent="Ouvindo… fale agora."};
+ recognition.onresult=e=>{$("message").value=e.results[0][0].transcript;$("chatState").textContent="Voz convertida em texto. Revise e envie.";$("message").focus()};
+ recognition.onerror=e=>{$("chatState").textContent="Não foi possível reconhecer a voz: "+(e.error||"erro")};
+ recognition.onend=()=>{if($("chatState").textContent==="Ouvindo… fale agora.")$("chatState").textContent="Entrada de voz encerrada."};
+ recognition.start();
+}
+function speakLastAnswer(){
+ const text=lastAssistantText||data.messages.filter(x=>x.role==="assistant").slice(-1)[0]?.content;
+ if(!text){$("chatState").textContent="Ainda não há resposta para ler.";return}
+ speakText(text);
+}
+function selectImage(event){
+ const file=event.target.files&&event.target.files[0];if(!file)return;
+ if(!["image/jpeg","image/png","image/webp"].includes(file.type)){$("attachPreview").textContent="Use uma imagem JPG, PNG ou WebP.";event.target.value="";return}
+ if(file.size>5*1024*1024){$("attachPreview").textContent="A imagem precisa ter até 5 MB.";event.target.value="";return}
+ const reader=new FileReader();reader.onload=()=>{pendingImageData=String(reader.result||"");$("attachPreview").textContent="Imagem pronta: "+file.name+" · envie uma mensagem para analisar.";};reader.onerror=()=>{$("attachPreview").textContent="Não foi possível carregar a imagem.";pendingImageData=null};reader.readAsDataURL(file);
+}
+function stamp(){return new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}
+function newId(){return window.crypto&&crypto.randomUUID?crypto.randomUUID():("lumen-"+Date.now()+"-"+Math.random().toString(36).slice(2))}
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function activity(title,detail=""){data.activity.unshift({title,detail,at:stamp()});data.activity=data.activity.slice(0,30)}
+function renderAll(){
+$("memoryCount").textContent=data.memories.length;$("taskCount").textContent=data.tasks.filter(x=>!x.done).length;$("chatCount").textContent=data.messages.filter(x=>x.role==="user").length;
+$("memoryLabel").textContent=data.memories.length+" REGISTROS";$("taskLabel").textContent=data.tasks.filter(x=>!x.done).length+" ABERTAS";
+renderList("memoryList",data.memories,x=>'<b>'+escapeHtml(x.category||"geral")+'</b><p>'+escapeHtml(x.content)+'</p><small>'+escapeHtml(x.at)+'</small><div class="item-actions"><button class="btn" onclick="deleteMemory(\''+x.id+'\')">Excluir</button></div>');
+renderList("taskList",data.tasks,x=>'<b style="'+(x.done?'text-decoration:line-through;color:#91a8bc':'')+'">'+escapeHtml(x.title)+'</b><p>'+escapeHtml(x.details||"")+'</p><small>'+escapeHtml(x.at)+'</small><div class="item-actions"><button class="btn" onclick="toggleTask(\''+x.id+'\')">'+(x.done?"Reabrir":"Concluir")+'</button><button class="btn" onclick="deleteTask(\''+x.id+'\')">Excluir</button></div>');
+renderList("knowledgeList",data.knowledge,x=>'<b>'+escapeHtml(x.title)+'</b><p>'+escapeHtml(x.content)+'</p><small>'+escapeHtml(x.source||"Sem fonte")+' · '+escapeHtml(x.at)+'</small><div class="item-actions"><button class="btn" onclick="deleteKnowledge(\''+x.id+'\')">Excluir</button></div>');
+$("recentList").innerHTML=data.activity.length?data.activity.slice(0,4).map(x=>'<div class="item"><b>'+escapeHtml(x.title)+'</b><p>'+escapeHtml(x.detail)+'</p><small>'+escapeHtml(x.at)+'</small></div>').join(""):'<div class="empty">Sua atividade aparecerá aqui.</div>';
+renderMessages();
+}
+function renderList(id,items,fn){$(id).innerHTML=items.length?items.slice().reverse().map(x=>'<div class="item">'+fn(x)+'</div>').join(""):'<div class="empty">Nada por aqui ainda.</div>'}
+function renderMessages(){
+ const el=$("messages");
+ if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o AURION. Posso conversar com o modelo conectado, organizar tarefas, guardar memórias, pesquisar seus registros e montar planos. Quando o modelo não estiver disponível, uso os recursos locais e aviso claramente.</div>';return}
+ const start=Math.max(0,data.messages.length-100);
+ el.innerHTML=data.messages.slice(start).map((x,j)=>{
+  const i=start+j;
+  const safe=escapeHtml(x.content).replace(/(https:\/\/[^\\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  const feedback=x.role==="assistant"&&!x.pendingLocal?'<div class="feedback">Esta resposta ajudou? <button class="btn" onclick="rateExperience('+i+',5)">👍 Sim</button> <button class="btn" onclick="rateExperience('+i+',2)">👎 Não</button></div>':"";
+  return '<div class="msg '+(x.role==="user"?"user":"ai")+'">'+safe+'<small>'+escapeHtml(x.at||"")+'</small>'+feedback+'</div>';
+ }).join("");
+ el.scrollTop=el.scrollHeight;
+}
+
+async function rateExperience(index,rating){
+ const answer=data.messages[index];if(!answer||answer.role!=="assistant"||answer.feedbackSaved)return;
+ let user=null;for(let i=index-1;i>=0;i--){if(data.messages[i].role==="user"){user=data.messages[i];break}}
+ if(!user)return;
+ const lesson=rating>=4?"Resposta avaliada como útil. Preservar clareza, objetividade e abordagem semelhante quando o contexto for equivalente.":"";
+ const correction=rating<4?"Resposta avaliada como pouco útil. Revisar se respondeu diretamente ao pedido e evitar repetir esta abordagem.":"";
+ answer.feedbackSaved=true;answer.feedbackRating=rating;saveData();
+ const localEntry={id:newId(),title:"Experiência avaliada "+rating+"/5",content:"Pedido: "+user.content+"\nResposta: "+answer.content+"\nLição: "+(lesson||correction),source:"Feedback explícito do usuário",at:stamp()};
+ if(rating>=4)data.knowledge.push(localEntry);
+ activity("Feedback de resposta registrado",rating+"/5");saveData();renderMessages();
+ if(connected){
+  try{await api("/api/experiences",{method:"POST",body:JSON.stringify({user_message:user.content,assistant_answer:answer.content,rating,correction,lesson})});}
+  catch(e){activity("Feedback mantido localmente",e.message);saveData()}
+ }
+ $( "chatState" ).textContent=rating>=4?"Obrigado. Vou usar essa avaliação como referência quando for relevante.":"Feedback registrado para revisão, sem transformar a resposta em aprendizado confirmado.";
+}
+function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData();if(connected)syncWorkspace()}
+async function deleteMemory(id){const item=data.memories.find(x=>x.id===id);if(connected&&item&&item.cloudId){try{await api("/api/memories/"+item.cloudId,{method:"DELETE"})}catch(e){activity("Falha ao excluir memória na nuvem",e.message);saveData();return}}data.memories=data.memories.filter(x=>x.id!==id);saveData()}
+function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:newId(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData();if(connected)syncWorkspace()}
+function toggleTask(id){const t=data.tasks.find(x=>x.id===id);if(t){t.done=!t.done;activity(t.done?"Tarefa concluída":"Tarefa reaberta",t.title);saveData();if(connected)syncWorkspace()}}
+async function deleteTask(id){const item=data.tasks.find(x=>x.id===id);if(connected&&item&&item.cloudId){try{await api("/api/tasks/"+item.cloudId,{method:"DELETE"})}catch(e){activity("Falha ao excluir tarefa na nuvem",e.message);saveData();return}}data.tasks=data.tasks.filter(x=>x.id!==id);saveData()}
+function saveKnowledge(){const title=$("knowTitle").value.trim(),content=$("knowContent").value.trim();if(!title||!content)return;data.knowledge.push({id:newId(),title,content,source:$("knowSource").value.trim(),at:stamp()});activity("Conhecimento arquivado",title);$("knowTitle").value=$("knowContent").value=$("knowSource").value="";saveData();if(connected)syncWorkspace()}
+async function deleteKnowledge(id){const item=data.knowledge.find(x=>x.id===id);if(connected&&item&&item.cloudId){try{await api("/api/knowledge/"+item.cloudId,{method:"DELETE"})}catch(e){activity("Falha ao excluir conhecimento na nuvem",e.message);saveData();return}}data.knowledge=data.knowledge.filter(x=>x.id!==id);saveData()}
+function localCommand(msg){
+const original=msg.trim();
+const q=original.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR").replace(/[!?.,]+$/,"").trim();
+const addTask=(title)=>{
+  const clean=title.trim().replace(/^[:\-\s]+/,"");
+  if(!clean)return null;
+  data.tasks.push({id:newId(),title:clean,details:"Criada pela conversa local",done:false,at:stamp()});
+  activity("Tarefa criada pela conversa",clean);saveData();
+  return "Tarefa criada neste aparelho: "+clean;
+};
+const saveMemory=(content)=>{
+  const clean=content.trim().replace(/^[:\-\s]+/,"");
+  if(!clean)return null;
+  data.memories.push({id:newId(),content:clean,category:"nota",at:stamp()});
+  activity("Memoria guardada pela conversa",clean.slice(0,100));saveData();
+  return "Memoria guardada neste aparelho: "+clean;
+};
+// Agente local por etapas: decompõe um objetivo e registra ações locais verificáveis, sem fingir acesso externo.
+ m=q.match(/^(?:planeje e prepare a execucao de|prepare um plano para|estruture a execucao de)\s+(.+)$/);
+ if(m){
+   const goal=m[1].trim();
+   if(!goal)return "Diga qual objetivo devo preparar.";
+   const steps=[
+     "Definir o resultado esperado e como verificar a conclusão",
+     "Reunir informações, arquivos e recursos já disponíveis no aparelho",
+     "Executar a primeira etapa que possa ser feita com as ferramentas locais",
+     "Conferir o resultado e registrar erros ou pendências",
+     "Atualizar o plano com o próximo passo verificável"
+   ];
+   const created=steps.map((step,i)=>{const title=(i+1)+". "+step+" · "+goal;data.tasks.push({id:newId(),title,details:"Etapa de plano local AURION. Não executa ações externas automaticamente.",done:false,at:stamp()});return title;});
+   data.knowledge.push({id:newId(),title:"Plano de execução local: "+goal,content:created.join("\n"),source:"Agente local AURION",at:stamp()});
+   activity("Agente local preparou plano",goal);saveData();
+   return "PLANO PREPARADO NO APARELHO\nObjetivo: "+goal+"\n\n"+created.join("\n")+"\n\nAs etapas foram registradas e estão prontas para acompanhamento. Só considero uma etapa concluída depois de uma ação local verificável.";
+ }
+ m=q.match(/^(?:execute|executar|faca|fazer|realize|realizar)\s+localmente\s*[:\-]?\s*(.+)$/);
+ if(m){
+   const items=m[1].split(/\s*(?:,|;)\s*/).map(x=>x.trim()).filter(Boolean).slice(0,8);
+   if(!items.length)return "Diga quais ações locais devo registrar.";
+   for(const title of items)data.tasks.push({id:newId(),title,details:"Ação solicitada para acompanhamento pelo executor local AURION",done:false,at:stamp()});
+   activity("Agente local registrou ações",items.length+" ação(ões)");saveData();
+   return "AÇÕES REGISTRADAS LOCALMENTE\n"+items.map((x,i)=>(i+1)+". "+x).join("\n")+"\n\nCriei "+items.length+" tarefa(s) no aparelho. Isso não executa ações fora do AURION nem acessa a internet.";
+ }
+ // Executor local de tarefas compostas: transforma um pedido simples em várias ações verificáveis.
+m=q.match(/^(?:organize|organizar|prepare|preparar|crie|criar|monte|montar)\s+(?:minhas?\s+)?tarefas\s+(?:para|de|sobre|com)\s+(.+)$/);
+if(m){
+  const items=m[1].split(/\s*(?:,|;|\be\b)\s*/).map(x=>x.trim()).filter(Boolean).slice(0,8);
+  if(!items.length)return "Diga quais tarefas devo criar.";
+  for(const title of items)data.tasks.push({id:newId(),title,details:"Criada pelo executor local AURION",done:false,at:stamp()});
+  activity("Executor local criou tarefas",items.length+" tarefa(s)");saveData();
+  return "EXECUÇÃO CONCLUÍDA\nCriei "+items.length+" tarefa(s) no aparelho:\n"+items.map((x,i)=>(i+1)+". "+x).join("\n");
+}
+if(/^(?:organize|organizar|priorize|priorizar) minhas tarefas$/.test(q)){
+  data.tasks.sort((a,b)=>String(a.done).localeCompare(String(b.done))||String(a.at||"").localeCompare(String(b.at||"")));
+  activity("Lista de tarefas organizada","Pendentes primeiro");saveData();
+  const open=data.tasks.filter(x=>!x.done);
+  return open.length?"TAREFAS ORGANIZADAS\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\n"):"Não há tarefas abertas para organizar.";
+}
+if(/^(?:limpe|limpar|remova|remover|apague|apagar) tarefas concluidas$/.test(q)){
+  const before=data.tasks.length;data.tasks=data.tasks.filter(x=>!x.done);const removed=before-data.tasks.length;
+  activity("Limpeza local de tarefas concluídas",removed+" removida(s)");saveData();
+  return "Concluído. Removi "+removed+" tarefa(s) já concluída(s) deste aparelho.";
+}
+let m=q.match(/^(?:por favor\s+)?(?:crie|criar|adicione|adicionar|registre|registrar|coloque|colocar|anote|anotar)\s+(?:uma?\s+)?tarefa(?:\s+(?:para|de|sobre))?\s*[:\-]?\s+(.+)$/);
+if(!m)m=q.match(/^(?:nova tarefa)\s*[:\-]?\s*(.+)$/);
+if(m)return addTask(m[1]);
+m=q.match(/^(?:guarde|guardar|salve|salvar|lembre|lembrar)(?:\s+(?:na|em)\s+memoria)?(?:\s+que)?\s*[:\-]?\s+(.+)$/);
+if(m)return saveMemory(m[1]);
+m=q.match(/^(?:arquive|arquivar|salve|salvar|registre|registrar)\s+(?:este\s+|essa\s+|esta\s+)?(?:conhecimento|nota|informacao)\s*[:\-]?\s*(.+)$/);
+if(m){
+  const content=m[1].trim();
+  if(!content)return "Diga qual informacao devo arquivar.";
+  data.knowledge.push({id:newId(),title:content.slice(0,90),content,source:"Conversa local",at:stamp()});
+  activity("Conhecimento arquivado",content.slice(0,100));saveData();
+  return "Informacao arquivada na base de conhecimento local.";
+}
+if(/^(?:ajuda|ajuda nexora|comandos|o que voce faz|como usar)$/i.test(q))
+return "POSSO FAZER LOCALMENTE\n\n• Crie uma tarefa para revisar o projeto\n• Lembre que prefiro respostas diretas\n• Guarde na memoria: ideia importante\n• Liste minhas tarefas\n• Mostre minhas memorias\n• Procure na memoria por palavra-chave\n• Conclua a tarefa revisar o projeto\n• Resuma meus registros\n• Planeje: objetivo\n• Planeje e prepare a execução de um projeto\n• Execute localmente: revisar tarefas, organizar anotações\n\nO agente local organiza dados e tarefas do AURION sem rede. Ele não acessa sites nem controla outros aplicativos sem conexão ou integração específica.";
+if(/^(?:resumo|resumo geral|painel|resuma meus registros|mostre meu resumo)$/i.test(q))
+return "RESUMO DA AURION\n\nMemorias: "+data.memories.length+"\nConhecimentos: "+data.knowledge.length+"\nTarefas abertas: "+data.tasks.filter(x=>!x.done).length+"\nTarefas concluidas: "+data.tasks.filter(x=>x.done).length+"\nMensagens guardadas: "+data.messages.filter(x=>x.role==="user").length+"\n\nOs dados locais permanecem neste aparelho.";
+if(/^(?:listar|mostre|mostrar|quais sao minhas|quais sao as)\s+(?:minhas?\s+)?tarefas$/i.test(q)){
+  const open=data.tasks.filter(x=>!x.done);
+  return open.length?"TAREFAS ABERTAS:\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\n"):"Voce nao tem tarefas abertas.";
+}
+if(/^(?:listar|mostre|mostrar|minhas)\s+memorias$/i.test(q))
+return data.memories.length?"MEMORIAS:\n"+data.memories.map((x,i)=>(i+1)+". ["+x.category+"] "+x.content).join("\n"):"Ainda nao ha memorias salvas.";
+m=q.match(/^(?:buscar|busque|procure|procurar|pesquisar|pesquise)\s+(?:na\s+)?(?:minha\s+)?(?:memoria|memorias|conhecimento|registros)?\s*(?:por|sobre|[:\-])\s*(.+)$/);
+if(m){
+  const term=m[1].trim(),found=[...data.memories.map(x=>({kind:"Memoria",title:x.category,body:x.content})),...data.knowledge.map(x=>({kind:"Conhecimento",title:x.title,body:x.content+" "+(x.source||"")})),...data.tasks.map(x=>({kind:"Tarefa",title:x.title,body:x.details}))].filter(x=>(x.title+" "+x.body).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR").includes(term));
+  return found.length?"ENCONTREI "+found.length+" REGISTRO(S):\n\n"+found.slice(0,20).map((x,i)=>(i+1)+". "+x.kind+": "+x.title+"\n"+x.body.slice(0,240)).join("\n\n"):"Nao encontrei esse termo nos registros locais.";
+}
+m=q.match(/^(?:conclua|concluir|finalize|finalizar|marque como concluida)\s+(?:a\s+)?tarefa\s*[:\-]?\s*(.+)$/);
+if(m){
+  const key=m[1].trim(),t=data.tasks.find(x=>!x.done&&x.title.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR").includes(key));
+  if(!t)return "Nao encontrei uma tarefa aberta com esse titulo.";
+  t.done=true;activity("Tarefa concluida pela conversa",t.title);saveData();return "Tarefa concluida: "+t.title;
+}
+m=q.match(/^(?:planeje|planejar|plano)\s*[:\-]?\s*(.+)$/);
+if(m){
+  const goal=m[1].trim(),plan="PLANO INICIAL LOCAL\nObjetivo: "+goal+"\n\n1. Definir o resultado concreto e como medir a conclusao.\n2. Reunir recursos, informacoes e limitacoes.\n3. Executar a menor primeira etapa verificavel.\n4. Conferir o resultado e corrigir falhas.\n5. Registrar o que funcionou e definir o proximo passo.\n\nEste roteiro foi criado localmente, sem fingir que houve consulta a um modelo remoto.";
+  data.knowledge.push({id:newId(),title:"Plano: "+goal,content:plan,source:"Planejamento local",at:stamp()});activity("Plano criado",goal);saveData();
+  return plan+"\n\nO plano foi arquivado na base de conhecimento.";
+}
+return null;
+}
+async function api(path,opts={}){const base=config.url.replace(/\/+$/,"");const headers={"Content-Type":"application/json",...(config.token?{"Authorization":"Bearer "+config.token}:{}) ,...(opts.headers||{})};const r=await fetch(base+path,{...opts,headers});const body=await r.json().catch(()=>({detail:"Resposta inválida do servidor"}));if(!r.ok)throw Error(body.detail||"Falha na comunicação com o servidor ("+r.status+")");return body}
+async function connectServer(){
+const url=$("serverUrl").value.trim().replace(/\/+$/,""),token=$("accessToken").value.trim();
+if(!/^https:\/\/[^/]+$/i.test(url)){setSettingsStatus("Informe um endereço HTTPS válido, sem caminho adicional.",false);return}
+if(!token){setSettingsStatus("Informe o token privado configurado no servidor.",false);return}
+const btn=document.querySelector("#settings .btn.primary");btn.disabled=true;btn.textContent="Testando conexão...";
+try{const h=await fetch(url+"/api/health").then(r=>{if(!r.ok)throw Error("Servidor respondeu HTTP "+r.status);return r.json()});if(h.status!=="online")throw Error("O servidor não informou estado online.");const prev=config;config={url,token};try{await api("/api/overview")}catch(e){config=prev;throw e}saveConfig();connected=true;apiCaps=await api("/api/capabilities").catch(()=>null);setConnection(true);setSettingsStatus("Conexão e token validados. A IA e a retenção permanente ainda dependem das configurações do servidor.",true);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · chave de IA configurada":"Núcleo conectado · IA aguarda chave no servidor";$("lastCheck").textContent="VERIFICADO AGORA";activity("Núcleo conectado",url);saveData();renderCapabilities();await loadCorrectionMemory();await syncWorkspace()}catch(e){connected=false;setConnection(false);setSettingsStatus("Não foi possível conectar: "+e.message,false)}finally{btn.disabled=false;btn.textContent="Testar e conectar"}
+}
+async function syncWorkspace(){
+if(!connected||syncingWorkspace)return;
+syncingWorkspace=true;
+try{
+let [cloudMemories,cloudKnowledge,cloudTasks]=await Promise.all([api("/api/memories"),api("/api/knowledge"),api("/api/tasks")]);
+const memoryKey=x=>(x.category||"geral").trim().toLocaleLowerCase("pt-BR")+"|"+(x.content||"").trim().toLocaleLowerCase("pt-BR");
+const knowledgeKey=x=>(x.title||"").trim().toLocaleLowerCase("pt-BR")+"|"+(x.content||"").trim().toLocaleLowerCase("pt-BR");
+const taskKey=x=>(x.title||"").trim().toLocaleLowerCase("pt-BR")+"|"+(x.details||"").trim().toLocaleLowerCase("pt-BR");
+for(const m of data.memories){if(!cloudMemories.some(x=>memoryKey(x)===memoryKey(m)))await api("/api/memories",{method:"POST",body:JSON.stringify({content:m.content,category:m.category||"geral"})});}
+for(const k of data.knowledge){if(!cloudKnowledge.some(x=>knowledgeKey(x)===knowledgeKey(k)))await api("/api/knowledge",{method:"POST",body:JSON.stringify({title:k.title,content:k.content,source:k.source||""})});}
+for(const t of data.tasks){const match=cloudTasks.find(x=>taskKey(x)===taskKey(t));if(!match)await api("/api/tasks",{method:"POST",body:JSON.stringify({title:t.title,details:t.details||""})});else{const desired=t.done?"concluída":"pendente";if(match.status!==desired)await api("/api/tasks/"+match.id,{method:"PATCH",body:JSON.stringify({status:desired})});}}
+[cloudMemories,cloudKnowledge,cloudTasks]=await Promise.all([api("/api/memories"),api("/api/knowledge"),api("/api/tasks")]);
+for(const m of data.memories){const remote=cloudMemories.find(x=>memoryKey(x)===memoryKey(m));if(remote)m.cloudId=remote.id;}
+for(const k of data.knowledge){const remote=cloudKnowledge.find(x=>knowledgeKey(x)===knowledgeKey(k));if(remote)k.cloudId=remote.id;}
+for(const t of data.tasks){const remote=cloudTasks.find(x=>taskKey(x)===taskKey(t));if(remote)t.cloudId=remote.id;}
+const localMemoryKeys=new Set(data.memories.map(memoryKey));for(const x of cloudMemories){if(!localMemoryKeys.has(memoryKey(x)))data.memories.push({id:"cloud-memory-"+x.id,cloudId:x.id,content:x.content,category:x.category,at:x.created_at||""});}
+const localKnowledgeKeys=new Set(data.knowledge.map(knowledgeKey));for(const x of cloudKnowledge){if(!localKnowledgeKeys.has(knowledgeKey(x)))data.knowledge.push({id:"cloud-knowledge-"+x.id,cloudId:x.id,title:x.title,content:x.content,source:x.source,at:x.created_at||""});}
+const localTaskKeys=new Set(data.tasks.map(taskKey));for(const x of cloudTasks){if(!localTaskKeys.has(taskKey(x)))data.tasks.push({id:"cloud-task-"+x.id,cloudId:x.id,title:x.title,details:x.details,done:x.status==="concluída",at:x.created_at||""});}
+localStorage.setItem(KEY,JSON.stringify(data));renderAll();
+$("chatState").textContent=apiCaps&&apiCaps.persistent_storage&&apiCaps.persistent_storage.configured?"Núcleo conectado · memória persistente":"Núcleo conectado · nuvem temporária";
+}catch(e){$("chatState").textContent="Núcleo conectado · falha ao sincronizar memória";activity("Falha na sincronização",e.message);localStorage.setItem(KEY,JSON.stringify(data));renderAll();}
+finally{syncingWorkspace=false;}
+}
+async function loadCorrectionMemory(){
+ const box=$("correctionMemoryList");if(!box)return;
+ if(!connected){box.innerHTML='<div class="item">Conecte ao núcleo para consultar a memória técnica.</div>';return}
+ try{
+  const rows=await api("/api/corrections");
+  box.innerHTML=rows.length?rows.map(x=>'<div class="item"><b>'+escapeHtml(x.error_type)+' · '+escapeHtml(x.validation_status)+'</b><p><b>Erro:</b> '+escapeHtml(x.error_signature)+'</p><p><b>Causa:</b> '+escapeHtml(x.root_cause)+'</p><p><b>Correção:</b> '+escapeHtml(x.resolution)+'</p><small>'+escapeHtml(x.test_evidence||"Sem evidência registrada")+'</small></div>').join(""):'<div class="empty">Nenhuma experiência técnica registrada ainda.</div>';
+ }catch(e){box.innerHTML='<div class="item">Não foi possível carregar a memória: '+escapeHtml(e.message)+'</div>'}
+}
+async function saveCorrectionMemory(){
+ const error_signature=$("correctionSignature").value.trim(),root_cause=$("correctionCause").value.trim(),resolution=$("correctionResolution").value.trim();
+ if(error_signature.length<4||root_cause.length<4||resolution.length<4){setSettingsStatus("Preencha erro, causa-raiz e correção.",false);return}
+ try{
+  const result=await api("/api/corrections",{method:"POST",body:JSON.stringify({error_signature,error_type:"manual",root_cause,resolution,test_evidence:$("correctionEvidence").value.trim(),tests_passed:$("correctionTestsPassed").checked})});
+  $("correctionSignature").value=$("correctionCause").value=$("correctionResolution").value=$("correctionEvidence").value="";
+  $("correctionTestsPassed").checked=false;
+  setSettingsStatus(result.validation_status==="verified"?"Experiência salva como verificada com evidência informada.":"Experiência salva como pendente de validação.",true);
+  await loadCorrectionMemory();
+ }catch(e){setSettingsStatus("Falha ao salvar experiência: "+e.message,false)}
+}
+function setSettingsStatus(msg,ok){$("settingsStatus").textContent=msg;$("settingsStatus").className="statusbox "+(ok?"good":"warn")}
+function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está aberto em modo local. Memórias e tarefas podem ser guardadas neste aparelho. Para respostas locais, ative o modelo salvo. Pesquisa na web e locais próximos usam internet; não exigem conectar o motor de conversa.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
+function disconnectServer(){config={url:config.url||"https://nexora-ai-core.onrender.com",token:""};saveConfig();connected=false;apiCaps=null;setConnection(false);$("chatState").textContent="Modo local · IA ainda não conectada";$("settingsStatus").textContent="Motor remoto desconectado. Pesquisa pública continua disponível quando houver internet.";renderCapabilities()}
+function renderCapabilities(){
+const c=apiCaps;
+if(!c){$("capabilityList").innerHTML='<div class="item"><b>Interface e organização local</b><p>Disponíveis neste aparelho.</p></div><div class="item"><b>Modelo de IA local</b><p>Funciona sem servidor depois que o modelo é baixado. Pesquisa web e locais próximos precisam de internet.</p></div><div class="item"><b>Memória na nuvem</b><p>Ainda depende de um banco de dados persistente conectado ao servidor. Seus registros locais ficam neste aparelho.</p></div>';return}
+const rows=[["Conversa IA",c.chat],["Pesquisa web",c.web_research],["Locais próximos por GPS",c.nearby_search],["Memória sincronizada",c.memory],["Entrada por voz",c.voice_input],["Fala automática",c.voice_output],["Análise de imagem",c.image_input],["Planejamento",c.planning],["Armazenamento persistente",c.persistent_storage]];
+$("capabilityList").innerHTML=rows.map(([name,v])=>{
+let status=(v&&v.configured)?"Configurado":(v&&v.implemented)?"Implementado, aguardando configuração":"Não disponível";
+if(name==="Armazenamento persistente"&&v&&!v.configured)status="Não configurado: banco temporário";
+return '<div class="item"><b>'+name+'</b><p>'+status+'</p></div>';
+}).join("");
+}
+async function activateFullMind(fromCommand=false){
+show("chat");setMode("chat");
+const report={localModel:window.AurionNative?localModelState():"não disponível nesta interface",voiceInput:Boolean((window.AurionNative&&window.AurionNative.startVoiceRecognition)||window.SpeechRecognition||window.webkitSpeechRecognition),voiceOutput:Boolean((window.AurionNative&&window.AurionNative.speakText)||("speechSynthesis"in window)),imageInput:Boolean($("imageFile")),internet:Boolean(navigator.onLine),localStorage:Boolean(window.localStorage),memories:data.memories.length,knowledge:data.knowledge.length,openTasks:data.tasks.filter(x=>!x.done).length,server:"não conectado",capabilities:null};
+const pending={role:"assistant",content:"Executando diagnóstico das capacidades disponíveis…",at:stamp()};
+if(!fromCommand)data.messages.push({role:"user",content:"AURION, ATIVAR MENTE COMPLETA",at:stamp()});
+data.messages.push(pending);renderMessages();
+if(connected){
+ try{const h=await api("/api/health");report.server=h.status==="online"?"online":"indisponível";report.capabilities=await api("/api/capabilities");}
+ catch(e){report.server="falha na verificação: "+e.message;}
+}
+const lines=[
+"DIAGNÓSTICO DA AURION",
+"Modelo local: "+report.localModel,
+"Servidor: "+report.server,
+"Internet: "+(report.internet?"disponível":"offline"),
+"Entrada por voz: "+(report.voiceInput?"suportada pelo navegador":"não suportada"),
+"Voz de saída: "+(report.voiceOutput?"suportada pelo navegador":"não suportada"),
+"Entrada de imagem: "+(report.imageInput?"interface disponível":"indisponível"),
+"Memória local: "+report.memories+" registro(s)",
+"Base de conhecimento: "+report.knowledge+" registro(s)",
+"Tarefas abertas: "+report.openTasks,
+""
+];
+if(report.capabilities){
+ const c=report.capabilities;
+ const rows=[["Conversa IA",c.chat],["Pesquisa web",c.web_research],["Memória técnica",c.correction_memory],["Planejamento",c.planning],["Ferramentas",c.agent_tools],["Armazenamento persistente",c.persistent_storage]];
+ lines.push("RECURSOS DO SERVIDOR:");
+ for(const [name,v] of rows)lines.push(name+": "+(v&&v.configured?"configurado":v&&v.implemented?"implementado, aguardando configuração":"indisponível"));
+}else{
+ lines.push("RECURSOS REMOTOS: conecte o servidor nas configurações para verificar IA remota, pesquisa e sincronização.");
+}
+lines.push("","Limite importante: este diagnóstico verifica recursos reais. Não ativa consciência, não treina o modelo sozinho e não altera código ou contas externas.");
+pending.content=lines.join("\n");pending.at=stamp();lastAssistantText=pending.content;activity("Diagnóstico completo executado","Verificação local e do servidor");saveData();renderMessages();
+}
+async function sendMessage(){
+const field=$("message"),msg=field.value.trim();if(!msg&&!pendingImageData)return;
+field.value="";const imageData=pendingImageData;pendingImageData=null;$("attachPreview").textContent="";
+const displayText=msg||(imageData?"Analise a imagem anexada.":"");
+data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada]":""),at:stamp(),source:"text"});saveData();renderMessages();
+if(!imageData&&/^(?:nexora[, ]+)?ativar mente completa[.! ]*$/i.test(msg)){activateFullMind(true);return;}
+// Prioridade local: a conversa principal usa o modelo no aparelho, sem API comercial.
+const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
+const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()==="ready"||localModelState()==="downloaded"));
+// No modo offline, execute ferramentas locais antes de consultar o modelo do aparelho.
+const command=(!modelReady&&msg)?localCommand(msg):null;
+if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();if(autoSpeakEnabled)speakText(command);return}
+if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
+ const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
+ data.messages.push(pending);saveData();renderMessages();
+ const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
+ const memoryContext=[
+  "MEMÓRIAS RELEVANTES:\n"+data.memories.slice(-12).map(x=>"- "+x.content).join("\n"),
+  "BASE DE CONHECIMENTO:\n"+data.knowledge.slice(-8).map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\n"),
+  "TAREFAS EM ABERTO:\n"+data.tasks.filter(x=>!x.done).slice(0,12).map(x=>"- "+x.title).join("\n")
+ ].join("\n\n");
+ const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
+ window.AurionNative.sendLocalMessage(msg,history);return;
+}
+if(activeMode==="research"){
+ const pending={role:"assistant",content:"Pesquisando na web…",at:stamp()};data.messages.push(pending);saveData();renderMessages();
+ try{
+  const payload={query:msg};
+  if(useLocationForNextResearch&&data.lastLocation){payload.latitude=data.lastLocation.latitude;payload.longitude=data.lastLocation.longitude;}
+  useLocationForNextResearch=false;
+  const r=await api("/api/research/public",{method:"POST",body:JSON.stringify(payload)});
+  pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url+(x.snippet?"\n"+x.snippet:"")).join("\n\n"):"\n\nO mecanismo não retornou links de fontes.")+(r.attribution?"\n\n"+r.attribution+" · "+r.attribution_url:"");
+ }catch(e){useLocationForNextResearch=false;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
+ pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);return;
+}
+if(!connected){const answer="Nenhum servidor remoto está conectado. Para conversar sem configurar servidor, ative a IA local em Configurar. Pesquisa na internet e sincronização em nuvem continuam sendo recursos opcionais.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
+if(apiCaps&&activeMode==="chat"&&apiCaps.chat&&!apiCaps.chat.configured){const answer="O servidor está conectado, mas a chave do modelo ainda não foi configurada no servidor. A chave deve permanecer nas variáveis privadas da hospedagem, nunca no aplicativo.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
+const pending={role:"assistant",content:activeMode==="research"?"Pesquisando fontes na web…":activeMode==="think"?"Analisando objetivo e avaliando o plano…":"Consultando o modelo de IA…",at:stamp()};data.messages.push(pending);renderMessages();
+try{
+let r;
+if(activeMode==="research"){
+r=await api("/api/research/public",{method:"POST",body:JSON.stringify({query:msg})});
+pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((s,i)=>(i+1)+". "+s.title+"\n"+s.url).join("\n\n"):"\n\nO provedor não retornou links de fontes.");
+}else if(activeMode==="think"){
+r=await api("/api/think",{method:"POST",body:JSON.stringify({goal:msg})});
+pending.content="ANÁLISE DO AURION\n\nObjetivo: "+(r.goal||msg)+"\n\nEntendimento: "+(r.understanding||"")+
+"\n\nPLANO\n"+(Array.isArray(r.plan)?r.plan.map((p,i)=>(i+1)+". "+(p.action||p.step||"Etapa")+(p.purpose?"\n   Finalidade: "+p.purpose:"")).join("\n"):"Não foi retornada uma lista de etapas.")+
+"\n\nDecisão: "+(r.decision||"Revisar o plano.")+
+"\n\nAvaliação: "+(r.evaluation&&r.evaluation.quality||"não informada")+
+"\n\nPróxima ação segura: "+(r.next_action||r.evaluation&&r.evaluation.safe_next_action||"Revisar as dependências.")+
+"\n\nEstado: plano gerado, nenhuma ação externa executada.";
+}else{
+r=await api("/api/chat",{method:"POST",body:JSON.stringify({message:msg||"Analise a imagem anexada.",image_data_url:imageData})});
+pending.content=r.answer||"O núcleo não retornou texto.";
+}
+pending.at=stamp();lastAssistantText=pending.content;
+}catch(e){pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;}
+saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);
+}
+function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aurion-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
+function importData(){$("importFile").click()}
+function handleImport(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result),d=x.data||x;if(!Array.isArray(d.memories)||!Array.isArray(d.tasks))throw Error("Arquivo não reconhecido");data={memories:d.memories||[],tasks:d.tasks||[],knowledge:d.knowledge||[],messages:d.messages||[],activity:d.activity||[]};saveData();setSettingsStatus("Dados importados neste aparelho.",true)}catch(err){setSettingsStatus("Falha ao importar: "+err.message,false)}};reader.readAsText(f);e.target.value=""}
+$("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
+const autoSpeakButton=$("autoSpeakButton");if(autoSpeakButton)autoSpeakButton.textContent=autoSpeakEnabled?"🔊 Voz automática: ligada":"🔇 Voz automática: desligada";
+if(config.url&&config.token){$("serverUrl").value=config.url;$("accessToken").value=config.token;fetch(config.url+"/api/health").then(r=>r.json()).then(async h=>{if(h.status==="online"){try{await api("/api/overview");setConnection(true);apiCaps=await api("/api/capabilities").catch(()=>null);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · IA configurada":"Núcleo conectado · IA aguarda configuração";$("lastCheck").textContent="VERIFICADO";renderCapabilities();await syncWorkspace()}catch{setConnection(false)}}}).catch(()=>setConnection(false))}
+renderAll();renderCapabilities();refreshLocalModel();if(window.AurionNative){try{window.AurionNative.prepareLocalModel()}catch(e){}}
+if(config.url&&!config.token){fetch(config.url.replace(/\/+$/,"")+"/api/health").then(r=>r.json()).then(h=>{if(h.status==="online"){$("connectionPill").textContent="● servidor online";$("homeStatus").textContent=h.model_key_configured?"Servidor AURION online. Informe seu token privado em Configurar para sincronizar os dados.":"Servidor AURION online. O modelo de IA ainda aguarda configuração no servidor; o modo local já está disponível.";$("homeStatus").className="statusbox warn";$("lastCheck").textContent="SERVIDOR VERIFICADO";}}).catch(()=>{});}
+if("serviceWorker"in navigator&&location.protocol==="https:")navigator.serviceWorker.register("/sw.js").catch(()=>{});
+</script></body></html>

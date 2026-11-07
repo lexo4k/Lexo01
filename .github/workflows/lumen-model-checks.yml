@@ -1,0 +1,50 @@
+name: AURION model checks
+on:
+  push:
+    branches: [lumen-ai-core]
+    paths:
+      - "lumen-model/**"
+      - ".github/workflows/lumen-model-checks.yml"
+  pull_request:
+    paths:
+      - "lumen-model/**"
+      - ".github/workflows/lumen-model-checks.yml"
+  workflow_dispatch:
+jobs:
+  train-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU PyTorch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch
+      - name: Test tokenizer and Transformer
+        working-directory: lumen-model
+        run: python -m unittest -v test_model.py
+      - name: Train LÚMEN-1 from scratch
+        working-directory: lumen-model
+        run: |
+          python train.py --data corpus --out artifacts/lumen-1-smoke.pt --steps 50 --batch 2 --context 64 --width 64 --layers 2 --heads 4
+      - name: Verify checkpoint resume
+        working-directory: lumen-model
+        run: |
+          python train.py --data corpus --out artifacts/lumen-1-smoke.pt --steps 55 --batch 2 --context 64 --width 64 --layers 2 --heads 4 --resume
+          python -c "import torch; c=torch.load('artifacts/lumen-1-smoke.pt', map_location='cpu', weights_only=False); assert c['step'] == 55, c.get('step'); print('resume_ok step=', c['step'])"
+      - name: Evaluate on independent held-out text
+        working-directory: lumen-model
+        run: python evaluate.py artifacts/lumen-1-smoke.pt --data evaluation/heldout-pt-br.txt
+      - name: Verify text generation
+        working-directory: lumen-model
+        run: python infer.py --model artifacts/lumen-1-smoke.pt --prompt "LÚMEN:" --tokens 24
+      - name: Preserve trained smoke-test checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumen-1-smoke-checkpoint
+          path: lumen-model/artifacts/lumen-1-smoke.pt
+          if-no-files-found: error
+          retention-days: 14
