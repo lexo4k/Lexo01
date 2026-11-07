@@ -5,6 +5,10 @@ Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web c
 ## Capacidades implementadas
 
 - Conversação com modelo externo compatível com a API OpenAI.
+- Interface Android e web com modos separados de conversa, pesquisa web e planejamento cognitivo.
+- Entrada de voz quando o navegador oferece reconhecimento de fala; leitura das respostas em voz alta.
+- Análise de imagens JPEG, PNG e WebP com envio ao modelo configurado.
+- Sincronização idempotente de memórias, tarefas e conhecimentos locais com a API autenticada, evitando duplicações por conteúdo.
 - Memória pessoal explícita e base de conhecimento persistidas em SQLite.
 - Histórico de conversas, tarefas e diário de atividade.
 - Ciclo cognitivo limitado: compreensão do objetivo, planejamento estruturado e avaliação independente do plano.
@@ -94,16 +98,16 @@ O deploy não pode ser concluído por este repositório sozinho: é necessário 
 
 A interface entregue nesta branch é um PWA instalável pelo navegador Android depois que o servidor estiver publicado em HTTPS: abra o endereço do serviço no Chrome e use **Instalar app** ou **Adicionar à tela inicial**, conforme a opção exibida pelo navegador.
 
-Agora existe também o módulo Android próprio em `lumen-android/`. O APK inclui uma cópia local da interface completa: início, conversa, memórias, tarefas, base de conhecimento, configurações e importação/exportação JSON. A organização local funciona sem servidor e os registros ficam no armazenamento do aplicativo. A conversa aberta com um modelo de IA, pesquisa web e sincronização exigem servidor autenticado e chave de provedor configurada no servidor. O endereço do servidor publicado nesta branch é preenchido automaticamente nas configurações; o token privado ainda precisa ser informado no aparelho. O workflow dedicado `LÚMEN Android APK` compila somente o módulo `:lumen` e publica o artefato `Lumen-AI-debug` por 14 dias. Abra a aba Actions do GitHub, selecione a execução mais recente desse workflow, aguarde `success` e baixe o artefato `Lumen-AI-debug`. O workflow antigo `Build Android APKs` continua separado para os demais aplicativos do repositório. O APK não contém um modelo de IA offline.
+Agora existe também o módulo Android próprio em `lumen-android/`. O APK inclui uma cópia local da interface completa: início, conversa, pesquisa web, planejamento, entrada/saída de voz, análise de imagem, memórias, tarefas, base de conhecimento, configurações e importação/exportação JSON. A permissão de microfone só é solicitada quando a entrada de voz é acionada e o Android WebView oferece captura de áudio. A organização local funciona sem servidor e os registros ficam no armazenamento do aplicativo. A conversa aberta com um modelo de IA, pesquisa web e sincronização exigem servidor autenticado e chave de provedor configurada no servidor. O endereço do servidor publicado nesta branch é preenchido automaticamente nas configurações; o token privado ainda precisa ser informado no aparelho. O workflow dedicado `LÚMEN Android APK` compila somente o módulo `:lumen` e publica o artefato `Lumen-AI-debug` por 14 dias. Abra a aba Actions do GitHub, selecione a execução mais recente desse workflow, aguarde `success` e baixe o artefato `Lumen-AI-debug`. O workflow antigo `Build Android APKs` continua separado para os demais aplicativos do repositório. O APK não contém um modelo de IA offline.
 
 ## Estado real da entrega
 
 - Código e interface PWA: presentes nesta branch.
-- Testes automatizados do núcleo: aprovados na execução mais recente anterior à última correção de interface (run 42317720108); a correção atual está aguardando nova execução.
+- Testes automatizados do núcleo: workflow `LÚMEN Core Tests` executado a cada alteração relevante da branch.
 - Serviço público Render: ainda não criado/publicado por esta entrega.
 - IA e pesquisa web: implementadas, mas só ficam operacionais após configurar a chave do provedor no servidor.
 - Memória durável hospedada: depende de disco persistente ou banco gerenciado; o plano gratuito com disco efêmero não garante retenção.
-- APK próprio do LÚMEN: módulo Android criado; última compilação Android confirmada: workflow `LÚMEN Android APK`, run 42317475383, concluído com sucesso. A última alteração foi somente na interface web, então não altera o binário Android.
+- APK próprio do LÚMEN: workflow `LÚMEN Android APK` executa os testes de regressão antes de compilar `assembleDebug` e publicar `Lumen-AI-debug`.
 - Anúncios: não integrados; exigem conta de editor e aprovação em uma rede de anúncios.
 
 ## Estrutura
