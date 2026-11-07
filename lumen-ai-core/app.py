@@ -343,9 +343,9 @@ async def research_public(item: ResearchIn):
         raise HTTPException(503, "Pesquisa pública temporariamente indisponível. Tente novamente mais tarde.") from exc
     with db() as con:
         stamp = now()
-        source_text = "\\n".join(f'{x["title"]}: {x["url"]}\\n{x["snippet"]}' for x in sources)
+        source_text = "\n".join(f'{x["title"]}: {x["url"]}\n{x["snippet"]}' for x in sources)
         con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)", (item.query, stamp))
-        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)", ("Resultados da pesquisa pública:\\n" + source_text, stamp))
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)", ("Resultados da pesquisa pública:\n" + source_text, stamp))
         con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Pesquisa pública concluída", item.query[:180], stamp))
     return {"query": item.query, "answer": "Encontrei páginas relacionadas. Os títulos e trechos são fornecidos pelo mecanismo de busca e precisam ser conferidos nas fontes.", "sources": sources, "engine": "DuckDuckGo HTML", "web_search_used": True, "synthesis_by_own_model": False}
 
@@ -554,9 +554,9 @@ async def chat(item: ChatIn):
             raise HTTPException(503, "Modelo próprio selecionado, mas NEXORA_MODEL_TOKEN não foi configurado.")
         prompt_parts = ["Você é NEXORA, um modelo experimental próprio. Responda com honestidade e não invente capacidades."]
         if memories:
-            prompt_parts.append("MEMÓRIAS:\\n" + "\\n".join("- " + x for x in memories))
+            prompt_parts.append("MEMÓRIAS:\n" + "\n".join("- " + x for x in memories))
         if facts:
-            prompt_parts.append("CONHECIMENTO ARQUIVADO:\\n" + "\\n".join("- " + x for x in facts))
+            prompt_parts.append("CONHECIMENTO ARQUIVADO:\n" + "\n".join("- " + x for x in facts))
         for turn in history[-8:]:
             prompt_parts.append(("Usuário: " if turn["role"] == "user" else "NEXORA: ") + turn["content"])
         prompt_parts.append("Usuário: " + (item.message or "Analise a imagem enviada."))
@@ -567,7 +567,7 @@ async def chat(item: ChatIn):
                 response = await client.post(
                     own_model_url + "/generate",
                     headers={"X-Model-Token": own_model_token},
-                    json={"prompt": "\\n\\n".join(prompt_parts), "max_new_tokens": 180}
+                    json={"prompt": "\n\n".join(prompt_parts), "max_new_tokens": 180}
                 )
                 response.raise_for_status()
                 own_result = response.json()
