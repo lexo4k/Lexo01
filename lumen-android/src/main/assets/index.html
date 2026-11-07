@@ -2,9 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#07111f"><meta name="description" content="NEXORA, seu espaço pessoal de inteligência, memória e organização.">
+<meta name="theme-color" content="#07111f"><meta name="description" content="LÚMEN, seu espaço pessoal de inteligência, memória e organização.">
 <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml">
-<title>NEXORA AI</title>
+<title>LÚMEN AI</title>
 <style>
 :root{color-scheme:dark;--bg:#07111f;--panel:#101e30;--panel2:#14263b;--line:#263d56;--text:#edf7ff;--muted:#91a8bc;--cyan:#72e4ef;--mint:#8ce8c2;--gold:#f2cf83;--danger:#ff9b9b}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:15px Inter,system-ui,-apple-system,Segoe UI,sans-serif}body{background:radial-gradient(ellipse at 50% -15%,#16405a 0,transparent 46%),var(--bg);padding-bottom:calc(82px + env(safe-area-inset-bottom))}
@@ -29,7 +29,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 .hidden{display:none!important}.divider{height:1px;background:var(--line);margin:15px 0}.tag{font-size:10px;padding:5px 8px;border:1px solid var(--line);border-radius:20px;color:var(--muted)}
 @media(min-width:620px){main{padding:24px}.hero{padding:30px}.hero h2{font-size:31px}.quick{grid-template-columns:repeat(4,1fr)}.chatbox{min-height:650px}.messages{max-height:540px}.composer{bottom:0}}
 
-/* NEXORA visual identity: animated core and cinematic command deck */
+/* LÚMEN visual identity: animated core and cinematic command deck */
 .hero{min-height:360px;padding:26px 22px 22px;background:radial-gradient(circle at 50% 40%,#164e68 0,#102d43 30%,#0a1b2c 72%);border-color:#32728b;display:flex;flex-direction:column;align-items:center;text-align:center}
 .hero:after{width:260px;height:260px;right:calc(50% - 130px);top:38px;border-color:#75eaff24;box-shadow:0 0 0 18px #62ddeb0b,0 0 0 38px #62ddeb08,0 0 55px #35cbe51a}
 .hero .eyebrow{position:relative;z-index:1;letter-spacing:.24em}
@@ -51,10 +51,10 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 @media(min-width:620px){.hero{min-height:410px;padding:30px}.core-visual{width:180px;height:180px}.core-visual .core{width:76px;height:76px;font-size:36px}}
 </style></head>
 <body><div class="app">
-<header><div class="brand"><div class="orb">N</div><div><strong>NEXORA AI</strong><small>NÚCLEO DE INTELIGÊNCIA</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
+<header><div class="brand"><div class="orb">N</div><div><strong>LÚMEN AI</strong><small>NÚCLEO DE INTELIGÊNCIA</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
 <main>
 <section id="home" class="screen active">
-<div class="hero"><div class="eyebrow">NÚCLEO DE INTELIGÊNCIA PESSOAL</div><div class="core-visual" aria-label="Núcleo NEXORA"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">N</div></div><h2>Seu núcleo de inteligência, reunido em um só lugar.</h2><p>Conversa local, memória, voz, imagens, pesquisa e ferramentas. O cérebro local precisa ser baixado e ativado antes da primeira conversa inteligente.</p><div class="hero-foot"><button class="btn primary" onclick="prepareBrain()">🧠 Preparar IA no aparelho</button><button class="btn ghost" onclick="show('chat')">✦ Abrir conversa</button><button class="btn ghost" onclick="activateFullMind()">◎ Diagnosticar módulos</button></div></div>
+<div class="hero"><div class="eyebrow">NÚCLEO DE INTELIGÊNCIA PESSOAL</div><div class="core-visual" aria-label="Núcleo LÚMEN"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">N</div></div><h2>Seu núcleo de inteligência, reunido em um só lugar.</h2><p>Conversa local, memória, voz, imagens, pesquisa e ferramentas. O cérebro local precisa ser baixado e ativado antes da primeira conversa inteligente.</p><div class="hero-foot"><button class="btn primary" onclick="prepareBrain()">🧠 Preparar IA no aparelho</button><button class="btn ghost" onclick="show('chat')">✦ Abrir conversa</button><button class="btn ghost" onclick="activateFullMind()">◎ Diagnosticar módulos</button></div></div>
 <div class="grid"><div class="metric"><span>Memórias</span><b id="memoryCount">0</b></div><div class="metric"><span>Planos / tarefas abertas</span><b id="taskCount">0</b></div><div class="metric"><span>Mensagens salvas</span><b id="chatCount">0</b></div></div>
 <div class="section-title"><h3>Centro de capacidades</h3><span>ACESSO DIRETO</span></div>
 <div class="quick">
@@ -67,7 +67,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <button onclick="show('chat');setMode('chat');startVoiceInput()"><span class="glyph">🎙</span><span><b>Interface por voz</b><small>Falar com o sistema</small></span></button>
 <button onclick="show('settings')"><span class="glyph">⌘</span><span><b>Conexões e ferramentas</b><small>Ver integrações disponíveis</small></span></button>
 </div>
-<div class="section-title"><h3>Arquitetura NEXORA</h3><span>ESTADO HONESTO</span></div>
+<div class="section-title"><h3>Arquitetura LÚMEN</h3><span>ESTADO HONESTO</span></div>
 <div class="panel"><h3>🧠 Modelo próprio</h3><p class="muted">O projeto já contém uma arquitetura Transformer e um servidor de inferência próprios. Para se tornar um modelo conversacional útil, ainda precisa de corpus amplo e licenciado, treinamento, checkpoint válido e avaliação independente.</p><div class="statusbox warn">Em desenvolvimento · não declarar inteligência própria pronta até o checkpoint passar nos testes de qualidade.</div></div>
 <div class="panel"><h3>♻ Memória e aprendizagem contextual</h3><p class="muted">Memórias, tarefas e conhecimento podem ser armazenados localmente. A sincronização permanente depende de servidor autenticado e armazenamento persistente configurado.</p><button class="btn" onclick="show('memory')">Abrir memória</button></div>
 <div class="panel"><h3>⚙ Planejamento e ferramentas</h3><p class="muted">O planejador local pode estruturar objetivos e indicar próximos passos. Ações externas exigem integração, permissão e confirmação apropriadas. Planejar não significa executar.</p><button class="btn" onclick="show('chat');setMode('think')">Testar planejamento</button></div>
@@ -77,9 +77,9 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <div class="section-title"><h3>Atividade recente</h3><span>REGISTRO DO SISTEMA</span></div><div id="recentList" class="list"><div class="empty">Sua atividade aparecerá aqui.</div></div>
 </section>
 <section id="chat" class="screen"><div class="chatbox">
-<div class="chat-head"><div class="mini-orb">N</div><div><b>NEXORA · Assistente</b><small id="chatState">Modo local · IA ainda não conectada</small></div><span class="tag" style="margin-left:auto">PRIVADO</span></div>
-<div id="messages" class="messages"><div class="msg ai">Olá. Este é o seu espaço NEXORA. Posso guardar tarefas e notas localmente neste aparelho. Para conversar com o modelo de IA, conecte o núcleo nas configurações. Não vou fingir que uma resposta automática é uma resposta de IA.</div></div>
-<div class="composer"><div class="mode-label" id="modeLabel">MODO CONVERSA</div><div class="compose-wrap"><textarea id="message" placeholder="Converse com o NEXORA..." rows="2"></textarea><div class="attach-preview" id="attachPreview"></div><div class="compose-actions"><small>Enter para enviar · Shift + Enter para nova linha</small><button class="send" onclick="sendMessage()" aria-label="Enviar">➤</button></div></div><div class="toolrow"><button id="chatMode" class="selected" onclick="setMode('chat')">✧ Conversar</button><button id="researchMode" onclick="setMode('research')">⌕ Pesquisar</button><button id="thinkMode" onclick="setMode('think')">◎ Planejar</button><button onclick="startVoiceInput()">🎙 Voz</button><button onclick="$('imageFile').click()">▧ Imagem</button><button onclick="speakLastAnswer()">🔊 Ouvir</button><input id="imageFile" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" onchange="selectImage(event)"></div></div>
+<div class="chat-head"><div class="mini-orb">N</div><div><b>LÚMEN · Assistente</b><small id="chatState">Modo local · IA ainda não conectada</small></div><span class="tag" style="margin-left:auto">PRIVADO</span></div>
+<div id="messages" class="messages"><div class="msg ai">Olá. Este é o seu espaço LÚMEN. Posso guardar tarefas e notas localmente neste aparelho. Para conversar com o modelo de IA, conecte o núcleo nas configurações. Não vou fingir que uma resposta automática é uma resposta de IA.</div></div>
+<div class="composer"><div class="mode-label" id="modeLabel">MODO CONVERSA</div><div class="compose-wrap"><textarea id="message" placeholder="Converse com o LÚMEN..." rows="2"></textarea><div class="attach-preview" id="attachPreview"></div><div class="compose-actions"><small>Enter para enviar · Shift + Enter para nova linha</small><button class="send" onclick="sendMessage()" aria-label="Enviar">➤</button></div></div><div class="toolrow"><button id="chatMode" class="selected" onclick="setMode('chat')">✧ Conversar</button><button id="researchMode" onclick="setMode('research')">⌕ Pesquisar</button><button id="thinkMode" onclick="setMode('think')">◎ Planejar</button><button onclick="startVoiceInput()">🎙 Voz</button><button onclick="$('imageFile').click()">▧ Imagem</button><button onclick="speakLastAnswer()">🔊 Ouvir</button><input id="imageFile" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" onchange="selectImage(event)"></div></div>
 </div></section>
 <section id="memory" class="screen"><div class="eyebrow">MEMÓRIA PESSOAL</div><h2>O que vale guardar?</h2><p class="muted">Os registros ficam guardados neste aparelho. Exporte seus dados nas configurações para manter uma cópia de segurança.</p>
 <div class="panel"><div class="field"><label>Nova memória</label><textarea id="memoryInput" rows="3" placeholder="Escreva uma ideia, preferência ou informação importante..."></textarea></div><div class="field"><label>Categoria</label><input id="memoryCategory" placeholder="Ex.: projetos, preferências, ideias"></div><button class="btn primary" onclick="saveMemory()">Guardar memória</button></div><div class="section-title"><h3>Memórias guardadas</h3><span id="memoryLabel">0 REGISTROS</span></div><div id="memoryList" class="list"></div>
@@ -90,12 +90,12 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <section id="knowledge" class="screen"><div class="eyebrow">ARQUIVO PESSOAL</div><h2>Base de conhecimento</h2><p class="muted">Guarde referências, resumos e informações para consultar depois.</p>
 <div class="panel"><div class="field"><label>Título</label><input id="knowTitle" placeholder="Nome do registro"></div><div class="field"><label>Conteúdo</label><textarea id="knowContent" rows="4" placeholder="Escreva ou cole o conteúdo..."></textarea></div><div class="field"><label>Fonte (opcional)</label><input id="knowSource" placeholder="Link ou referência"></div><button class="btn primary" onclick="saveKnowledge()">Arquivar conhecimento</button></div><div id="knowledgeList" class="list"></div>
 </section>
-<section id="settings" class="screen"><div class="eyebrow">NEXORA INDEPENDENTE</div><h2>Seu núcleo de IA</h2><p class="muted">A conversa principal pode rodar no próprio Android, sem token, servidor ou conta externa. Recursos online continuam opcionais.</p>
+<section id="settings" class="screen"><div class="eyebrow">LÚMEN INDEPENDENTE</div><h2>Seu núcleo de IA</h2><p class="muted">A conversa principal pode rodar no próprio Android, sem token, servidor ou conta externa. Recursos online continuam opcionais.</p>
 <div class="panel"><h3>🧠 Núcleo local expansível</h3><p class="muted">Escolha o tamanho do modelo. O compacto é mais leve; o avançado pode responder melhor, mas exige mais RAM, armazenamento e bateria. A conversa local não envia suas mensagens para a nuvem.</p><div class="field"><label for="localModelSelect">Modelo local</label><select id="localModelSelect" onchange="selectLocalModel()"><option value="qwen-0.5b">Qwen 0.5B · leve</option><option value="qwen-1.5b">Qwen 1.5B · avançado</option></select></div><div id="localModelNote" class="muted">Carregando opções do aparelho…</div><div id="localModelStatus" class="statusbox warn">Verificando disponibilidade da IA local…</div><button class="btn primary" onclick="downloadLocalModel()">Baixar e ativar modelo selecionado</button><p class="muted">O modelo fica no armazenamento privado do app. O modelo de 1.5B é maior e pode não carregar em aparelhos com pouca memória. Use Wi-Fi e mantenha espaço livre.</p></div>
 <div id="settingsStatus" class="statusbox warn">Nenhum servidor conectado. Seus dados locais continuam disponíveis.</div>
 <div class="panel"><h3>Conexão remota opcional</h3><div class="field"><label>Endereço HTTPS do servidor</label><input id="serverUrl" inputmode="url" placeholder="https://seu-servico.exemplo.com"></div><div class="field"><label>Token privado de acesso</label><input id="accessToken" type="password" autocomplete="off" placeholder="Token configurado no servidor"></div><button class="btn primary" onclick="connectServer()">Testar e conectar</button><button class="btn" onclick="disconnectServer()" style="margin-left:6px">Desconectar</button><p class="muted">O endereço e o token ficam armazenados apenas no armazenamento privado do aplicativo/navegador. Nunca coloque a chave do provedor de IA aqui. Ela pertence somente ao servidor.</p></div>
 <div class="panel"><h3>Recursos e disponibilidade</h3><div id="capabilityList" class="list"><div class="item"><b>Interface local</b><p>Disponível neste aparelho.</p></div><div class="item"><b>Modelo de IA e pesquisa</b><p>Exigem servidor publicado e chave de provedor configurada.</p></div><div class="item"><b>Memória sincronizada</b><p>Exige conexão e banco persistente no servidor.</p></div></div></div>
-<div class="panel"><h3>Memória de correções</h3><p class="muted">A NEXORA guarda erros, causas e soluções. Só experiências com evidência de testes são priorizadas como verificadas.</p><div id="correctionMemoryList" class="list"><div class="item">Conecte ao núcleo para consultar a memória técnica.</div></div><details style="margin-top:12px"><summary>Registrar uma experiência técnica</summary><div style="display:grid;gap:8px;margin-top:10px"><input id="correctionSignature" placeholder="Erro ou mensagem identificadora" style="width:100%;padding:11px;border-radius:10px"><textarea id="correctionCause" placeholder="Causa-raiz identificada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><textarea id="correctionResolution" placeholder="Correção aplicada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><input id="correctionEvidence" placeholder="Evidência do teste (opcional)" style="width:100%;padding:11px;border-radius:10px"><label style="display:flex;gap:8px;align-items:center"><input id="correctionTestsPassed" type="checkbox"> Testes passaram com essa correção</label><button class="btn primary" onclick="saveCorrectionMemory()">Salvar experiência</button></div></details></div>
+<div class="panel"><h3>Memória de correções</h3><p class="muted">A LÚMEN guarda erros, causas e soluções. Só experiências com evidência de testes são priorizadas como verificadas.</p><div id="correctionMemoryList" class="list"><div class="item">Conecte ao núcleo para consultar a memória técnica.</div></div><details style="margin-top:12px"><summary>Registrar uma experiência técnica</summary><div style="display:grid;gap:8px;margin-top:10px"><input id="correctionSignature" placeholder="Erro ou mensagem identificadora" style="width:100%;padding:11px;border-radius:10px"><textarea id="correctionCause" placeholder="Causa-raiz identificada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><textarea id="correctionResolution" placeholder="Correção aplicada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><input id="correctionEvidence" placeholder="Evidência do teste (opcional)" style="width:100%;padding:11px;border-radius:10px"><label style="display:flex;gap:8px;align-items:center"><input id="correctionTestsPassed" type="checkbox"> Testes passaram com essa correção</label><button class="btn primary" onclick="saveCorrectionMemory()">Salvar experiência</button></div></details></div>
 <div class="panel"><h3>Dados neste aparelho</h3><p class="muted">Você pode exportar suas memórias, tarefas e registros locais em um arquivo JSON.</p><button class="btn" onclick="exportData()">Exportar meus dados</button><button class="btn" onclick="importData()">Importar arquivo</button><input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)"></div>
 </section>
 </main>
@@ -111,25 +111,25 @@ function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
 function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities();loadCorrectionMemory();refreshLocalModel()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
 function demo(prompt){show("chat");$("message").value=prompt;sendMessage()}
 function prepareBrain(){
- if(!window.NexoraNative){show("settings");$("localModelStatus").textContent="O motor local só está disponível no APK Android.";return}
+ if(!window.LumenNative){show("settings");$("localModelStatus").textContent="O motor local só está disponível no APK Android.";return}
  show("settings");
- try{window.NexoraNative.prepareLocalModel()}catch(e){$("localModelStatus").textContent="Falha ao iniciar o motor local: "+e.message}
+ try{window.LumenNative.prepareLocalModel()}catch(e){$("localModelStatus").textContent="Falha ao iniciar o motor local: "+e.message}
 }
 function localModelState(){
- try{return window.NexoraNative?window.NexoraNative.modelState():"unavailable"}catch{return "unavailable"}
+ try{return window.LumenNative?window.LumenNative.modelState():"unavailable"}catch{return "unavailable"}
 }
 function selectLocalModel(){
- if(!window.NexoraNative)return;
+ if(!window.LumenNative)return;
  const id=$("localModelSelect").value;
- const state=window.NexoraNative.selectModel(id);
+ const state=window.LumenNative.selectModel(id);
  if(state==="busy"){$("localModelStatus").textContent="Aguarde o modelo atual terminar de carregar ou responder.";return}
  refreshLocalModel();
 }
 function downloadLocalModel(){
- if(!window.NexoraNative){$("localModelStatus").textContent="A IA local está disponível na versão Android instalada, não na prévia do navegador.";return}
- window.NexoraNative.downloadModel();
+ if(!window.LumenNative){$("localModelStatus").textContent="A IA local está disponível na versão Android instalada, não na prévia do navegador.";return}
+ window.LumenNative.downloadModel();
 }
-window.onNexoraModelState=function(state,detail){
+window.onLumenModelState=function(state,detail){
  const el=$("localModelStatus");
  const home=$("homeStatus");
  if(home){home.textContent=detail;home.className="statusbox "+(state==="ready"?"good":"warn");}
@@ -138,20 +138,20 @@ window.onNexoraModelState=function(state,detail){
  else if(state==="downloading"||state==="loading"){$("chatState").textContent=detail}
  else if(state==="waiting_network"){$("chatState").textContent="Preparação automática aguardando Wi-Fi";$("connectionPill").textContent="● preparando IA local";$("connectionPill").classList.remove("online")}
 };
-window.onNexoraNativeAnswer=function(answer,failed){
+window.onLumenNativeAnswer=function(answer,failed){
  const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
  if(pending){pending.content=answer;pending.at=stamp();delete pending.pendingLocal}
  lastAssistantText=answer;saveData();renderMessages();
  $("chatState").textContent=failed?"IA local · verifique a mensagem":"IA local · resposta gerada no aparelho";
 };
 function refreshLocalModel(){
- if(window.NexoraNative){try{const options=JSON.parse(window.NexoraNative.modelOptions());const select=$("localModelSelect");if(select&&options.selected){select.value=options.selected}const chosen=(options.models||[]).find(x=>x.id===options.selected);if(chosen)$("localModelNote").textContent=chosen.note+" Contexto: "+chosen.context+" tokens · saída máxima configurada: "+chosen.maxTokens+" tokens.";}catch(e){}}
+ if(window.LumenNative){try{const options=JSON.parse(window.LumenNative.modelOptions());const select=$("localModelSelect");if(select&&options.selected){select.value=options.selected}const chosen=(options.models||[]).find(x=>x.id===options.selected);if(chosen)$("localModelNote").textContent=chosen.note+" Contexto: "+chosen.context+" tokens · saída máxima configurada: "+chosen.maxTokens+" tokens.";}catch(e){}}
  const state=localModelState();
- if(state==="ready")window.onNexoraModelState("ready","IA local pronta neste aparelho.");
- else if(state==="downloaded")window.onNexoraModelState("loading","Modelo baixado. Será carregado ao iniciar a primeira conversa.");
- else if(state==="working")window.onNexoraModelState("loading","A IA local está sendo preparada.");
- else if(state==="missing")window.onNexoraModelState("missing","Modelo ainda não baixado. Toque no botão para ativar a IA local.");
- else if(state==="unavailable")window.onNexoraModelState("unavailable","A IA local roda no aplicativo Android. A prévia web não tem acesso ao motor nativo.");
+ if(state==="ready")window.onLumenModelState("ready","IA local pronta neste aparelho.");
+ else if(state==="downloaded")window.onLumenModelState("loading","Modelo baixado. Será carregado ao iniciar a primeira conversa.");
+ else if(state==="working")window.onLumenModelState("loading","A IA local está sendo preparada.");
+ else if(state==="missing")window.onLumenModelState("missing","Modelo ainda não baixado. Toque no botão para ativar a IA local.");
+ else if(state==="unavailable")window.onLumenModelState("unavailable","A IA local roda no aplicativo Android. A prévia web não tem acesso ao motor nativo.");
 }
 function setMode(mode){
  if(!["chat","research","think"].includes(mode))return;
@@ -197,7 +197,7 @@ $("recentList").innerHTML=data.activity.length?data.activity.slice(0,4).map(x=>'
 renderMessages();
 }
 function renderList(id,items,fn){$(id).innerHTML=items.length?items.slice().reverse().map(x=>'<div class="item">'+fn(x)+'</div>').join(""):'<div class="empty">Nada por aqui ainda.</div>'}
-function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o NEXORA. Posso conversar com o modelo conectado, organizar tarefas, guardar memórias, pesquisar seus registros e montar planos. Quando o modelo não estiver disponível, uso os recursos locais e aviso claramente.</div>';return}el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
+function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o LÚMEN. Posso conversar com o modelo conectado, organizar tarefas, guardar memórias, pesquisar seus registros e montar planos. Quando o modelo não estiver disponível, uso os recursos locais e aviso claramente.</div>';return}el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
 function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData();if(connected)syncWorkspace()}
 async function deleteMemory(id){const item=data.memories.find(x=>x.id===id);if(connected&&item&&item.cloudId){try{await api("/api/memories/"+item.cloudId,{method:"DELETE"})}catch(e){activity("Falha ao excluir memória na nuvem",e.message);saveData();return}}data.memories=data.memories.filter(x=>x.id!==id);saveData()}
 function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:newId(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData();if(connected)syncWorkspace()}
@@ -238,7 +238,7 @@ if(m){
 if(/^(?:ajuda|ajuda nexora|comandos|o que voce faz|como usar)$/i.test(q))
 return "POSSO FAZER LOCALMENTE\n\n• Crie uma tarefa para revisar o projeto\n• Lembre que prefiro respostas diretas\n• Guarde na memoria: ideia importante\n• Liste minhas tarefas\n• Mostre minhas memorias\n• Procure na memoria por palavra-chave\n• Conclua a tarefa revisar o projeto\n• Resuma meus registros\n• Planeje: objetivo\n\nQuando o modelo de IA estiver conectado, suas mensagens seguem para ele em vez de ficarem presas a estes atalhos.";
 if(/^(?:resumo|resumo geral|painel|resuma meus registros|mostre meu resumo)$/i.test(q))
-return "RESUMO DA NEXORA\n\nMemorias: "+data.memories.length+"\nConhecimentos: "+data.knowledge.length+"\nTarefas abertas: "+data.tasks.filter(x=>!x.done).length+"\nTarefas concluidas: "+data.tasks.filter(x=>x.done).length+"\nMensagens guardadas: "+data.messages.filter(x=>x.role==="user").length+"\n\nOs dados locais permanecem neste aparelho.";
+return "RESUMO DA LÚMEN\n\nMemorias: "+data.memories.length+"\nConhecimentos: "+data.knowledge.length+"\nTarefas abertas: "+data.tasks.filter(x=>!x.done).length+"\nTarefas concluidas: "+data.tasks.filter(x=>x.done).length+"\nMensagens guardadas: "+data.messages.filter(x=>x.role==="user").length+"\n\nOs dados locais permanecem neste aparelho.";
 if(/^(?:listar|mostre|mostrar|quais sao minhas|quais sao as)\s+(?:minhas?\s+)?tarefas$/i.test(q)){
   const open=data.tasks.filter(x=>!x.done);
   return open.length?"TAREFAS ABERTAS:\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\n"):"Voce nao tem tarefas abertas.";
@@ -329,16 +329,16 @@ return '<div class="item"><b>'+name+'</b><p>'+status+'</p></div>';
 }
 async function activateFullMind(fromCommand=false){
 show("chat");setMode("chat");
-const report={localModel:window.NexoraNative?localModelState():"não disponível nesta interface",voiceInput:Boolean(window.SpeechRecognition||window.webkitSpeechRecognition),voiceOutput:Boolean("speechSynthesis"in window),imageInput:Boolean($("imageFile")),internet:Boolean(navigator.onLine),localStorage:Boolean(window.localStorage),memories:data.memories.length,knowledge:data.knowledge.length,openTasks:data.tasks.filter(x=>!x.done).length,server:"não conectado",capabilities:null};
+const report={localModel:window.LumenNative?localModelState():"não disponível nesta interface",voiceInput:Boolean(window.SpeechRecognition||window.webkitSpeechRecognition),voiceOutput:Boolean("speechSynthesis"in window),imageInput:Boolean($("imageFile")),internet:Boolean(navigator.onLine),localStorage:Boolean(window.localStorage),memories:data.memories.length,knowledge:data.knowledge.length,openTasks:data.tasks.filter(x=>!x.done).length,server:"não conectado",capabilities:null};
 const pending={role:"assistant",content:"Executando diagnóstico das capacidades disponíveis…",at:stamp()};
-if(!fromCommand)data.messages.push({role:"user",content:"NEXORA, ATIVAR MENTE COMPLETA",at:stamp()});
+if(!fromCommand)data.messages.push({role:"user",content:"LÚMEN, ATIVAR MENTE COMPLETA",at:stamp()});
 data.messages.push(pending);renderMessages();
 if(connected){
  try{const h=await api("/api/health");report.server=h.status==="online"?"online":"indisponível";report.capabilities=await api("/api/capabilities");}
  catch(e){report.server="falha na verificação: "+e.message;}
 }
 const lines=[
-"DIAGNÓSTICO DA NEXORA",
+"DIAGNÓSTICO DA LÚMEN",
 "Modelo local: "+report.localModel,
 "Servidor: "+report.server,
 "Internet: "+(report.internet?"disponível":"offline"),
@@ -369,20 +369,20 @@ data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada
 if(!imageData&&/^(?:nexora[, ]+)?ativar mente completa[.! ]*$/i.test(msg)){activateFullMind(true);return;}
 // Prioridade local: a conversa principal usa o modelo no aparelho, sem API comercial.
 const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
-const nativeLocalReady=Boolean(window.NexoraNative&&(localModelState()==="ready"||localModelState()==="downloaded"));
+const nativeLocalReady=Boolean(window.LumenNative&&(localModelState()==="ready"||localModelState()==="downloaded"));
 const command=(!modelReady&&!nativeLocalReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
 if(nativeLocalReady&&activeMode!=="research"&&!imageData){
  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
  data.messages.push(pending);renderMessages();
- const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"NEXORA")+": "+x.content).join("\n");
+ const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"LÚMEN")+": "+x.content).join("\n");
  const memoryContext=[
   "MEMÓRIAS RELEVANTES:\n"+data.memories.slice(-12).map(x=>"- "+x.content).join("\n"),
   "BASE DE CONHECIMENTO:\n"+data.knowledge.slice(-8).map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\n"),
   "TAREFAS EM ABERTO:\n"+data.tasks.filter(x=>!x.done).slice(0,12).map(x=>"- "+x.title).join("\n")
  ].join("\n\n");
  const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
- window.NexoraNative.sendLocalMessage(msg,history);return;
+ window.LumenNative.sendLocalMessage(msg,history);return;
 }
 if(!connected){const answer="Nenhum servidor remoto está conectado. Para conversar sem configurar servidor, ative a IA local em Configurar. Pesquisa na internet e sincronização em nuvem continuam sendo recursos opcionais.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
 if(apiCaps&&activeMode==="chat"&&apiCaps.chat&&!apiCaps.chat.configured){const answer="O servidor está conectado, mas a chave do modelo ainda não foi configurada no servidor. A chave deve permanecer nas variáveis privadas da hospedagem, nunca no aplicativo.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
@@ -394,7 +394,7 @@ r=await api("/api/research/public",{method:"POST",body:JSON.stringify({query:msg
 pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((s,i)=>(i+1)+". "+s.title+"\n"+s.url).join("\n\n"):"\n\nO provedor não retornou links de fontes.");
 }else if(activeMode==="think"){
 r=await api("/api/think",{method:"POST",body:JSON.stringify({goal:msg})});
-pending.content="ANÁLISE DO NEXORA\n\nObjetivo: "+(r.goal||msg)+"\n\nEntendimento: "+(r.understanding||"")+
+pending.content="ANÁLISE DO LÚMEN\n\nObjetivo: "+(r.goal||msg)+"\n\nEntendimento: "+(r.understanding||"")+
 "\n\nPLANO\n"+(Array.isArray(r.plan)?r.plan.map((p,i)=>(i+1)+". "+(p.action||p.step||"Etapa")+(p.purpose?"\n   Finalidade: "+p.purpose:"")).join("\n"):"Não foi retornada uma lista de etapas.")+
 "\n\nDecisão: "+(r.decision||"Revisar o plano.")+
 "\n\nAvaliação: "+(r.evaluation&&r.evaluation.quality||"não informada")+
@@ -408,12 +408,12 @@ pending.at=stamp();lastAssistantText=pending.content;
 }catch(e){pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;}
 saveData();renderMessages();
 }
-function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="nexora-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
+function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lumen-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
 function importData(){$("importFile").click()}
 function handleImport(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result),d=x.data||x;if(!Array.isArray(d.memories)||!Array.isArray(d.tasks))throw Error("Arquivo não reconhecido");data={memories:d.memories||[],tasks:d.tasks||[],knowledge:d.knowledge||[],messages:d.messages||[],activity:d.activity||[]};saveData();setSettingsStatus("Dados importados neste aparelho.",true)}catch(err){setSettingsStatus("Falha ao importar: "+err.message,false)}};reader.readAsText(f);e.target.value=""}
 $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
 if(config.url&&config.token){$("serverUrl").value=config.url;$("accessToken").value=config.token;fetch(config.url+"/api/health").then(r=>r.json()).then(async h=>{if(h.status==="online"){try{await api("/api/overview");setConnection(true);apiCaps=await api("/api/capabilities").catch(()=>null);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · IA configurada":"Núcleo conectado · IA aguarda configuração";$("lastCheck").textContent="VERIFICADO";renderCapabilities();await syncWorkspace()}catch{setConnection(false)}}}).catch(()=>setConnection(false))}
-renderAll();renderCapabilities();refreshLocalModel();if(window.NexoraNative){try{window.NexoraNative.prepareLocalModel()}catch(e){}}
-if(config.url&&!config.token){fetch(config.url.replace(/\/+$/,"")+"/api/health").then(r=>r.json()).then(h=>{if(h.status==="online"){$("connectionPill").textContent="● servidor online";$("homeStatus").textContent=h.model_key_configured?"Servidor NEXORA online. Informe seu token privado em Configurar para sincronizar os dados.":"Servidor NEXORA online. O modelo de IA ainda aguarda configuração no servidor; o modo local já está disponível.";$("homeStatus").className="statusbox warn";$("lastCheck").textContent="SERVIDOR VERIFICADO";}}).catch(()=>{});}
+renderAll();renderCapabilities();refreshLocalModel();if(window.LumenNative){try{window.LumenNative.prepareLocalModel()}catch(e){}}
+if(config.url&&!config.token){fetch(config.url.replace(/\/+$/,"")+"/api/health").then(r=>r.json()).then(h=>{if(h.status==="online"){$("connectionPill").textContent="● servidor online";$("homeStatus").textContent=h.model_key_configured?"Servidor LÚMEN online. Informe seu token privado em Configurar para sincronizar os dados.":"Servidor LÚMEN online. O modelo de IA ainda aguarda configuração no servidor; o modo local já está disponível.";$("homeStatus").className="statusbox warn";$("lastCheck").textContent="SERVIDOR VERIFICADO";}}).catch(()=>{});}
 if("serviceWorker"in navigator&&location.protocol==="https:")navigator.serviceWorker.register("/sw.js").catch(()=>{});
 </script></body></html>
