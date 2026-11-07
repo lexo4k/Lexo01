@@ -122,6 +122,27 @@ def db():
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def model_config() -> dict[str, str]:
+    """Configuração independente do fornecedor para APIs compatíveis com OpenAI Chat Completions."""
+    names = ("LUMEN_MODEL_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY")
+    key = next((os.getenv(name, "").strip() for name in names if os.getenv(name, "").strip()), "")
+    base = (os.getenv("LUMEN_MODEL_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "").strip().rstrip("/")
+    if not base:
+        if os.getenv("OPENROUTER_API_KEY"):
+            base = "https://openrouter.ai/api/v1"
+        elif os.getenv("GROQ_API_KEY"):
+            base = "https://api.groq.com/openai/v1"
+        elif os.getenv("TOGETHER_API_KEY"):
+            base = "https://api.together.xyz/v1"
+        else:
+            base = "https://api.openai.com/v1"
+    model = (os.getenv("LUMEN_MODEL_NAME") or os.getenv("OPENAI_MODEL") or "gpt-4.1-mini").strip()
+    return {"api_key": key, "base_url": base, "model": model}
+
+
+def model_is_configured() -> bool:
+    return bool(model_config()["api_key"])
+
 def require_access(authorization: str | None = Header(default=None)) -> None:
     expected = os.getenv("LUMEN_ACCESS_TOKEN", "").strip()
     if not expected:
@@ -181,7 +202,7 @@ def app_icon():
 
 @app.get("/api/capabilities", dependencies=[Depends(require_access)])
 def capabilities():
-    ready = bool(os.getenv("OPENAI_API_KEY", "").strip())
+    ready = model_is_configured()
     return {"chat": {"implemented": True, "configured": ready},
             "web_research": {"implemented": True, "configured": ready},
             "memory": {"implemented": True, "configured": True},
@@ -198,9 +219,11 @@ def capabilities():
 def health():
     return {"app": "LÚMEN AI CORE", "status": "online", "version": app.version,
             "model_connected": False,
-            "model_key_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+            "model_key_configured": model_is_configured(),
+            "model_configured": model_is_configured(),
+            "model_connection_status": "configured_not_verified" if model_is_configured() else "missing_credentials",
             "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
-            "web_research_key_configured": bool(os.getenv("OPENAI_API_KEY")),
+            "web_research_key_configured": model_is_configured(),
             "primary_experience": "chat", "storage_backend": "postgresql" if DATABASE_URL else "sqlite"}
 
 @app.get("/api/overview", dependencies=[Depends(require_access)])
@@ -311,11 +334,11 @@ def conversations(limit: int = 100):
 @app.post("/api/research", dependencies=[Depends(require_access)])
 async def research_web(item: ResearchIn):
     """Pesquisa na web usando a ferramenta web_search do provedor e devolve fontes."""
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        raise HTTPException(503, "Pesquisa web indisponível: conecte OPENAI_API_KEY ao servidor.")
-    base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    config = model_config()
+    api_key, base = config["api_key"], config["base_url"]
     model = os.getenv("LUMEN_RESEARCH_MODEL", "gpt-4.1")
+    if not api_key:
+        raise HTTPException(503, "Pesquisa web indisponível: configure as credenciais do provedor no servidor.")
     payload = {
         "model": model,
         "tools": [{"type": "web_search"}],
@@ -388,11 +411,10 @@ async def research_web(item: ResearchIn):
 @app.post("/api/think", dependencies=[Depends(require_access)])
 async def think_endpoint(item: ThinkIn):
     """Planeja e avalia um objetivo sem executar ações externas."""
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    config = model_config()
+    api_key, base, model = config["api_key"], config["base_url"], config["model"]
     if not api_key:
-        raise HTTPException(503, "O motor cognitivo está implementado, mas depende de um provedor de IA conectado.")
-    base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+        raise HTTPException(503, "O motor cognitivo está pronto, mas falta a credencial do provedor configurada no servidor.")
     with db() as con:
         memories = [r["content"] for r in con.execute(
             "SELECT content FROM memories ORDER BY id DESC LIMIT 40"
@@ -501,11 +523,10 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    config = model_config()
+    api_key, base, model = config["api_key"], config["base_url"], config["model"]
     if not api_key:
-        raise HTTPException(503, "O núcleo está ativo, mas o modelo de IA ainda não foi conectado. Configure OPENAI_API_KEY no servidor.")
-    base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+        raise HTTPException(503, "O motor está pronto, mas falta a credencial do provedor. Configure LUMEN_MODEL_API_KEY e LUMEN_MODEL_BASE_URL no servidor.")
     with db() as con:
         memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
         facts = [f'{r["title"]}: {r["content"]}' for r in con.execute("SELECT title,content FROM knowledge ORDER BY id DESC LIMIT 10")]
