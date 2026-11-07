@@ -157,3 +157,15 @@ No APK Android, quando o modelo local está carregado, o AURION pode conversar e
 
 Esse modo é uma automação local limitada, não um agente com acesso irrestrito ao aparelho. Ele não navega na internet sem conexão, não controla outros aplicativos, não envia mensagens, não instala software e não realiza compras ou movimentações financeiras. Uma etapa só é declarada concluída quando existe uma alteração local verificável. O modelo local recebe instruções para distinguir plano, execução e dependências externas.
 
+
+## Offline-first: modelo salvo, voz e pesquisa por localização
+
+- O modelo GGUF fica no diretório persistente privado do aplicativo. Ao abrir o APK, o app verifica o arquivo e carrega o modelo existente sem baixar novamente.
+- Downloads do modelo são iniciados somente pelo botão explícito e somente em Wi-Fi. Transferências interrompidas preservam o arquivo parcial e tentam continuar por HTTP Range.
+- O tamanho mínimo é validado antes de considerar um modelo instalado. O espaço livre é verificado antes do download.
+- O app salva imediatamente as mensagens e transcrições de voz no armazenamento local do WebView. O áudio bruto não é gravado.
+- A fala para texto usa o reconhecedor offline do Android quando disponível. A leitura automática usa uma voz pt-BR instalada que não exija rede.
+- A localização é solicitada apenas quando a pessoa toca em Localização. O GPS pode fornecer coordenadas sem internet; a busca de estabelecimentos usa OpenStreetMap/Overpass e precisa de conexão.
+- A pesquisa pública não exige token do núcleo, mas tem limite temporário por IP. Resultados de mapa dependem da cobertura do OpenStreetMap e podem ser incompletos.
+
+Voz offline depende de pacotes de idioma instalados no Android. Se o aparelho não tiver reconhecimento pt-BR ou voz pt-BR offline, o app informa isso em vez de fingir que a função está disponível.
