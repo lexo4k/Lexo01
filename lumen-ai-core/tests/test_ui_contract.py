@@ -113,6 +113,15 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('api("/api/experiences"', html)
         self.assertIn("feedbackSaved", html)
 
+    def test_offline_learning_ledger_persists_explicit_positive_and_negative_feedback(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("experiences:Array.isArray(saved.experiences)?saved.experiences:[]", html)
+        self.assertIn('status:rating>=4?"useful":"corrected"', html)
+        self.assertIn("data.experiences.unshift(experience)", html)
+        self.assertIn("LIÇÕES E CORREÇÕES CONFIRMADAS PELO USUÁRIO", html)
+        self.assertIn('filter(x=>x.status==="useful"||x.status==="corrected")', html)
+        self.assertIn("Feedback explícito do usuário", html)
+
     def test_android_has_practical_default_and_optional_larger_local_model(self):
         activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn('"qwen-1.5b" to LocalModelProfile', activity)
