@@ -47,6 +47,25 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(config["api_key"], "router-test-key")
         self.assertEqual(config["base_url"], "https://openrouter.ai/api/v1")
 
+    def test_model_config_supports_self_hosted_ollama_without_api_key(self):
+        from app import model_config, model_is_configured
+        with mock.patch.dict(os.environ, {
+            "LUMEN_MODEL_API_KEY": "",
+            "OPENAI_API_KEY": "",
+            "OPENROUTER_API_KEY": "",
+            "GROQ_API_KEY": "",
+            "TOGETHER_API_KEY": "",
+            "LUMEN_MODEL_BASE_URL": "http://ollama.internal:11434/v1",
+            "OPENAI_BASE_URL": "",
+            "LUMEN_MODEL_NAME": "",
+            "OPENAI_MODEL": "",
+        }, clear=False):
+            config = model_config()
+            self.assertEqual(config["provider"], "ollama")
+            self.assertEqual(config["model"], "llama3.2")
+            self.assertEqual(config["api_key"], "ollama-local")
+            self.assertTrue(model_is_configured())
+
     def test_health_is_public(self):
         response = self.client.get("/api/health")
         self.assertEqual(response.status_code, 200)
