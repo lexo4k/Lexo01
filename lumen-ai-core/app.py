@@ -223,7 +223,7 @@ def capabilities():
 async def health():
     own_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
     if own_url and not own_url.startswith(("http://", "https://")):
-        own_url = "https://" + own_url
+        own_url = "http://" + own_url
     own_ready = False
     own_status = "not_configured"
     if own_url:
@@ -566,7 +566,7 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 async def chat(item: ChatIn):
     own_model_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
     if own_model_url and not own_model_url.startswith(("http://", "https://")):
-        own_model_url = "https://" + own_model_url
+        own_model_url = "http://" + own_model_url
     own_model_token = os.getenv("NEXORA_MODEL_TOKEN", "").strip()
     with db() as con:
         memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
