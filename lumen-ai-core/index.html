@@ -136,7 +136,8 @@ window.onAurionModelState=function(state,detail){
  if(el){el.textContent=detail;el.className="statusbox "+(state==="ready"?"good":state==="error"?"warn":"warn")}
  if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online")}
  else if(state==="downloading"||state==="loading"){$("chatState").textContent=detail}
- else if(state==="waiting_network"){$("chatState").textContent="Preparação automática aguardando Wi-Fi";$("connectionPill").textContent="● preparando IA local";$("connectionPill").classList.remove("online")}
+ else if(state==="waiting_network"||state==="wifi_required"){$("chatState").textContent=detail;$("connectionPill").textContent="● download só no Wi-Fi";$("connectionPill").classList.remove("online")}
+ else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
 };
 window.onAurionNativeAnswer=function(answer,failed){
  const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
@@ -148,7 +149,7 @@ function refreshLocalModel(){
  if(window.AurionNative){try{const options=JSON.parse(window.AurionNative.modelOptions());const select=$("localModelSelect");if(select&&options.selected){select.value=options.selected}const chosen=(options.models||[]).find(x=>x.id===options.selected);if(chosen)$("localModelNote").textContent=chosen.note+" Contexto: "+chosen.context+" tokens · saída máxima configurada: "+chosen.maxTokens+" tokens.";}catch(e){}}
  const state=localModelState();
  if(state==="ready")window.onAurionModelState("ready","IA local pronta neste aparelho.");
- else if(state==="downloaded")window.onAurionModelState("loading","Modelo baixado. Será carregado ao iniciar a primeira conversa.");
+ else if(state==="downloaded")window.onAurionModelState("loading","Modelo salvo neste aparelho. Preparando automaticamente…");
  else if(state==="working")window.onAurionModelState("loading","A IA local está sendo preparada.");
  else if(state==="missing")window.onAurionModelState("missing","Modelo ainda não baixado. Toque no botão para ativar a IA local.");
  else if(state==="unavailable")window.onAurionModelState("unavailable","A IA local roda no aplicativo Android. A prévia web não tem acesso ao motor nativo.");
