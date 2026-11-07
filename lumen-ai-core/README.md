@@ -1,4 +1,4 @@
-# LÚMEN AI CORE
+# AURION AI CORE
 
 Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web com fontes. Interface em português, adaptada para celular, API Python e banco SQLite.
 
@@ -23,11 +23,11 @@ Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web c
 - Testes automatizados, incluindo validação do endpoint de pesquisa sem credencial.
 
 ## Pesquisa na web
-## API própria NEXORA (gateway multi-provedor)
+## API própria AURION (gateway multi-provedor)
 
-O núcleo agora expõe um contrato público inspirado em **OpenAI Chat Completions**, hospedado no domínio da NEXORA. Aplicativos e agentes podem chamar `GET /v1/models` e `POST /v1/chat/completions` usando o token da NEXORA no cabeçalho `Authorization: Bearer SEU_TOKEN`. O identificador do modelo segue `provedor/modelo`, por exemplo `openai/gpt-4.1-mini`.
+O núcleo agora expõe um contrato público inspirado em **OpenAI Chat Completions**, hospedado no domínio do AURION. Aplicativos e agentes podem chamar `GET /v1/models` e `POST /v1/chat/completions` usando o token do AURION no cabeçalho `Authorization: Bearer SEU_TOKEN`. O identificador do modelo segue `provedor/modelo`, por exemplo `openai/gpt-4.1-mini`.
 
-Os provedores são cadastrados pela variável de ambiente `NEXORA_PROVIDERS` (JSON). Cada entrada informa `base_url`, `api_key_env` e a lista permitida em `models`. `api_key_env` contém somente o nome da variável secreta; o valor real fica no ambiente privado do Render, nunca no código, no app Android ou no Git. A primeira versão encaminha o protocolo OpenAI Chat Completions para provedores que implementam esse formato. Não promete compatibilidade universal: APIs proprietárias com protocolos diferentes, streaming, áudio e formatos multimodais específicos exigem adaptadores próprios. O gateway rejeita streaming nesta versão e valida a estrutura básica da resposta upstream. Cada provedor pode declarar `fallbacks` com IDs `provedor/modelo` que também estejam na lista permitida. Se o principal falhar, o gateway tenta os alternativos na ordem definida e informa o modelo realmente usado. `GET /v1/providers` mostra o estado do catálogo sem revelar segredos.
+Os provedores são cadastrados pela variável de ambiente `AURION_PROVIDERS (compatível também com NEXORA_PROVIDERS legado)` (JSON). Cada entrada informa `base_url`, `api_key_env` e a lista permitida em `models`. `api_key_env` contém somente o nome da variável secreta; o valor real fica no ambiente privado do Render, nunca no código, no app Android ou no Git. A primeira versão encaminha o protocolo OpenAI Chat Completions para provedores que implementam esse formato. Não promete compatibilidade universal: APIs proprietárias com protocolos diferentes, streaming, áudio e formatos multimodais específicos exigem adaptadores próprios. O gateway rejeita streaming nesta versão e valida a estrutura básica da resposta upstream. Cada provedor pode declarar `fallbacks` com IDs `provedor/modelo` que também estejam na lista permitida. Se o principal falhar, o gateway tenta os alternativos na ordem definida e informa o modelo realmente usado. `GET /v1/providers` mostra o estado do catálogo sem revelar segredos.
 
 Exemplo de chamada:
 
@@ -35,7 +35,7 @@ Exemplo de chamada:
 curl https://SEU-DOMINIO/v1/chat/completions \\
   -H 'Authorization: Bearer SEU_TOKEN' \\
   -H 'Content-Type: application/json' \\
-  -d '{"model":"openai/gpt-4.1-mini","messages":[{"role":"user","content":"Olá, NEXORA"}]}'
+  -d '{"model":"openai/gpt-4.1-mini","messages":[{"role":"user","content":"Olá, AURION"}]}'
 ```
 
 ## Pesquisa na web
@@ -121,16 +121,16 @@ O deploy não pode ser concluído por este repositório sozinho: é necessário 
 
 A interface entregue nesta branch é um PWA instalável pelo navegador Android depois que o servidor estiver publicado em HTTPS: abra o endereço do serviço no Chrome e use **Instalar app** ou **Adicionar à tela inicial**, conforme a opção exibida pelo navegador.
 
-Agora existe também o módulo Android próprio em `lumen-android/`. O APK inclui uma cópia local da interface completa: início, conversa, pesquisa web, planejamento, entrada/saída de voz, análise de imagem, memórias, tarefas, base de conhecimento, configurações e importação/exportação JSON. A permissão de microfone só é solicitada quando a entrada de voz é acionada e o Android WebView oferece captura de áudio. A organização local funciona sem servidor e os registros ficam no armazenamento do aplicativo. A conversa aberta com um modelo de IA, pesquisa web e sincronização exigem servidor autenticado e chave de provedor configurada no servidor. O endereço do servidor publicado nesta branch é preenchido automaticamente nas configurações; o token privado ainda precisa ser informado no aparelho. O workflow dedicado `LÚMEN Android APK` compila somente o módulo `:lumen` e publica o artefato `Lumen-AI-debug` por 14 dias. Abra a aba Actions do GitHub, selecione a execução mais recente desse workflow, aguarde `success` e baixe o artefato `Lumen-AI-debug`. O workflow antigo `Build Android APKs` continua separado para os demais aplicativos do repositório. O APK não contém um modelo de IA offline.
+Agora existe também o módulo Android próprio em `lumen-android/`. O APK inclui uma cópia local da interface completa: início, conversa, pesquisa web, planejamento, entrada/saída de voz, análise de imagem, memórias, tarefas, base de conhecimento, configurações e importação/exportação JSON. A permissão de microfone só é solicitada quando a entrada de voz é acionada e o Android WebView oferece captura de áudio. A organização local funciona sem servidor e os registros ficam no armazenamento do aplicativo. A conversa aberta com um modelo de IA, pesquisa web e sincronização exigem servidor autenticado e chave de provedor configurada no servidor. O endereço do servidor publicado nesta branch é preenchido automaticamente nas configurações; o token privado ainda precisa ser informado no aparelho. O workflow dedicado `AURION Android APK` compila somente o módulo `:lumen` e publica o artefato `Aurion-AI-debug` por 14 dias. Abra a aba Actions do GitHub, selecione a execução mais recente desse workflow, aguarde `success` e baixe o artefato `Aurion-AI-debug`. O workflow antigo `Build Android APKs` continua separado para os demais aplicativos do repositório. O APK não contém um modelo de IA offline.
 
 ## Estado real da entrega
 
 - Código e interface PWA: presentes nesta branch.
-- Testes automatizados do núcleo: workflow `LÚMEN Core Tests` executado a cada alteração relevante da branch.
+- Testes automatizados do núcleo: workflow `AURION Core Tests` executado a cada alteração relevante da branch.
 - Serviço público Render: ainda não criado/publicado por esta entrega.
 - IA e pesquisa web: implementadas, mas só ficam operacionais após configurar a chave do provedor no servidor.
 - Memória durável hospedada: depende de disco persistente ou banco gerenciado; o plano gratuito com disco efêmero não garante retenção.
-- APK próprio do LÚMEN: workflow `LÚMEN Android APK` executa os testes de regressão antes de compilar `assembleDebug` e publicar `Lumen-AI-debug`.
+- APK próprio do LÚMEN: workflow `AURION Android APK` executa os testes de regressão antes de compilar `assembleDebug` e publicar `Aurion-AI-debug`.
 - Anúncios: não integrados; exigem conta de editor e aprovação em uma rede de anúncios.
 
 ## Estrutura
@@ -144,6 +144,6 @@ Agora existe também o módulo Android próprio em `lumen-android/`. O APK inclu
 
 ## Manutenção e atualização contínua
 
-O workflow `NEXORA Continuous Maintenance` roda a cada seis horas e também a cada alteração relevante da branch. Ele compila os módulos Python, executa os testes automatizados e audita dependências. O Dependabot verifica semanalmente atualizações de bibliotecas Python e GitHub Actions, abrindo pull requests para análise e validação. O Render publica commits da branch automaticamente. Atualizações de dependências não são instaladas às cegas: entram como propostas, passam pelos testes e precisam ser aceitas antes de chegar à produção. Isso reduz o risco de uma atualização quebrar o app ou expor dados.
+O workflow `AURION Continuous Maintenance` roda a cada seis horas e também a cada alteração relevante da branch. Ele compila os módulos Python, executa os testes automatizados e audita dependências. O Dependabot verifica semanalmente atualizações de bibliotecas Python e GitHub Actions, abrindo pull requests para análise e validação. O Render publica commits da branch automaticamente. Atualizações de dependências não são instaladas às cegas: entram como propostas, passam pelos testes e precisam ser aceitas antes de chegar à produção. Isso reduz o risco de uma atualização quebrar o app ou expor dados.
 
-A lista de provedores é atualizada por configuração do servidor e pode ser consultada em `GET /v1/providers`; o gateway faz failover apenas para modelos alternativos explicitamente cadastrados. APIs nativas incompatíveis precisam de adaptadores próprios. A NEXORA não descobre credenciais privadas, não cria acesso a satélites, redes ou serviços fechados e não altera hardware remotamente.
+A lista de provedores é atualizada por configuração do servidor e pode ser consultada em `GET /v1/providers`; o gateway faz failover apenas para modelos alternativos explicitamente cadastrados. APIs nativas incompatíveis precisam de adaptadores próprios. O AURION não descobre credenciais privadas, não cria acesso a satélites, redes ou serviços fechados e não altera hardware remotamente.
