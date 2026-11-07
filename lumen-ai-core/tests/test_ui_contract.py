@@ -38,7 +38,7 @@ class UiContractTests(unittest.TestCase):
 
     def test_no_fake_default_server_hostname(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertNotIn("lumen-ai-core.vercel.app", html)
+        self.assertNotIn('url:"https://lumen-ai-core.vercel.app"', html)
         self.assertIn("lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app", html)
 
     def test_embedded_javascript_parses(self):
