@@ -619,7 +619,7 @@ async def research_public(item: ResearchIn, request: Request):
         con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES(?,?,?)", ("user", search_query, stamp))
         con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES(?,?,?)", ("assistant", "Resultados da pesquisa pública:\n" + source_text, stamp))
         con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Pesquisa pública concluída", search_query[:180], stamp))
-    return {"query": item.query, "search_query": search_query, "answer": "Encontrei páginas relacionadas. Os títulos e trechos são resultados de busca, não confirmação de funcionamento ou disponibilidade dos locais.", "sources": sources, "engine": engine, "web_search_used": engine.startswith("DuckDuckGo"), "location_used": item.latitude is not None, "synthesis_by_own_model": False}
+    return {"query": item.query, "search_query": search_query, "answer": "Encontrei páginas relacionadas. Os títulos e trechos são resultados de busca, não confirmação de funcionamento ou disponibilidade dos locais.", "sources": sources, "engine": engine, "web_search_used": engine.startswith("DuckDuckGo"), "location_used": item.latitude is not None, "attribution": "© OpenStreetMap contributors" if engine.startswith("OpenStreetMap") else None, "attribution_url": "https://www.openstreetmap.org/copyright" if engine.startswith("OpenStreetMap") else None, "synthesis_by_own_model": False}
 
 @app.post("/api/research", dependencies=[Depends(require_access)])
 async def research_web(item: ResearchIn):
