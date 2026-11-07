@@ -324,14 +324,21 @@ const field=$("message"),msg=field.value.trim();if(!msg&&!pendingImageData)retur
 field.value="";const imageData=pendingImageData;pendingImageData=null;$("attachPreview").textContent="";
 const displayText=msg||(imageData?"Analise a imagem anexada.":"");
 data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada]":""),at:stamp()});renderMessages();
-// Só usa o agente local quando o modelo remoto não está realmente disponível.
+// Prioridade local: a conversa principal usa o modelo no aparelho, sem API comercial.
 const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
-const command=(!modelReady&&msg)?localCommand(msg):null;
+const nativeLocalReady=Boolean(window.NexoraNative&&(localModelState()==="ready"||localModelState()==="downloaded"));
+const command=(!modelReady&&!nativeLocalReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
-if(!modelReady&&(localModelState()==="ready"||localModelState()==="downloaded")&&activeMode!=="research"&&!imageData){
- const pending={role:"assistant",content:"Pensando com a IA local…",at:stamp(),pendingLocal:true};
+if(nativeLocalReady&&activeMode!=="research"&&!imageData){
+ const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
  data.messages.push(pending);renderMessages();
- const history=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"NEXORA")+": "+x.content).join("\n").slice(-4500);
+ const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"NEXORA")+": "+x.content).join("\n");
+ const memoryContext=[
+  "MEMÓRIAS RELEVANTES:\n"+data.memories.slice(-12).map(x=>"- "+x.content).join("\n"),
+  "BASE DE CONHECIMENTO:\n"+data.knowledge.slice(-8).map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\n"),
+  "TAREFAS EM ABERTO:\n"+data.tasks.filter(x=>!x.done).slice(0,12).map(x=>"- "+x.title).join("\n")
+ ].join("\n\n");
+ const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
  window.NexoraNative.sendLocalMessage(msg,history);return;
 }
 if(!connected){const answer="Nenhum servidor remoto está conectado. Para conversar sem configurar servidor, ative a IA local em Configurar. Pesquisa na internet e sincronização em nuvem continuam sendo recursos opcionais.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
