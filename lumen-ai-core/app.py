@@ -149,7 +149,32 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 def model_config() -> dict[str, str]:
-    """Configuração independente do fornecedor para APIs compatíveis com OpenAI Chat Completions."""
+    """Resolve o provedor principal sem expor credenciais; aceita catálogo multi-provedor."""
+    raw = (os.getenv("AURION_PROVIDERS") or os.getenv("NEXORA_PROVIDERS") or "").strip()
+    if raw:
+        try:
+            catalog = json.loads(raw)
+            if isinstance(catalog, dict) and catalog:
+                preferred = (os.getenv("AURION_DEFAULT_PROVIDER") or os.getenv("NEXORA_DEFAULT_PROVIDER") or "").strip().lower()
+                selected_name = preferred if preferred in catalog else next(iter(catalog))
+                selected = catalog.get(selected_name, {})
+                if isinstance(selected, dict):
+                    base = str(selected.get("base_url", "")).strip().rstrip("/")
+                    key_env = str(selected.get("api_key_env", "")).strip()
+                    key = os.getenv(key_env, "").strip() if key_env else ""
+                    models = selected.get("models", [])
+                    model = str(models[0]).strip() if isinstance(models, list) and models else ""
+                    local_ollama = "ollama" in base.lower() or "11434" in base
+                    if base and model:
+                        return {
+                            "api_key": key or ("ollama-local" if local_ollama else ""),
+                            "base_url": base,
+                            "model": model,
+                            "provider": "ollama" if local_ollama else selected_name,
+                        }
+        except (ValueError, TypeError, json.JSONDecodeError):
+            pass
+
     names = ("AURION_MODEL_API_KEY", "LUMEN_MODEL_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY")
     key = next((os.getenv(name, "").strip() for name in names if os.getenv(name, "").strip()), "")
     explicit_base = (os.getenv("AURION_MODEL_BASE_URL") or os.getenv("LUMEN_MODEL_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "").strip()
