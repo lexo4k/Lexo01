@@ -744,6 +744,14 @@ class MainActivity : Activity() {
         if (::web.isInitialized && web.canGoBack()) web.goBack() else super.onBackPressed()
     }
 
+    override fun onStop() {
+        liveConversationEnabled = false
+        speechRecognizer?.cancel()
+        textToSpeech?.stop()
+        if (::web.isInitialized) web.evaluateJavascript("window.onAurionLiveStopped && window.onAurionLiveStopped()", null)
+        super.onStop()
+    }
+
     override fun onDestroy() {
         localScope.cancel()
         activeLocationListener?.let { listener -> try { (getSystemService(LOCATION_SERVICE) as LocationManager).removeUpdates(listener) } catch (_: Exception) {} }
