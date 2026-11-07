@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: nexora-model
+    runtime: python
+    plan: starter
+    rootDir: lumen-model
+    buildCommand: pip install -r requirements-serve.txt
+    startCommand: uvicorn serve:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    disk:
+      name: nexora-model-data
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: NEXORA_MODEL_CHECKPOINT
+        value: /var/data/nexora-1.pt
+      - key: NEXORA_MODEL_TOKEN
+        generateValue: true
+
+  - type: web
+    name: nexora-api
+    runtime: python
+    plan: starter
+    rootDir: lumen-ai-core
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    disk:
+      name: nexora-database
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: LUMEN_DB_PATH
+        value: /var/data/nexora.db
+      - key: NEXORA_MODEL_URL
+        fromService:
+          type: web
+          name: nexora-model
+          property: host
+      - key: NEXORA_MODEL_TOKEN
+        fromService:
+          type: web
+          name: nexora-model
+          envVarKey: NEXORA_MODEL_TOKEN
