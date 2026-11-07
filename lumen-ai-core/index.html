@@ -104,7 +104,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <script>
 const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
 let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",pendingImageData=null,lastAssistantText="",syncingWorkspace=false,autoSpeakEnabled=localStorage.getItem("aurion_auto_speak_v1")!=="false",useLocationForNextResearch=false;
-function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}catch{return{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}}
+function loadData(){try{const saved=JSON.parse(localStorage.getItem(KEY))||{};return{memories:Array.isArray(saved.memories)?saved.memories:[],tasks:Array.isArray(saved.tasks)?saved.tasks:[],knowledge:Array.isArray(saved.knowledge)?saved.knowledge:[],messages:Array.isArray(saved.messages)?saved.messages:[],activity:Array.isArray(saved.activity)?saved.activity:[],experiences:Array.isArray(saved.experiences)?saved.experiences:[]}}catch{return{memories:[],tasks:[],knowledge:[],messages:[],activity:[],experiences:[]}}}
 function wormholeTerms(value){
  return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().match(/[a-z0-9]+/g)||[];
 }
@@ -270,7 +270,10 @@ async function rateExperience(index,rating){
  if(!user)return;
  const lesson=rating>=4?"Resposta avaliada como útil. Preservar clareza, objetividade e abordagem semelhante quando o contexto for equivalente.":"";
  const correction=rating<4?"Resposta avaliada como pouco útil. Revisar se respondeu diretamente ao pedido e evitar repetir esta abordagem.":"";
- answer.feedbackSaved=true;answer.feedbackRating=rating;saveData();
+ answer.feedbackSaved=true;answer.feedbackRating=rating;
+ // Aprendizado local supervisionado: lições vêm de feedback explícito, nunca de suposição automática.
+ const experience={id:newId(),user_message:user.content,assistant_answer:answer.content,rating,lesson,correction,status:rating>=4?"useful":"corrected",at:stamp()};
+ data.experiences=data.experiences||[];data.experiences.unshift(experience);data.experiences=data.experiences.slice(0,200);
  const localEntry={id:newId(),title:"Experiência avaliada "+rating+"/5",content:"Pedido: "+user.content+"\nResposta: "+answer.content+"\nLição: "+(lesson||correction),source:"Feedback explícito do usuário",at:stamp()};
  if(rating>=4)data.knowledge.push(localEntry);
  activity("Feedback de resposta registrado",rating+"/5");saveData();renderMessages();
@@ -278,7 +281,7 @@ async function rateExperience(index,rating){
   try{await api("/api/experiences",{method:"POST",body:JSON.stringify({user_message:user.content,assistant_answer:answer.content,rating,correction,lesson})});}
   catch(e){activity("Feedback mantido localmente",e.message);saveData()}
  }
- $( "chatState" ).textContent=rating>=4?"Obrigado. Vou usar essa avaliação como referência quando for relevante.":"Feedback registrado para revisão, sem transformar a resposta em aprendizado confirmado.";
+ $("chatState").textContent=rating>=4?"Obrigado. Vou usar essa avaliação como referência quando for relevante.":"Feedback registrado para revisão, sem transformar a resposta em aprendizado confirmado.";
 }
 function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData();if(connected)syncWorkspace()}
 async function deleteMemory(id){const item=data.memories.find(x=>x.id===id);if(connected&&item&&item.cloudId){try{await api("/api/memories/"+item.cloudId,{method:"DELETE"})}catch(e){activity("Falha ao excluir memória na nuvem",e.message);saveData();return}}data.memories=data.memories.filter(x=>x.id!==id);saveData()}
@@ -513,12 +516,20 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
    title:x.role==="user"?"Pedido anterior":"Resposta anterior",
    content:String(x.content).slice(0,900)
   })),
-  msg,5,420
+  msg,3,240
+ );
+ const relevantLessons=wormholeRetrieve(
+  (data.experiences||[]).filter(x=>x.status==="useful"||x.status==="corrected").map(x=>({
+   title:x.status==="useful"?"Lição aprovada pelo usuário":"Correção indicada pelo usuário",
+   content:"Pedido: "+String(x.user_message||"").slice(0,180)+" | Lição: "+String(x.lesson||x.correction||"").slice(0,180)
+  })),
+  msg,4,520
  );
  const memoryContext=[
   "MEMÓRIAS RELEVANTES: (recuperadas pelo Wormhole local; originais preservados)\\n"+relevantMemories.map(x=>"- "+x.content.slice(0,180)).join("\\n"),
   "BASE DE CONHECIMENTO: (itens relevantes recuperados pelo Wormhole local)\\n"+relevantKnowledge.map(x=>"- "+x.title+": "+x.content.slice(0,180)).join("\\n"),
-  "EXPERIÊNCIAS RELEVANTES: (conversas anteriores recuperadas automaticamente do histórico local)\\n"+relevantExperiences.map(x=>"- "+x.title+": "+x.content.slice(0,180)).join("\\n"),
+  "EXPERIÊNCIAS RELEVANTES: (conversas anteriores recuperadas automaticamente do histórico local)\\n"+relevantExperiences.map(x=>"- "+x.title+": "+x.content.slice(0,140)).join("\\n"),
+  "LIÇÕES E CORREÇÕES CONFIRMADAS PELO USUÁRIO: (referências contextuais, não regras universais)\\n"+relevantLessons.map(x=>"- "+x.title+": "+x.content.slice(0,160)).join("\\n"),
   "TAREFAS EM ABERTO:\\n"+data.tasks.filter(x=>!x.done).slice(-4).reverse().map(x=>"- "+x.title.slice(0,70)).join("\\n")
  ].join("\\n\\n");
  // A janela Kotlin usa os últimos 1.800 caracteres: priorize as conversas primeiro e a memória consolidada no final.
