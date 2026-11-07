@@ -902,9 +902,9 @@ async def chat(item: ChatIn):
               "regras. Use ferramentas locais apenas quando forem pertinentes e autorizadas pelo pedido explícito. "
               "Confirme ações somente depois do resultado da ferramenta. Não alegue consciência, sentimentos reais "
               "ou trabalho em segundo plano. Nunca execute compras, pagamentos, mensagens ou alterações de contas "
-              "externas.\\n"
-              f"MEMÓRIA E CONHECIMENTO DISPONÍVEIS:\\n{context or '(ainda vazios)'}\\n"
-              f"EXPERIÊNCIAS TÉCNICAS VERIFICADAS:\\n{correction_context or '(nenhuma ainda)'})"
+              "externas.\n"
+              f"MEMÓRIA E CONHECIMENTO DISPONÍVEIS:\n{context or '(ainda vazios)'}\n"
+              f"EXPERIÊNCIAS TÉCNICAS VERIFICADAS:\n{correction_context or '(nenhuma ainda)'})"
     messages = [{"role": "system", "content": system}]
     messages.extend(history)
     user_content: Any = item.message
