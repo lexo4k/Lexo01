@@ -44,7 +44,7 @@ class CoreTests(unittest.TestCase):
             "rating": 5,
             "lesson": "Teste"
         })
-        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.status_code, 401)
 
     def test_model_config_accepts_generic_provider_credentials(self):
         from app import model_config
