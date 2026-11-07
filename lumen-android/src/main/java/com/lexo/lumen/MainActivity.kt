@@ -83,8 +83,13 @@ class MainActivity : Activity() {
         textToSpeech = TextToSpeech(applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 val languageStatus = textToSpeech?.setLanguage(Locale("pt", "BR")) ?: TextToSpeech.LANG_MISSING_DATA
-                ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA && languageStatus != TextToSpeech.LANG_NOT_SUPPORTED
-                notifySpeechStatus(if (ttsReady) "Voz em português pronta no aparelho." else "Instale uma voz em português no mecanismo de fala do Android para ouvir respostas offline.")
+                val offlineVoice = textToSpeech?.voices
+                    ?.filter { it.locale.language == "pt" && !it.isNetworkConnectionRequired }
+                    ?.maxByOrNull { if (it.locale.country == "BR") 1 else 0 }
+                if (offlineVoice != null) textToSpeech?.voice = offlineVoice
+                ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA &&
+                    languageStatus != TextToSpeech.LANG_NOT_SUPPORTED && offlineVoice != null
+                notifySpeechStatus(if (ttsReady) "Voz em português offline pronta no aparelho." else "Instale uma voz pt-BR que funcione sem internet nas configurações de fala do Android.")
             } else {
                 ttsReady = false
                 notifySpeechStatus("O mecanismo de voz do Android não está disponível.")
