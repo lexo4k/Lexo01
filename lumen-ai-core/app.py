@@ -355,7 +355,7 @@ async def capabilities():
         "image_input": {"implemented": True, "configured": external_ready},
         "planning": {"implemented": True, "configured": external_ready},
         "agent_tools": {"implemented": True, "configured": external_ready,
-                        "available_tools": ["save_memory", "create_task", "list_tasks", "search_memory", "save_knowledge", "complete_task", "get_overview"]},
+                        "available_tools": ["save_memory", "create_task", "list_tasks", "search_memory", "save_knowledge", "complete_task", "get_overview", "get_capabilities", "web_research"]},
         "ads": {"implemented": False, "configured": False},
         "persistent_storage": {"implemented": True, "configured": persistent, "durability": "managed_postgresql" if DATABASE_URL else ("render_persistent_disk" if persistent else "ephemeral_sqlite")}
     }
@@ -802,6 +802,7 @@ AGENT_TOOLS = [
     {"type": "function", "function": {"name": "save_knowledge", "description": "Arquiva conhecimento ou uma nota estruturada quando o usuário pedir para registrar.", "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}, "source": {"type": "string"}}, "required": ["title", "content"], "additionalProperties": False}}},
     {"type": "function", "function": {"name": "complete_task", "description": "Marca como concluída uma tarefa existente quando o usuário pedir.", "parameters": {"type": "object", "properties": {"task_id": {"type": "integer"}}, "required": ["task_id"], "additionalProperties": False}}},
     {"type": "function", "function": {"name": "get_overview", "description": "Obtém um resumo das memórias, conhecimentos e tarefas.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}},
+    {"type": "function", "function": {"name": "get_capabilities", "description": "Consulta quais recursos do AURION estão implementados e quais dependem de configuração.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}},
     {"type": "function", "function": {"name": "web_research", "description": "Pesquisa na web quando a pergunta depende de informação atual, comparação factual ou fontes. Retorna títulos, links e trechos; confira as fontes antes de afirmar conclusões.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "Consulta objetiva para pesquisar na web."}}, "required": ["query"], "additionalProperties": False}}}
 ]
 
@@ -889,6 +890,14 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                 return {"ok": False, "error": "Tarefa não encontrada."}
             con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Tarefa concluída pelo AURION", str(task_id), stamp))
             return {"ok": True, "task_id": task_id, "status": "concluída"}
+        if name == "get_capabilities":
+            cfg = model_config()
+            return {"ok": True, "assistant": "AURION AI", "text_model_configured": model_is_configured(),
+                    "own_model_url_configured": bool(os.getenv("AURION_MODEL_URL") or os.getenv("NEXORA_MODEL_URL")),
+                    "web_research": True, "persistent_memory": True, "local_tasks": True,
+                    "image_generation_configured": bool(os.getenv("AURION_IMAGE_API_KEY") or os.getenv("OPENAI_API_KEY")),
+                    "model_provider": cfg["provider"], "model_name": cfg["model"],
+                    "notice": "Recursos marcados como configurados dependem de credenciais e serviços válidos; nenhum segredo é retornado."}
         if name == "get_overview":
             return {
                 "ok": True,
@@ -1225,7 +1234,11 @@ async def chat(item: ChatIn):
         async with httpx.AsyncClient(timeout=60) as client:
             answer = ""
             tools_used = []
-            for _ in range(5):
+            tool_audit = []
+            agent_trace = [{"phase": "received", "status": "completed", "detail": "Pedido recebido."},
+                           {"phase": "context", "status": "completed", "detail": "Memória e histórico relevantes carregados."},
+                           {"phase": "planning", "status": "completed", "detail": "Modelo selecionando resposta e ferramentas necessárias."}]
+            for round_index in range(8):
                 response = await client.post(f"{base}/chat/completions",
                     headers={"Authorization": f"Bearer {api_key}"},
                     json={"model": model, "messages": messages, "tools": AGENT_TOOLS, "tool_choice": "auto", "temperature": 0.35, "max_tokens": 900})
@@ -1252,11 +1265,19 @@ async def chat(item: ChatIn):
                     except (ValueError, TypeError, AttributeError):
                         result = {"ok": False, "error": "Argumentos inválidos."}
                     tools_used.append(name)
+                    tool_audit.append({"tool": name, "ok": bool(result.get("ok", True)),
+                                       "summary": str(result.get("error") or result.get("notice") or "Ferramenta executada.")[:240]})
                     tool_call_id = call.get("id")
                     if not tool_call_id:
                         raise HTTPException(502, "O provedor retornou uma chamada de ferramenta sem identificador.")
                     messages.append({"role": "tool", "tool_call_id": tool_call_id,
                                      "name": name, "content": json.dumps(result, ensure_ascii=False)})
+            agent_trace.append({"phase": "execution", "status": "completed",
+                                "detail": f"{len(tools_used)} chamada(s) de ferramenta processada(s)."})
+            verification_ok = all(item["ok"] for item in tool_audit)
+            agent_trace.append({"phase": "verification", "status": "completed" if verification_ok else "attention",
+                                "detail": "Resultados das ferramentas conferidos; fontes externas continuam exigindo leitura." if verification_ok else "Uma ou mais ferramentas retornaram erro ou ação não autorizada."})
+            agent_trace.append({"phase": "completed", "status": "completed", "detail": "Resposta preparada."})
             if not answer:
                 raise HTTPException(502, "O AURION atingiu o limite de etapas das ferramentas sem concluir a resposta.")
     except httpx.HTTPStatusError as exc:
@@ -1271,7 +1292,11 @@ async def chat(item: ChatIn):
                     (answer, stamp))
         con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
                     ("Conversa com o modelo", item.message[:180], stamp))
-    return {"answer": answer, "model": model, "tools_used": tools_used}
+    return {"answer": answer, "model": model, "tools_used": tools_used,
+            "agent_trace": agent_trace, "tool_audit": tool_audit,
+            "verification": {"tools_succeeded": verification_ok,
+                            "tools_called": len(tool_audit),
+                            "claim_scope": "A verificação confirma retornos das ferramentas, não a verdade de toda afirmação da resposta."}}
 
 @app.on_event("startup")
 def startup():
