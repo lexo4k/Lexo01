@@ -126,7 +126,8 @@ def model_config() -> dict[str, str]:
     """Configuração independente do fornecedor para APIs compatíveis com OpenAI Chat Completions."""
     names = ("LUMEN_MODEL_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY")
     key = next((os.getenv(name, "").strip() for name in names if os.getenv(name, "").strip()), "")
-    base = (os.getenv("LUMEN_MODEL_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "").strip().rstrip("/")
+    explicit_base = (os.getenv("LUMEN_MODEL_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "").strip()
+    base = explicit_base.rstrip("/")
     if not base:
         if os.getenv("OPENROUTER_API_KEY"):
             base = "https://openrouter.ai/api/v1"
@@ -136,12 +137,14 @@ def model_config() -> dict[str, str]:
             base = "https://api.together.xyz/v1"
         else:
             base = "https://api.openai.com/v1"
-    model = (os.getenv("LUMEN_MODEL_NAME") or os.getenv("OPENAI_MODEL") or "gpt-4.1-mini").strip()
-    return {"api_key": key, "base_url": base, "model": model}
+    model = (os.getenv("LUMEN_MODEL_NAME") or os.getenv("OPENAI_MODEL") or ("llama3.2" if "11434" in base else "gpt-4.1-mini")).strip()
+    local_ollama = bool(explicit_base and ("11434" in base or "ollama" in base.lower()))
+    return {"api_key": key or ("ollama-local" if local_ollama else ""), "base_url": base, "model": model, "provider": "ollama" if local_ollama else "compatible"}
 
 
 def model_is_configured() -> bool:
-    return bool(model_config()["api_key"])
+    config = model_config()
+    return bool(config["api_key"] and (os.getenv("LUMEN_MODEL_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("TOGETHER_API_KEY") or config["provider"] == "ollama"))
 
 def require_access(authorization: str | None = Header(default=None)) -> None:
     expected = os.getenv("LUMEN_ACCESS_TOKEN", "").strip()
