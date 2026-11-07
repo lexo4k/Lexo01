@@ -5,6 +5,8 @@ objetivos em passos simples sem depender de API externa ou rede.
 """
 from __future__ import annotations
 import re
+
+from symbolic_engine import inspect_symbols
 from typing import Any
 
 ACTION_HINTS = (
