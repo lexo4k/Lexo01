@@ -408,7 +408,7 @@ pending.at=stamp();lastAssistantText=pending.content;
 }catch(e){pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;}
 saveData();renderMessages();
 }
-function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lumen-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
+function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aurion-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
 function importData(){$("importFile").click()}
 function handleImport(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result),d=x.data||x;if(!Array.isArray(d.memories)||!Array.isArray(d.tasks))throw Error("Arquivo não reconhecido");data={memories:d.memories||[],tasks:d.tasks||[],knowledge:d.knowledge||[],messages:d.messages||[],activity:d.activity||[]};saveData();setSettingsStatus("Dados importados neste aparelho.",true)}catch(err){setSettingsStatus("Falha ao importar: "+err.message,false)}};reader.readAsText(f);e.target.value=""}
 $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
