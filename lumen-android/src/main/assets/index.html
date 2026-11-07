@@ -32,7 +32,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <body><div class="app">
 <header><div class="brand"><div class="orb">L</div><div><strong>LÚMEN</strong><small>INTELIGÊNCIA PESSOAL</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
 <main>
-<section id="home" class="screen active">
+<section id="home" class="screen">
 <div class="hero"><div class="eyebrow">SEU CENTRO DE COMANDO</div><h2>Bom ter você por aqui.</h2><p>Um espaço para conversar com a IA, organizar ideias, guardar conhecimento e acompanhar o que importa.</p><div class="hero-foot"><button class="btn primary" onclick="show('chat')">✦ Abrir conversa</button><button class="btn ghost" onclick="show('settings')">Conectar núcleo</button></div></div>
 <div class="grid"><div class="metric"><span>Memórias neste aparelho</span><b id="memoryCount">0</b></div><div class="metric"><span>Tarefas abertas</span><b id="taskCount">0</b></div><div class="metric"><span>Conversas locais</span><b id="chatCount">0</b></div></div>
 <div class="section-title"><h3>Atalhos</h3><span>ACESSO RÁPIDO</span></div>
@@ -46,7 +46,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <div id="homeStatus" class="statusbox warn">O aplicativo está aberto em modo local. Memórias e tarefas podem ser guardadas neste aparelho. Para respostas de IA e pesquisa na internet, conecte o servidor nas configurações.</div>
 <div class="section-title"><h3>Atividade recente</h3><span>NO APARELHO</span></div><div id="recentList" class="list"><div class="empty">Sua atividade aparecerá aqui.</div></div>
 </section>
-<section id="chat" class="screen"><div class="chatbox">
+<section id="chat" class="screen active"><div class="chatbox">
 <div class="chat-head"><div class="mini-orb">L</div><div><b>LÚMEN · Assistente</b><small id="chatState">Modo local · IA ainda não conectada</small></div><span class="tag" style="margin-left:auto">PRIVADO</span></div>
 <div id="messages" class="messages"><div class="msg ai">Olá. Este é o seu espaço LÚMEN. Posso guardar tarefas e notas localmente neste aparelho. Para conversar com o modelo de IA, conecte o núcleo nas configurações. Não vou fingir que uma resposta automática é uma resposta de IA.</div></div>
 <div class="composer"><div class="compose-wrap"><textarea id="message" placeholder="Escreva uma mensagem ou comando..." rows="2"></textarea><div class="compose-actions"><small>Enter para enviar · Shift + Enter para nova linha</small><button class="send" onclick="sendMessage()" aria-label="Enviar">➤</button></div></div></div>
@@ -67,7 +67,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <div class="panel"><h3>Dados neste aparelho</h3><p class="muted">Você pode exportar suas memórias, tarefas e registros locais em um arquivo JSON.</p><button class="btn" onclick="exportData()">Exportar meus dados</button><button class="btn" onclick="importData()">Importar arquivo</button><input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)"></div>
 </section>
 </main>
-<nav class="bottom"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
+<nav class="bottom"><div class="nav"><button data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button class="active" data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
 </div>
 <script>
 const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
@@ -91,7 +91,7 @@ $("recentList").innerHTML=data.activity.length?data.activity.slice(0,4).map(x=>'
 renderMessages();
 }
 function renderList(id,items,fn){$(id).innerHTML=items.length?items.slice().reverse().map(x=>'<div class="item">'+fn(x)+'</div>').join(""):'<div class="empty">Nada por aqui ainda.</div>'}
-function renderMessages(){const el=$("messages");if(!data.messages.length)return;el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
+function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o LÚMEN. Posso organizar suas tarefas, guardar memórias, pesquisar seus registros e montar planos iniciais mesmo sem internet. Para conversa inteligente aberta e pesquisa web, o servidor precisa de uma chave de IA configurada. Digite “ajuda” para ver os comandos disponíveis.</div>';return}el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
 function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData()}
 function deleteMemory(id){data.memories=data.memories.filter(x=>x.id!==id);saveData()}
 function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:newId(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData()}
