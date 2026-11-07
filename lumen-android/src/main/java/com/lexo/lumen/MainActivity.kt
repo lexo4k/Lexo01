@@ -85,9 +85,18 @@ class MainActivity : Activity() {
                 val languageStatus = textToSpeech?.setLanguage(Locale("pt", "BR")) ?: TextToSpeech.LANG_MISSING_DATA
                 val preferredVoice = textToSpeech?.voices
                     ?.filter { it.locale.language == "pt" }
-                    ?.sortedBy { if (it.locale.country == "BR") 0 else 1 }
+                    ?.sortedWith(compareBy<android.speech.tts.Voice>(
+                        { if (it.locale.country == "BR") 0 else 1 },
+                        { if (it.features.any { feature -> feature.equals("gender=male", ignoreCase = true) }) 0 else 1 },
+                        { if (it.isNetworkConnectionRequired) 1 else 0 },
+                        { -it.quality },
+                        { it.latency }
+                    ))
                     ?.firstOrNull()
                 if (preferredVoice != null) textToSpeech?.voice = preferredVoice
+                // Perfil de locução: calmo, firme e ligeiramente grave, sem imitar uma voz protegida.
+                textToSpeech?.setSpeechRate(0.92f)
+                textToSpeech?.setPitch(0.88f)
                 ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA &&
                     languageStatus != TextToSpeech.LANG_NOT_SUPPORTED
                 val voiceMode = if (preferredVoice != null && !preferredVoice.isNetworkConnectionRequired) "offline" else "com serviço de voz do Android"
