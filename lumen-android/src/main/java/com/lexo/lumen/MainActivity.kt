@@ -136,8 +136,16 @@ class MainActivity : Activity() {
             .setPositiveButton("Salvar e conectar") { _, _ ->
                 val raw = input.text.toString().trim().trimEnd('/')
                 val uri = runCatching { Uri.parse(raw) }.getOrNull()
-                if (uri == null || uri.scheme != "https" || uri.host.isNullOrBlank()) {
-                    Toast.makeText(this, "Use um endereço HTTPS válido.", Toast.LENGTH_LONG).show()
+                val validServer = uri != null &&
+                    uri.isHierarchical &&
+                    uri.scheme.equals("https", ignoreCase = true) &&
+                    !uri.host.isNullOrBlank() &&
+                    uri.userInfo == null &&
+                    uri.query == null &&
+                    uri.fragment == null &&
+                    (uri.path.isNullOrEmpty() || uri.path == "/")
+                if (!validServer) {
+                    Toast.makeText(this, "Use somente o endereço HTTPS do servidor, sem usuário, senha, parâmetros ou caminho adicional.", Toast.LENGTH_LONG).show()
                 } else {
                     prefs.edit().putString("server_url", raw).apply()
                     loadServer()
