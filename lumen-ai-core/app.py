@@ -415,6 +415,46 @@ async def think_endpoint(item: ThinkIn):
                     ("Ciclo cognitivo concluído", item.goal[:180], now()))
     return result
 
+AGENT_TOOLS = [
+    {"type": "function", "function": {"name": "save_memory", "description": "Guarda uma informação estável que o usuário pediu explicitamente para lembrar.", "parameters": {"type": "object", "properties": {"content": {"type": "string"}, "category": {"type": "string"}}, "required": ["content"], "additionalProperties": False}}},
+    {"type": "function", "function": {"name": "create_task", "description": "Cria uma tarefa quando o usuário pedir explicitamente para organizar ou registrar uma tarefa.", "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "details": {"type": "string"}}, "required": ["title"], "additionalProperties": False}}},
+    {"type": "function", "function": {"name": "list_tasks", "description": "Lista tarefas registradas do usuário.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}},
+    {"type": "function", "function": {"name": "search_memory", "description": "Busca memórias e conhecimentos salvos relevantes para a pergunta.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"], "additionalProperties": False}}}
+]
+
+def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Ferramentas locais e limitadas: sem rede, compras, mensagens ou movimentação financeira."""
+    with db() as con:
+        stamp = now()
+        if name == "save_memory":
+            content = str(arguments.get("content", "")).strip()[:8000]
+            category = str(arguments.get("category", "geral")).strip()[:80] or "geral"
+            if not content:
+                return {"ok": False, "error": "Conteúdo vazio."}
+            cur = con.execute("INSERT INTO memories(content,category,created_at) VALUES(?,?,?)", (content, category, stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Memória registrada pela LÚMEN", category, stamp))
+            return {"ok": True, "id": cur.lastrowid, "saved": True}
+        if name == "create_task":
+            title = str(arguments.get("title", "")).strip()[:240]
+            details = str(arguments.get("details", "")).strip()[:4000]
+            if not title:
+                return {"ok": False, "error": "Título vazio."}
+            cur = con.execute("INSERT INTO tasks(title,details,status,created_at,updated_at) VALUES(?,?, 'pendente',?,?)", (title, details, stamp, stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Tarefa criada pela LÚMEN", title, stamp))
+            return {"ok": True, "id": cur.lastrowid, "status": "pendente"}
+        if name == "list_tasks":
+            rows = con.execute("SELECT id,title,details,status FROM tasks ORDER BY id DESC LIMIT 50").fetchall()
+            return {"ok": True, "tasks": [dict(row) for row in rows]}
+        if name == "search_memory":
+            query = str(arguments.get("query", "")).strip()[:200]
+            if not query:
+                return {"ok": False, "error": "Busca vazia."}
+            term = f"%{query}%"
+            memories = con.execute("SELECT content,category,created_at FROM memories WHERE content LIKE ? ORDER BY id DESC LIMIT 20", (term,)).fetchall()
+            knowledge = con.execute("SELECT title,content,source FROM knowledge WHERE title LIKE ? OR content LIKE ? ORDER BY id DESC LIMIT 20", (term, term)).fetchall()
+            return {"ok": True, "memories": [dict(row) for row in memories], "knowledge": [dict(row) for row in knowledge]}
+    return {"ok": False, "error": "Ferramenta desconhecida."}
+
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -429,9 +469,13 @@ async def chat(item: ChatIn):
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 20"
         )][::-1]
     context = "\n".join([*(f"- {m}" for m in memories), *(f"- {f}" for f in facts)])
-    system = ("Você é LÚMEN, um assistente de IA claro, útil e honesto. Não alegue consciência, "
-              "sentimentos reais, execução em segundo plano ou ações não realizadas. Diferencie fatos, "
-              "inferências e incertezas. Use o contexto salvo apenas quando relevante.\n"
+    system = ("Você é LÚMEN, uma IA pessoal útil, proativa e honesta. Você pode usar ferramentas locais "
+              "para guardar memórias explicitamente solicitadas, criar tarefas solicitadas, listar tarefas e "
+              "buscar informações já arquivadas. Só salve memória quando o usuário pedir claramente para "
+              "guardar/lembrar. Só crie tarefa quando houver pedido claro. Nunca invente que uma ferramenta "
+              "foi usada: confirme apenas após o resultado retornar. Não alegue consciência, sentimentos reais "
+              "ou execução em segundo plano. Diferencie fatos, inferências e incertezas. Nunca execute ações "
+              "externas, compras, pagamentos, mensagens ou alterações de contas.\n"
               f"MEMÓRIA E CONHECIMENTO DISPONÍVEIS:\n{context or '(ainda vazios)'}")
     messages = [{"role": "system", "content": system}]
     messages.extend(history)
@@ -446,15 +490,36 @@ async def chat(item: ChatIn):
     messages.append({"role": "user", "content": user_content})
     try:
         async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(f"{base}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={"model": model, "messages": messages})
-            response.raise_for_status()
-            answer = response.json()["choices"][0]["message"]["content"]
+            answer = ""
+            tools_used = []
+            for _ in range(5):
+                response = await client.post(f"{base}/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json={"model": model, "messages": messages, "tools": AGENT_TOOLS, "tool_choice": "auto"})
+                response.raise_for_status()
+                message = response.json()["choices"][0]["message"]
+                calls = message.get("tool_calls") or []
+                if not calls:
+                    answer = message.get("content") or ""
+                    break
+                messages.append(message)
+                for call in calls[:4]:
+                    function = call.get("function", {})
+                    name = function.get("name", "")
+                    try:
+                        arguments = json.loads(function.get("arguments") or "{}")
+                        result = execute_agent_tool(name, arguments)
+                    except (ValueError, TypeError):
+                        result = {"ok": False, "error": "Argumentos inválidos."}
+                    tools_used.append(name)
+                    messages.append({"role": "tool", "tool_call_id": call["id"],
+                                     "name": name, "content": json.dumps(result, ensure_ascii=False)})
+            if not answer:
+                raise HTTPException(502, "A LÚMEN atingiu o limite de etapas das ferramentas sem concluir a resposta.")
     except httpx.HTTPStatusError as exc:
         raise HTTPException(502, f"Provedor de IA respondeu com erro HTTP {exc.response.status_code}.") from exc
-    except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
-        raise HTTPException(502, "Não foi possível obter uma resposta válida do provedor de IA.") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Não foi possível acessar o provedor de IA.") from exc
     with db() as con:
         stamp = now()
         con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)",
@@ -463,7 +528,7 @@ async def chat(item: ChatIn):
                     (answer, stamp))
         con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
                     ("Conversa com o modelo", item.message[:180], stamp))
-    return {"answer": answer, "model": model}
+    return {"answer": answer, "model": model, "tools_used": tools_used}
 
 @app.on_event("startup")
 def startup():
