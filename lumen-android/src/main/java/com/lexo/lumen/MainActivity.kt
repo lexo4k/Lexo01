@@ -238,6 +238,8 @@ class MainActivity : Activity() {
     }
 
 
+    private data class DownloadedModel(val uri: Uri, val name: String, val size: Long)
+
     inner class AurionBridge {
         @JavascriptInterface fun chooseDownloadedModel() {
             runOnUiThread {
@@ -309,7 +311,6 @@ class MainActivity : Activity() {
             return discoveredModelUri?.takeIf { discoveredModelSize >= profile.minBytes }
         }
 
-        private data class DownloadedModel(val uri: Uri, val name: String, val size: Long)
 
         private fun scanDownloadedModels(): DownloadedModel? {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
