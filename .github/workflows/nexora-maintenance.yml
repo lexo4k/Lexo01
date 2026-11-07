@@ -1,4 +1,4 @@
-name: NEXORA Continuous Maintenance
+name: AURION Continuous Maintenance
 
 on:
   workflow_dispatch:
