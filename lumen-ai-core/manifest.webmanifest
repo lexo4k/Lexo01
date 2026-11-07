@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "NEXORA AI",
-  "short_name": "NEXORA",
-  "description": "Assistente inteligente com conversa, memória, pesquisa e voz",
+  "name": "LÚMEN AI",
+  "short_name": "LÚMEN",
+  "description": "LÚMEN AI: núcleo pessoal com conversa local, memória, pesquisa e voz",
   "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",
