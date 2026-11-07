@@ -10,6 +10,7 @@ Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web c
 - Análise de imagens JPEG, PNG e WebP com envio ao modelo configurado.
 - Sincronização idempotente de memórias, tarefas e conhecimentos locais com a API autenticada, evitando duplicações por conteúdo.
 - Memória pessoal explícita e base de conhecimento persistidas em SQLite.
+- Memória de correções técnicas com causa-raiz, solução, ambiente, evidência de testes, status pendente/verificado e busca priorizando soluções verificadas. Endpoints: `GET /api/corrections`, `POST /api/corrections` e `GET /api/corrections/search?q=...`.
 - Histórico de conversas, tarefas e diário de atividade.
 - Ciclo cognitivo limitado: compreensão do objetivo, planejamento estruturado e avaliação independente do plano.
 - Pesquisa web pelo endpoint `POST /api/research`, usando a ferramenta `web_search` da API OpenAI Responses. Retorna síntese e links das fontes encontradas.
@@ -81,6 +82,12 @@ Abra http://127.0.0.1:8000 e informe o token configurado no servidor.
 | LUMEN_RESEARCH_MODEL | Modelo opcional para pesquisa web |
 | OPENAI_BASE_URL | URL base do provedor compatível |
 | LUMEN_DB_PATH | Caminho do banco SQLite quando PostgreSQL não está configurado |\n| DATABASE_URL | URL privada de conexão PostgreSQL; opcional |
+
+## Memória de correções e evolução controlada
+
+A memória técnica registra assinaturas de erro, causa-raiz, resolução, ambiente e evidências de teste. Uma solução só é marcada como verificada quando o registro inclui `tests_passed=true` e evidência; a busca prioriza esses registros. O sistema reutiliza a experiência como referência, mas não altera arquivos de produção nem publica código por conta própria. Correções de código continuam sujeitas a CI, revisão e rollback.
+
+A memória técnica usa o mesmo banco da aplicação. No serviço Render atual, sem PostgreSQL gerenciado ou disco persistente, o SQLite está em armazenamento efêmero e pode ser perdido quando a instância reinicia ou é recriada. Não trate isso como backup permanente. Para retenção durável, é necessário conectar um banco PostgreSQL com plano e política de retenção adequados e fazer backups.
 
 ## Segurança, limites e honestidade operacional
 
