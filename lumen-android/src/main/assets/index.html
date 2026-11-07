@@ -504,8 +504,8 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
  data.messages.push(pending);saveData();renderMessages();
  const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
- const relevantMemories=wormholeRetrieve(data.memories,msg,16,1800);
- const relevantKnowledge=wormholeRetrieve(data.knowledge,msg,12,2200);
+ const relevantMemories=wormholeRetrieve(data.memories,msg,5,360);
+ const relevantKnowledge=wormholeRetrieve(data.knowledge,msg,5,360);
  // Aprendizado contextual automático: reutiliza conversas anteriores salvas no próprio aparelho.
  // O histórico original permanece intacto; apenas trechos relevantes entram no contexto atual.
  const relevantExperiences=wormholeRetrieve(
@@ -513,15 +513,16 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
    title:x.role==="user"?"Pedido anterior":"Resposta anterior",
    content:String(x.content).slice(0,900)
   })),
-  msg,8,1400
+  msg,5,420
  );
  const memoryContext=[
-  "MEMÓRIAS RELEVANTES: (recuperadas pelo Wormhole local; originais preservados)\\n"+relevantMemories.map(x=>"- "+x.content).join("\\n"),
-  "BASE DE CONHECIMENTO: (itens relevantes recuperados pelo Wormhole local)\\n"+relevantKnowledge.map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\\n"),
-  "EXPERIÊNCIAS RELEVANTES: (conversas anteriores recuperadas automaticamente do histórico local)\\n"+relevantExperiences.map(x=>"- "+x.title+": "+x.content.slice(0,450)).join("\\n"),
-  "TAREFAS EM ABERTO:\\n"+data.tasks.filter(x=>!x.done).slice(-12).reverse().map(x=>"- "+x.title).join("\\n")
+  "MEMÓRIAS RELEVANTES: (recuperadas pelo Wormhole local; originais preservados)\\n"+relevantMemories.map(x=>"- "+x.content.slice(0,180)).join("\\n"),
+  "BASE DE CONHECIMENTO: (itens relevantes recuperados pelo Wormhole local)\\n"+relevantKnowledge.map(x=>"- "+x.title+": "+x.content.slice(0,180)).join("\\n"),
+  "EXPERIÊNCIAS RELEVANTES: (conversas anteriores recuperadas automaticamente do histórico local)\\n"+relevantExperiences.map(x=>"- "+x.title+": "+x.content.slice(0,180)).join("\\n"),
+  "TAREFAS EM ABERTO:\\n"+data.tasks.filter(x=>!x.done).slice(-4).reverse().map(x=>"- "+x.title.slice(0,70)).join("\\n")
  ].join("\\n\\n");
- const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
+ // A janela Kotlin usa os últimos 1.800 caracteres: priorize as conversas primeiro e a memória consolidada no final.
+ const history=("CONVERSA RECENTE:\n"+dialogue+"\n\n"+memoryContext).slice(-4500);
  window.AurionNative.sendLocalMessage(msg,history);return;
 }
 if(activeMode==="research"){
