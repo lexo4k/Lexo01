@@ -197,7 +197,23 @@ $("recentList").innerHTML=data.activity.length?data.activity.slice(0,4).map(x=>'
 renderMessages();
 }
 function renderList(id,items,fn){$(id).innerHTML=items.length?items.slice().reverse().map(x=>'<div class="item">'+fn(x)+'</div>').join(""):'<div class="empty">Nada por aqui ainda.</div>'}
-function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o AURION. Posso conversar com o modelo conectado, organizar tarefas, guardar memórias, pesquisar seus registros e montar planos. Quando o modelo não estiver disponível, uso os recursos locais e aviso claramente.</div>';return}el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
+function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o AURION. Posso conversar com o modelo conectado, organizar tarefas, guardar memórias, pesquisar seus registros e montar planos. Quando o modelo não estiver disponível, uso os recursos locais e aviso claramente.</div>';return}const start=Math.max(0,data.messages.length-100);el.innerHTML=data.messages.slice(start).map((x,j)=>{const i=start+j;const feedback=x.role==="assistant"&&!x.pendingLocal?'<div class="feedback">Esta resposta ajudou? <button class="btn" onclick="rateExperience('+i+',5)">👍 Sim</button> <button class="btn" onclick="rateExperience('+i+',2)">👎 Não</button></div>':"";return '<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small>'+feedback+'</div>'}).join("");el.scrollTop=el.scrollHeight}
+async function rateExperience(index,rating){
+ const answer=data.messages[index];if(!answer||answer.role!=="assistant"||answer.feedbackSaved)return;
+ let user=null;for(let i=index-1;i>=0;i--){if(data.messages[i].role==="user"){user=data.messages[i];break}}
+ if(!user)return;
+ const lesson=rating>=4?"Resposta avaliada como útil. Preservar clareza, objetividade e abordagem semelhante quando o contexto for equivalente.":"";
+ const correction=rating<4?"Resposta avaliada como pouco útil. Revisar se respondeu diretamente ao pedido e evitar repetir esta abordagem.":"";
+ answer.feedbackSaved=true;answer.feedbackRating=rating;saveData();
+ const localEntry={id:newId(),title:"Experiência avaliada "+rating+"/5",content:"Pedido: "+user.content+"\nResposta: "+answer.content+"\nLição: "+(lesson||correction),source:"Feedback explícito do usuário",at:stamp()};
+ if(rating>=4)data.knowledge.push(localEntry);
+ activity("Feedback de resposta registrado",rating+"/5");saveData();renderMessages();
+ if(connected){
+  try{await api("/api/experiences",{method:"POST",body:JSON.stringify({user_message:user.content,assistant_answer:answer.content,rating,correction,lesson})});}
+  catch(e){activity("Feedback mantido localmente",e.message);saveData()}
+ }
+ $( "chatState" ).textContent=rating>=4?"Obrigado. Vou usar essa avaliação como referência quando for relevante.":"Feedback registrado para revisão, sem transformar a resposta em aprendizado confirmado.";
+}
 function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData();if(connected)syncWorkspace()}
 async function deleteMemory(id){const item=data.memories.find(x=>x.id===id);if(connected&&item&&item.cloudId){try{await api("/api/memories/"+item.cloudId,{method:"DELETE"})}catch(e){activity("Falha ao excluir memória na nuvem",e.message);saveData();return}}data.memories=data.memories.filter(x=>x.id!==id);saveData()}
 function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:newId(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData();if(connected)syncWorkspace()}
