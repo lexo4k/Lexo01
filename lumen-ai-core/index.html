@@ -141,7 +141,7 @@ window.onAurionModelState=function(state,detail){
 window.onAurionNativeAnswer=function(answer,failed){
  const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
  if(pending){pending.content=answer;pending.at=stamp();delete pending.pendingLocal}
- lastAssistantText=answer;saveData();renderMessages();
+ lastAssistantText=answer;saveData();renderMessages();if(autoSpeakEnabled&&!failed)speakText(answer);
  $("chatState").textContent=failed?"IA local · verifique a mensagem":"IA local · resposta gerada no aparelho";
 };
 function refreshLocalModel(){
@@ -452,7 +452,7 @@ async function sendMessage(){
 const field=$("message"),msg=field.value.trim();if(!msg&&!pendingImageData)return;
 field.value="";const imageData=pendingImageData;pendingImageData=null;$("attachPreview").textContent="";
 const displayText=msg||(imageData?"Analise a imagem anexada.":"");
-data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada]":""),at:stamp()});renderMessages();
+data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada]":""),at:stamp(),source:"text"});saveData();renderMessages();
 if(!imageData&&/^(?:nexora[, ]+)?ativar mente completa[.! ]*$/i.test(msg)){activateFullMind(true);return;}
 // Prioridade local: a conversa principal usa o modelo no aparelho, sem API comercial.
 const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
@@ -462,7 +462,7 @@ const command=(!modelReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
 if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
- data.messages.push(pending);renderMessages();
+ data.messages.push(pending);saveData();renderMessages();
  const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
  const memoryContext=[
   "MEMÓRIAS RELEVANTES:\n"+data.memories.slice(-12).map(x=>"- "+x.content).join("\n"),
@@ -494,7 +494,7 @@ pending.content=r.answer||"O núcleo não retornou texto.";
 }
 pending.at=stamp();lastAssistantText=pending.content;
 }catch(e){pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;}
-saveData();renderMessages();
+saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);
 }
 function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aurion-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
 function importData(){$("importFile").click()}
