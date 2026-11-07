@@ -504,7 +504,28 @@ class MainActivity : Activity() {
     }
 
     private fun notifyAnswer(answer: String, failed: Boolean) {
-        val script = "window.onAurionNativeAnswer && window.onAurionNativeAnswer(${JSONObject.quote(answer)},$failed)"
+        val script = "window.onAurionNativeAnswer && window.onAurionNativeAnswer(" + JSONObject.quote(answer) + "," + failed + ")"
+        if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
+    }
+
+    private fun notifyVoiceResult(text: String, error: String?) {
+        val errorValue = error?.let { JSONObject.quote(it) } ?: "null"
+        val script = "window.onAurionVoiceResult && window.onAurionVoiceResult(" + JSONObject.quote(text) + "," + errorValue + ")"
+        if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
+    }
+
+    private fun notifySpeechStatus(message: String) {
+        val script = "window.onAurionSpeechStatus && window.onAurionSpeechStatus(" + JSONObject.quote(message) + ")"
+        if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
+    }
+
+    private fun notifyLocation(location: Location) {
+        val script = "window.onAurionLocation && window.onAurionLocation(" + location.latitude + "," + location.longitude + "," + location.accuracy + ",null)"
+        if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
+    }
+
+    private fun notifyLocationError(message: String) {
+        val script = "window.onAurionLocation && window.onAurionLocation(null,null,null," + JSONObject.quote(message) + ")"
         if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
     }
 
@@ -545,7 +566,8 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         localScope.cancel()
-        stopLocationUpdates()
+        activeLocationListener?.let { listener -> try { (getSystemService(LOCATION_SERVICE) as LocationManager).removeUpdates(listener) } catch (_: Exception) {} }
+        locationTimeout?.let { mainHandler.removeCallbacks(it) }
         speechRecognizer?.cancel()
         speechRecognizer?.destroy()
         speechRecognizer = null
