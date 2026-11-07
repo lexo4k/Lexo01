@@ -51,9 +51,9 @@ class UiContractTests(unittest.TestCase):
 
     def test_local_tools_run_before_model_inference_in_both_modes(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("const command=msg?localCommand(msg):null;", html)
+        self.assertIn("const command=(!modelReady&&msg)?localCommand(msg):null;", html)
         self.assertNotIn("const command=(!modelReady&&!nativeLocalReady&&msg)?localCommand(msg):null;", html)
-        self.assertIn("Ferramentas locais explícitas têm prioridade nos dois modos", html)
+        self.assertIn("No modo offline, execute ferramentas locais", html)
 
     def test_on_device_model_has_priority_and_receives_local_context(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
