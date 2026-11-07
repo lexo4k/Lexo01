@@ -714,21 +714,48 @@ async def think_endpoint(item: ThinkIn):
         history = [dict(r) for r in con.execute(
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 12"
         )][::-1]
+        # Feedback explícito e correções verificadas viram contexto de referência, não regras cegas.
+        learning_rows = [dict(r) for r in con.execute(
+            """SELECT user_message,correction,lesson,rating,status
+            FROM learning_experiences
+            WHERE (status='useful' AND lesson!='') OR (status='review' AND correction!='')
+            ORDER BY id DESC LIMIT 100"""
+        )]
+        correction_rows = [dict(r) for r in con.execute(
+            """SELECT error_signature,root_cause,resolution,test_evidence
+            FROM correction_memory WHERE validation_status='verified'
+            ORDER BY updated_at DESC LIMIT 50"""
+        )]
     # O Wormhole mantém os registros originais e só escolhe o contexto necessário.
     selected_memories = select_relevant(memory_rows, item.goal, limit=16, max_chars=6000)
     selected_knowledge = select_relevant(knowledge_rows, item.goal, limit=16, max_chars=8000)
+    learning_records = [{
+        "title": "Feedback útil" if row["status"] == "useful" else "Correção solicitada",
+        "content": f"Pedido: {row['user_message']} | Lição: {row['lesson']} | Correção: {row['correction']}"
+    } for row in learning_rows]
+    selected_learning = select_relevant(learning_records, item.goal, limit=8, max_chars=3000)
+    verified_records = [{
+        "title": "Correção técnica verificada",
+        "content": f"Erro: {row['error_signature']} | Causa: {row['root_cause']} | Solução: {row['resolution']} | Evidência: {row['test_evidence']}"
+    } for row in correction_rows]
+    selected_corrections = select_relevant(verified_records, item.goal, limit=6, max_chars=2500)
     if not selected_memories:
         selected_memories = memory_rows[:5]
     if not selected_knowledge:
         selected_knowledge = knowledge_rows[:5]
     memories = [r["content"] for r in selected_memories]
     knowledge = [f'{r["title"]}: {r["content"]}' for r in selected_knowledge]
+    knowledge.extend(
+        f'{r["title"]}: {r["content"]}' for r in selected_learning + selected_corrections
+    )
     wormhole_report = {
         "engine": "aurion-memory-wormhole-v1",
         "source_memories": len(memory_rows),
         "source_knowledge": len(knowledge_rows),
         "retrieved_memories": len(selected_memories),
         "retrieved_knowledge": len(selected_knowledge),
+        "retrieved_feedback_lessons": len(selected_learning),
+        "retrieved_verified_corrections": len(selected_corrections),
         "context_characters": sum(map(len, memories + knowledge)),
         "originals_preserved": True,
         "compression": "relevance retrieval; no source records deleted",
