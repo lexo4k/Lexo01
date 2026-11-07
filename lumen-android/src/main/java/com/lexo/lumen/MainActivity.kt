@@ -539,8 +539,26 @@ class MainActivity : Activity() {
                         modelBusy = false
                         val authorized = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
                             .getBoolean("model_download_authorized", false)
-                        if (authorized) downloadModel()
-                        else notifyModel("missing", "Procurei os Downloads do aparelho e não encontrei um modelo GGUF compatível com a memória disponível. Se o arquivo estiver em outra pasta ou formato, será necessário selecioná-lo pelo gerenciador de arquivos.")
+                        if (authorized) {
+                            downloadModel()
+                        } else {
+                            notifyModel("missing", "Procurei os Downloads e não encontrei um modelo GGUF dentro do limite de memória estimado. Vou oferecer a preparação inicial.")
+                            val prefs = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
+                            if (!prefs.getBoolean("model_setup_prompted", false)) {
+                                prefs.edit().putBoolean("model_setup_prompted", true).apply()
+                                runOnUiThread {
+                                    android.app.AlertDialog.Builder(this@MainActivity)
+                                        .setTitle("Modelo não encontrado")
+                                        .setMessage("Não encontrei um arquivo GGUF compatível nos Downloads. Você pode autorizar o download do modelo recomendado. Se já baixou um modelo em outra pasta, abra Configurar e selecione-o pelo gerenciador de arquivos.")
+                                        .setNegativeButton("Depois", null)
+                                        .setPositiveButton("Autorizar download") { _, _ ->
+                                            prefs.edit().putBoolean("model_download_authorized", true).apply()
+                                            downloadModel()
+                                        }
+                                        .show()
+                                }
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     modelBusy = false
