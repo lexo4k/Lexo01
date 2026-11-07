@@ -79,7 +79,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <section id="chat" class="screen"><div class="chatbox">
 <div class="chat-head"><div class="mini-orb">A</div><div><b>AURION · Assistente</b><small id="chatState">Modo local · IA ainda não conectada</small></div><span class="tag" style="margin-left:auto">PRIVADO</span></div>
 <div id="messages" class="messages"><div class="msg ai">Olá. Este é o seu espaço AURION. Posso guardar tarefas e notas localmente neste aparelho. Para conversar com o modelo de IA, conecte o núcleo nas configurações. Não vou fingir que uma resposta automática é uma resposta de IA.</div></div>
-<div class="composer"><div class="mode-label" id="modeLabel">MODO CONVERSA</div><div class="compose-wrap"><textarea id="message" placeholder="Converse com o AURION..." rows="2"></textarea><div class="attach-preview" id="attachPreview"></div><div class="compose-actions"><small>Enter para enviar · Shift + Enter para nova linha</small><button class="send" onclick="sendMessage()" aria-label="Enviar">➤</button></div></div><div class="toolrow"><button id="chatMode" class="selected" onclick="setMode('chat')">✧ Conversar</button><button id="researchMode" onclick="setMode('research')">⌕ Pesquisar</button><button id="thinkMode" onclick="setMode('think')">◎ Planejar</button><button onclick="startVoiceInput()">🎙 Voz</button><button onclick="$('imageFile').click()">▧ Imagem</button><button onclick="speakLastAnswer()">🔊 Ouvir</button><input id="imageFile" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" onchange="selectImage(event)"></div></div>
+<div class="composer"><div class="mode-label" id="modeLabel">MODO CONVERSA</div><div class="compose-wrap"><textarea id="message" placeholder="Converse com o AURION..." rows="2"></textarea><div class="attach-preview" id="attachPreview"></div><div class="compose-actions"><small>Enter para enviar · Shift + Enter para nova linha</small><button class="send" onclick="sendMessage()" aria-label="Enviar">➤</button></div></div><div class="toolrow"><button id="chatMode" class="selected" onclick="setMode('chat')">✧ Conversar</button><button id="researchMode" onclick="setMode('research')">⌕ Pesquisar</button><button id="thinkMode" onclick="setMode('think')">◎ Planejar</button><button onclick="startVoiceInput()">🎙 Voz</button><button onclick="$('imageFile').click()">▧ Imagem</button><button onclick="speakLastAnswer()">🔊 Ouvir</button><button id="autoSpeakButton" onclick="toggleAutoSpeak()">🔊 Voz automática: ligada</button><button onclick="requestLocationForResearch()">📍 Localização</button><input id="imageFile" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" onchange="selectImage(event)"></div></div>
 </div></section>
 <section id="memory" class="screen"><div class="eyebrow">MEMÓRIA PESSOAL</div><h2>O que vale guardar?</h2><p class="muted">Os registros ficam guardados neste aparelho. Exporte seus dados nas configurações para manter uma cópia de segurança.</p>
 <div class="panel"><div class="field"><label>Nova memória</label><textarea id="memoryInput" rows="3" placeholder="Escreva uma ideia, preferência ou informação importante..."></textarea></div><div class="field"><label>Categoria</label><input id="memoryCategory" placeholder="Ex.: projetos, preferências, ideias"></div><button class="btn primary" onclick="saveMemory()">Guardar memória</button></div><div class="section-title"><h3>Memórias guardadas</h3><span id="memoryLabel">0 REGISTROS</span></div><div id="memoryList" class="list"></div>
@@ -103,7 +103,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 </div>
 <script>
 const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
-let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",pendingImageData=null,lastAssistantText="",syncingWorkspace=false;
+let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",pendingImageData=null,lastAssistantText="",syncingWorkspace=false,autoSpeakEnabled=localStorage.getItem("aurion_auto_speak_v1")!=="false",useLocationForNextResearch=false;
 function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}catch{return{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}}
 function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
 function loadConfig(){const defaultUrl="https://nexora-ai-core.onrender.com";try{const saved=JSON.parse(localStorage.getItem(CFG));if(!saved)return{url:defaultUrl,token:""};if(!saved.url||saved.url==="https://lumen-ai-core.vercel.app"||saved.url==="https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app")return{url:defaultUrl,token:""};return{url:saved.url,token:saved.token||""}}catch{return{url:defaultUrl,token:""}}}
@@ -141,7 +141,7 @@ window.onAurionModelState=function(state,detail){
 window.onAurionNativeAnswer=function(answer,failed){
  const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
  if(pending){pending.content=answer;pending.at=stamp();delete pending.pendingLocal}
- lastAssistantText=answer;saveData();renderMessages();
+ lastAssistantText=answer;saveData();renderMessages();if(autoSpeakEnabled&&!failed)speakText(answer);
  $("chatState").textContent=failed?"IA local · verifique a mensagem":"IA local · resposta gerada no aparelho";
 };
 function refreshLocalModel(){
@@ -161,7 +161,34 @@ function setMode(mode){
  $("thinkMode").classList.toggle("selected",mode==="think");
  $("modeLabel").textContent=mode==="research"?"PESQUISA NA WEB":mode==="think"?"PLANEJAMENTO COGNITIVO":"MODO CONVERSA";
 }
+function toggleAutoSpeak(){
+ autoSpeakEnabled=!autoSpeakEnabled;localStorage.setItem("aurion_auto_speak_v1",String(autoSpeakEnabled));
+ const b=$("autoSpeakButton");if(b)b.textContent=autoSpeakEnabled?"🔊 Voz automática: ligada":"🔇 Voz automática: desligada";
+ $("chatState").textContent=autoSpeakEnabled?"As próximas respostas serão lidas em voz alta.":"Leitura automática desativada.";
+}
+function speakText(text){
+ const clean=String(text||"").trim();if(!clean)return;
+ if(window.AurionNative&&typeof window.AurionNative.speakText==="function"){window.AurionNative.speakText(clean);return}
+ if("speechSynthesis"in window&&typeof SpeechSynthesisUtterance!=="undefined"){window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(clean);utterance.lang="pt-BR";window.speechSynthesis.speak(utterance)}
+}
+function requestLocationForResearch(){
+ if(!window.AurionNative||typeof window.AurionNative.requestCurrentLocation!=="function"){$("chatState").textContent="A localização GPS está disponível no APK Android.";return}
+ $("chatState").textContent="Solicitando localização precisa para pesquisar lugares próximos…";window.AurionNative.requestCurrentLocation();
+}
+window.onAurionLocation=function(latitude,longitude,accuracy,error){
+ if(error){$("chatState").textContent=error;return}
+ data.lastLocation={latitude:Number(latitude),longitude:Number(longitude),accuracy:Number(accuracy),at:stamp()};
+ useLocationForNextResearch=true;activity("Localização GPS obtida para pesquisa",Number(latitude).toFixed(5)+", "+Number(longitude).toFixed(5));saveData();
+ setMode("research");if(!$("message").value.trim())$("message").value="Pesquise lugares próximos";
+ $("chatState").textContent="GPS obtido. Escreva o que procura e envie. As coordenadas serão usadas somente nesta pesquisa.";$("message").focus();
+};
+window.onAurionSpeechStatus=function(message){$("chatState").textContent=message};
+window.onAurionVoiceResult=function(transcript,error){
+ if(error){$("chatState").textContent=error;return}
+ $("message").value=transcript;$("chatState").textContent="Fala convertida em texto. Enviando e guardando a transcrição…";sendMessage();
+};
 function startVoiceInput(){
+ if(window.AurionNative&&typeof window.AurionNative.startVoiceRecognition==="function"){window.AurionNative.startVoiceRecognition();return}
  const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
  if(!Speech){$("chatState").textContent="Reconhecimento de voz não disponível neste navegador.";return}
  const recognition=new Speech();recognition.lang="pt-BR";recognition.interimResults=false;recognition.maxAlternatives=1;
@@ -172,10 +199,9 @@ function startVoiceInput(){
  recognition.start();
 }
 function speakLastAnswer(){
- if(!("speechSynthesis" in window)||typeof SpeechSynthesisUtterance==="undefined"){$("chatState").textContent="Leitura em voz alta não disponível neste navegador.";return}
  const text=lastAssistantText||data.messages.filter(x=>x.role==="assistant").slice(-1)[0]?.content;
  if(!text){$("chatState").textContent="Ainda não há resposta para ler.";return}
- window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang="pt-BR";window.speechSynthesis.speak(utterance);
+ speakText(text);
 }
 function selectImage(event){
  const file=event.target.files&&event.target.files[0];if(!file)return;
@@ -426,17 +452,17 @@ async function sendMessage(){
 const field=$("message"),msg=field.value.trim();if(!msg&&!pendingImageData)return;
 field.value="";const imageData=pendingImageData;pendingImageData=null;$("attachPreview").textContent="";
 const displayText=msg||(imageData?"Analise a imagem anexada.":"");
-data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada]":""),at:stamp()});renderMessages();
+data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada]":""),at:stamp(),source:"text"});saveData();renderMessages();
 if(!imageData&&/^(?:nexora[, ]+)?ativar mente completa[.! ]*$/i.test(msg)){activateFullMind(true);return;}
 // Prioridade local: a conversa principal usa o modelo no aparelho, sem API comercial.
 const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
 const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()==="ready"||localModelState()==="downloaded"));
 // No modo offline, execute ferramentas locais antes de consultar o modelo do aparelho.
 const command=(!modelReady&&msg)?localCommand(msg):null;
-if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
+if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();if(autoSpeakEnabled)speakText(command);return}
 if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
- data.messages.push(pending);renderMessages();
+ data.messages.push(pending);saveData();renderMessages();
  const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
  const memoryContext=[
   "MEMÓRIAS RELEVANTES:\n"+data.memories.slice(-12).map(x=>"- "+x.content).join("\n"),
@@ -445,6 +471,17 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  ].join("\n\n");
  const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
  window.AurionNative.sendLocalMessage(msg,history);return;
+}
+if(activeMode==="research"){
+ const pending={role:"assistant",content:"Pesquisando na web…",at:stamp()};data.messages.push(pending);saveData();renderMessages();
+ try{
+  const payload={query:msg};
+  if(useLocationForNextResearch&&data.lastLocation){payload.latitude=data.lastLocation.latitude;payload.longitude=data.lastLocation.longitude;}
+  useLocationForNextResearch=false;
+  const r=await api("/api/research/public",{method:"POST",body:JSON.stringify(payload)});
+  pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url+(x.snippet?"\n"+x.snippet:"")).join("\n\n"):"\n\nO mecanismo não retornou links de fontes.");
+ }catch(e){useLocationForNextResearch=false;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
+ pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);return;
 }
 if(!connected){const answer="Nenhum servidor remoto está conectado. Para conversar sem configurar servidor, ative a IA local em Configurar. Pesquisa na internet e sincronização em nuvem continuam sendo recursos opcionais.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
 if(apiCaps&&activeMode==="chat"&&apiCaps.chat&&!apiCaps.chat.configured){const answer="O servidor está conectado, mas a chave do modelo ainda não foi configurada no servidor. A chave deve permanecer nas variáveis privadas da hospedagem, nunca no aplicativo.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
@@ -468,12 +505,13 @@ pending.content=r.answer||"O núcleo não retornou texto.";
 }
 pending.at=stamp();lastAssistantText=pending.content;
 }catch(e){pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;}
-saveData();renderMessages();
+saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);
 }
 function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aurion-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
 function importData(){$("importFile").click()}
 function handleImport(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result),d=x.data||x;if(!Array.isArray(d.memories)||!Array.isArray(d.tasks))throw Error("Arquivo não reconhecido");data={memories:d.memories||[],tasks:d.tasks||[],knowledge:d.knowledge||[],messages:d.messages||[],activity:d.activity||[]};saveData();setSettingsStatus("Dados importados neste aparelho.",true)}catch(err){setSettingsStatus("Falha ao importar: "+err.message,false)}};reader.readAsText(f);e.target.value=""}
 $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
+const autoSpeakButton=$("autoSpeakButton");if(autoSpeakButton)autoSpeakButton.textContent=autoSpeakEnabled?"🔊 Voz automática: ligada":"🔇 Voz automática: desligada";
 if(config.url&&config.token){$("serverUrl").value=config.url;$("accessToken").value=config.token;fetch(config.url+"/api/health").then(r=>r.json()).then(async h=>{if(h.status==="online"){try{await api("/api/overview");setConnection(true);apiCaps=await api("/api/capabilities").catch(()=>null);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · IA configurada":"Núcleo conectado · IA aguarda configuração";$("lastCheck").textContent="VERIFICADO";renderCapabilities();await syncWorkspace()}catch{setConnection(false)}}}).catch(()=>setConnection(false))}
 renderAll();renderCapabilities();refreshLocalModel();if(window.AurionNative){try{window.AurionNative.prepareLocalModel()}catch(e){}}
 if(config.url&&!config.token){fetch(config.url.replace(/\/+$/,"")+"/api/health").then(r=>r.json()).then(h=>{if(h.status==="online"){$("connectionPill").textContent="● servidor online";$("homeStatus").textContent=h.model_key_configured?"Servidor AURION online. Informe seu token privado em Configurar para sincronizar os dados.":"Servidor AURION online. O modelo de IA ainda aguarda configuração no servidor; o modo local já está disponível.";$("homeStatus").className="statusbox warn";$("lastCheck").textContent="SERVIDOR VERIFICADO";}}).catch(()=>{});}
