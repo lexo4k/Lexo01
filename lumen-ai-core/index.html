@@ -90,9 +90,10 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <section id="knowledge" class="screen"><div class="eyebrow">ARQUIVO PESSOAL</div><h2>Base de conhecimento</h2><p class="muted">Guarde referências, resumos e informações para consultar depois.</p>
 <div class="panel"><div class="field"><label>Título</label><input id="knowTitle" placeholder="Nome do registro"></div><div class="field"><label>Conteúdo</label><textarea id="knowContent" rows="4" placeholder="Escreva ou cole o conteúdo..."></textarea></div><div class="field"><label>Fonte (opcional)</label><input id="knowSource" placeholder="Link ou referência"></div><button class="btn primary" onclick="saveKnowledge()">Arquivar conhecimento</button></div><div id="knowledgeList" class="list"></div>
 </section>
-<section id="settings" class="screen"><div class="eyebrow">CONFIGURAÇÃO DO SISTEMA</div><h2>Conectar o núcleo</h2><p class="muted">A interface funciona sem servidor. Para habilitar respostas do modelo, pesquisa web e sincronização, conecte a instalação hospedada do NEXORA.</p>
+<section id="settings" class="screen"><div class="eyebrow">NEXORA INDEPENDENTE</div><h2>Seu núcleo de IA</h2><p class="muted">A conversa principal pode rodar no próprio Android, sem token, servidor ou conta externa. Recursos online continuam opcionais.</p>
+<div class="panel"><h3>🧠 Inteligência local no aparelho</h3><p class="muted">Baixe uma vez um modelo aberto de aproximadamente 470 MiB. Depois de carregado, a conversa funciona no telefone sem enviar suas mensagens para a nuvem. O modelo compacto tem limites de qualidade e velocidade.</p><div id="localModelStatus" class="statusbox warn">Verificando disponibilidade da IA local…</div><button class="btn primary" onclick="downloadLocalModel()">Baixar e ativar IA local · ~470 MiB</button><p class="muted">Recomendado usar Wi-Fi e manter espaço livre. O arquivo fica no armazenamento privado do aplicativo.</p></div>
 <div id="settingsStatus" class="statusbox warn">Nenhum servidor conectado. Seus dados locais continuam disponíveis.</div>
-<div class="panel"><h3>Servidor seguro</h3><div class="field"><label>Endereço HTTPS do servidor</label><input id="serverUrl" inputmode="url" placeholder="https://seu-servico.exemplo.com"></div><div class="field"><label>Token privado de acesso</label><input id="accessToken" type="password" autocomplete="off" placeholder="Token configurado no servidor"></div><button class="btn primary" onclick="connectServer()">Testar e conectar</button><button class="btn" onclick="disconnectServer()" style="margin-left:6px">Desconectar</button><p class="muted">O endereço e o token ficam armazenados apenas no armazenamento privado do aplicativo/navegador. Nunca coloque a chave do provedor de IA aqui. Ela pertence somente ao servidor.</p></div>
+<div class="panel"><h3>Conexão remota opcional</h3><div class="field"><label>Endereço HTTPS do servidor</label><input id="serverUrl" inputmode="url" placeholder="https://seu-servico.exemplo.com"></div><div class="field"><label>Token privado de acesso</label><input id="accessToken" type="password" autocomplete="off" placeholder="Token configurado no servidor"></div><button class="btn primary" onclick="connectServer()">Testar e conectar</button><button class="btn" onclick="disconnectServer()" style="margin-left:6px">Desconectar</button><p class="muted">O endereço e o token ficam armazenados apenas no armazenamento privado do aplicativo/navegador. Nunca coloque a chave do provedor de IA aqui. Ela pertence somente ao servidor.</p></div>
 <div class="panel"><h3>Recursos e disponibilidade</h3><div id="capabilityList" class="list"><div class="item"><b>Interface local</b><p>Disponível neste aparelho.</p></div><div class="item"><b>Modelo de IA e pesquisa</b><p>Exigem servidor publicado e chave de provedor configurada.</p></div><div class="item"><b>Memória sincronizada</b><p>Exige conexão e banco persistente no servidor.</p></div></div></div>
 <div class="panel"><h3>Dados neste aparelho</h3><p class="muted">Você pode exportar suas memórias, tarefas e registros locais em um arquivo JSON.</p><button class="btn" onclick="exportData()">Exportar meus dados</button><button class="btn" onclick="importData()">Importar arquivo</button><input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)"></div>
 </section>
@@ -106,8 +107,35 @@ function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:
 function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
 function loadConfig(){const defaultUrl="https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app";try{const saved=JSON.parse(localStorage.getItem(CFG));if(!saved)return{url:defaultUrl,token:""};if(!saved.url||saved.url==="https://lumen-ai-core.vercel.app")return{url:defaultUrl,token:saved.token||""};return{url:saved.url,token:saved.token||""}}catch{return{url:defaultUrl,token:""}}}
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
-function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
+function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities();refreshLocalModel()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
 function demo(prompt){show("chat");$("message").value=prompt;sendMessage()}
+function localModelState(){
+ try{return window.NexoraNative?window.NexoraNative.modelState():"unavailable"}catch{return "unavailable"}
+}
+function downloadLocalModel(){
+ if(!window.NexoraNative){$("localModelStatus").textContent="A IA local está disponível na versão Android instalada, não na prévia do navegador.";return}
+ window.NexoraNative.downloadModel();
+}
+window.onNexoraModelState=function(state,detail){
+ const el=$("localModelStatus");
+ if(el){el.textContent=detail;el.className="statusbox "+(state==="ready"?"good":state==="error"?"warn":"warn")}
+ if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online")}
+ else if(state==="downloading"||state==="loading"){$("chatState").textContent=detail}
+};
+window.onNexoraNativeAnswer=function(answer,failed){
+ const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
+ if(pending){pending.content=answer;pending.at=stamp();delete pending.pendingLocal}
+ lastAssistantText=answer;saveData();renderMessages();
+ $("chatState").textContent=failed?"IA local · verifique a mensagem":"IA local · resposta gerada no aparelho";
+};
+function refreshLocalModel(){
+ const state=localModelState();
+ if(state==="ready")window.onNexoraModelState("ready","IA local pronta neste aparelho.");
+ else if(state==="downloaded")window.onNexoraModelState("loading","Modelo baixado. Será carregado ao iniciar a primeira conversa.");
+ else if(state==="working")window.onNexoraModelState("loading","A IA local está sendo preparada.");
+ else if(state==="missing")window.onNexoraModelState("missing","Modelo ainda não baixado. Toque no botão para ativar a IA local.");
+ else if(state==="unavailable")window.onNexoraModelState("unavailable","A IA local roda no aplicativo Android. A prévia web não tem acesso ao motor nativo.");
+}
 function setMode(mode){
  if(!["chat","research","think"].includes(mode))return;
  activeMode=mode;
@@ -272,7 +300,13 @@ data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada
 const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
 const command=(!modelReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
-if(!connected){const answer="O servidor ainda não está autenticado neste aparelho. Abra Configurar e conecte o token privado. Os recursos locais continuam disponíveis, mas não vou simular uma resposta de IA.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
+if(!modelReady&&localModelState()==="ready"&&activeMode!=="research"&&!imageData){
+ const pending={role:"assistant",content:"Pensando com a IA local…",at:stamp(),pendingLocal:true};
+ data.messages.push(pending);renderMessages();
+ const history=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"NEXORA")+": "+x.content).join("\n").slice(-4500);
+ window.NexoraNative.sendLocalMessage(msg,history);return;
+}
+if(!connected){const answer="Nenhum servidor remoto está conectado. Para conversar sem configurar servidor, ative a IA local em Configurar. Pesquisa na internet e sincronização em nuvem continuam sendo recursos opcionais.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
 if(apiCaps&&activeMode==="chat"&&apiCaps.chat&&!apiCaps.chat.configured){const answer="O servidor está conectado, mas a chave do modelo ainda não foi configurada no servidor. A chave deve permanecer nas variáveis privadas da hospedagem, nunca no aplicativo.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
 const pending={role:"assistant",content:activeMode==="research"?"Pesquisando fontes na web…":activeMode==="think"?"Analisando objetivo e avaliando o plano…":"Consultando o modelo de IA…",at:stamp()};data.messages.push(pending);renderMessages();
 try{
@@ -301,7 +335,7 @@ function importData(){$("importFile").click()}
 function handleImport(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result),d=x.data||x;if(!Array.isArray(d.memories)||!Array.isArray(d.tasks))throw Error("Arquivo não reconhecido");data={memories:d.memories||[],tasks:d.tasks||[],knowledge:d.knowledge||[],messages:d.messages||[],activity:d.activity||[]};saveData();setSettingsStatus("Dados importados neste aparelho.",true)}catch(err){setSettingsStatus("Falha ao importar: "+err.message,false)}};reader.readAsText(f);e.target.value=""}
 $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
 if(config.url&&config.token){$("serverUrl").value=config.url;$("accessToken").value=config.token;fetch(config.url+"/api/health").then(r=>r.json()).then(async h=>{if(h.status==="online"){try{await api("/api/overview");setConnection(true);apiCaps=await api("/api/capabilities").catch(()=>null);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · IA configurada":"Núcleo conectado · IA aguarda configuração";$("lastCheck").textContent="VERIFICADO";renderCapabilities();await syncWorkspace()}catch{setConnection(false)}}}).catch(()=>setConnection(false))}
-renderAll();renderCapabilities();
+renderAll();renderCapabilities();refreshLocalModel();
 if(config.url&&!config.token){fetch(config.url.replace(/\/+$/,"")+"/api/health").then(r=>r.json()).then(h=>{if(h.status==="online"){$("connectionPill").textContent="● servidor online";$("homeStatus").textContent=h.model_key_configured?"Servidor NEXORA online. Informe seu token privado em Configurar para sincronizar os dados.":"Servidor NEXORA online. O modelo de IA ainda aguarda configuração no servidor; o modo local já está disponível.";$("homeStatus").className="statusbox warn";$("lastCheck").textContent="SERVIDOR VERIFICADO";}}).catch(()=>{});}
 if("serviceWorker"in navigator&&location.protocol==="https:")navigator.serviceWorker.register("/sw.js").catch(()=>{});
 </script></body></html>
