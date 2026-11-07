@@ -150,3 +150,10 @@ Agora existe também o módulo Android próprio em `lumen-android/`. O APK inclu
 O workflow `AURION Continuous Maintenance` roda a cada seis horas e também a cada alteração relevante da branch. Ele compila os módulos Python, executa os testes automatizados e audita dependências. O Dependabot verifica semanalmente atualizações de bibliotecas Python e GitHub Actions, abrindo pull requests para análise e validação. O Render publica commits da branch automaticamente. Atualizações de dependências não são instaladas às cegas: entram como propostas, passam pelos testes e precisam ser aceitas antes de chegar à produção. Isso reduz o risco de uma atualização quebrar o app ou expor dados.
 
 A lista de provedores é atualizada por configuração do servidor e pode ser consultada em `GET /v1/providers`; o gateway faz failover apenas para modelos alternativos explicitamente cadastrados. APIs nativas incompatíveis precisam de adaptadores próprios. O AURION não descobre credenciais privadas, não cria acesso a satélites, redes ou serviços fechados e não altera hardware remotamente.
+
+## Agente local por etapas (offline)
+
+No APK Android, quando o modelo local está carregado, o AURION pode conversar e usar o executor local sem servidor. O executor pode criar, listar, concluir e organizar tarefas, guardar memórias e preparar planos de várias etapas no armazenamento local. Exemplos: `planeje e prepare a execução de organizar meus estudos` e `execute localmente: revisar tarefas, arquivar anotações`.
+
+Esse modo é uma automação local limitada, não um agente com acesso irrestrito ao aparelho. Ele não navega na internet sem conexão, não controla outros aplicativos, não envia mensagens, não instala software e não realiza compras ou movimentações financeiras. Uma etapa só é declarada concluída quando existe uma alteração local verificável. O modelo local recebe instruções para distinguir plano, execução e dependências externas.
+
