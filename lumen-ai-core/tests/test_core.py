@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 tmp = tempfile.TemporaryDirectory()
 os.environ["LUMEN_DB_PATH"] = os.path.join(tmp.name, "test.db")
 os.environ["LUMEN_ACCESS_TOKEN"] = "test-token"
-from app import app
+from app import app, execute_agent_tool
 
 class CoreTests(unittest.TestCase):
     def setUp(self):
@@ -52,6 +52,23 @@ class CoreTests(unittest.TestCase):
         updated = self.client.patch(f"/api/tasks/{task_id}", headers=self.headers,
                                     json={"status": "concluída"})
         self.assertEqual(updated.status_code, 200)
+
+    def test_agent_tools_save_memory_create_and_list_tasks(self):
+        saved = execute_agent_tool("save_memory", {"content": "Gosta de respostas objetivas", "category": "preferencia"})
+        self.assertTrue(saved["saved"])
+        task = execute_agent_tool("create_task", {"title": "Revisar o núcleo LÚMEN", "details": "Adicionar ferramentas locais"})
+        self.assertEqual(task["status"], "pendente")
+        listed = execute_agent_tool("list_tasks", {})
+        self.assertTrue(any(item["title"] == "Revisar o núcleo LÚMEN" for item in listed["tasks"]))
+
+    def test_agent_tool_memory_search(self):
+        execute_agent_tool("save_memory", {"content": "Prefere interface em português", "category": "preferencia"})
+        result = execute_agent_tool("search_memory", {"query": "interface em português"})
+        self.assertTrue(any("interface em português" in item["content"] for item in result["memories"]))
+
+    def test_agent_tool_rejects_unknown_tool(self):
+        result = execute_agent_tool("run_shell", {})
+        self.assertFalse(result["ok"])
 
     def test_web_research_requires_provider_key(self):
         with mock.patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
