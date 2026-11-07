@@ -49,6 +49,11 @@ class UiContractTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 self.assertIn(marker, html)
 
+    def test_cloud_knowledge_delete_endpoint_exists(self):
+        backend = (ROOT / "app.py").read_text(encoding="utf-8")
+        self.assertIn('@app.delete("/api/knowledge/{knowledge_id}"', backend)
+        self.assertIn('DELETE FROM knowledge WHERE id=?', backend)
+
     def test_android_voice_permission_is_user_gated(self):
         manifest = (ROOT.parent / "lumen-android" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
         activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
