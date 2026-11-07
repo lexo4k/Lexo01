@@ -68,6 +68,15 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('@app.delete("/api/knowledge/{knowledge_id}"', backend)
         self.assertIn('DELETE FROM knowledge WHERE id=?', backend)
 
+    def test_android_has_practical_default_and_optional_larger_local_model(self):
+        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn('"qwen-1.5b" to LocalModelProfile', activity)
+        self.assertIn('"qwen-3b" to LocalModelProfile', activity)
+        self.assertIn('Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf', activity)
+        self.assertIn('getString("model_id", "qwen-1.5b")', activity)
+        self.assertIn('history.takeLast(1800)', activity)
+        self.assertIn('maxTokens = selectedProfile().maxTokens', activity)
+
     def test_android_voice_permission_is_user_gated(self):
         manifest = (ROOT.parent / "lumen-android" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
         activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
