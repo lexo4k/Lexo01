@@ -22,6 +22,22 @@ Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web c
 - Testes automatizados, incluindo validação do endpoint de pesquisa sem credencial.
 
 ## Pesquisa na web
+## API própria NEXORA (gateway multi-provedor)
+
+O núcleo agora expõe um contrato público inspirado em **OpenAI Chat Completions**, hospedado no domínio da NEXORA. Aplicativos e agentes podem chamar `GET /v1/models` e `POST /v1/chat/completions` usando o token da NEXORA no cabeçalho `Authorization: Bearer SEU_TOKEN`. O identificador do modelo segue `provedor/modelo`, por exemplo `openai/gpt-4.1-mini`.
+
+Os provedores são cadastrados pela variável de ambiente `NEXORA_PROVIDERS` (JSON). Cada entrada informa `base_url`, `api_key_env` e a lista permitida em `models`. `api_key_env` contém somente o nome da variável secreta; o valor real fica no ambiente privado do Render, nunca no código, no app Android ou no Git. A primeira versão encaminha o protocolo OpenAI Chat Completions para provedores que implementam esse formato. Não promete compatibilidade universal: APIs proprietárias com protocolos diferentes, streaming, áudio e formatos multimodais específicos exigem adaptadores próprios. O gateway rejeita streaming nesta versão e valida a estrutura básica da resposta upstream.
+
+Exemplo de chamada:
+
+```bash
+curl https://SEU-DOMINIO/v1/chat/completions \\
+  -H 'Authorization: Bearer SEU_TOKEN' \\
+  -H 'Content-Type: application/json' \\
+  -d '{"model":"openai/gpt-4.1-mini","messages":[{"role":"user","content":"Olá, NEXORA"}]}'
+```
+
+## Pesquisa na web
 
 A pesquisa integrada envia a pergunta ao servidor. O servidor chama a API Responses com a ferramenta `web_search`, recolhe as citações/URLs devolvidas e apresenta os links para consulta. Uma pesquisa só é considerada realizada quando o provedor responde com sucesso; o sistema não simula resultados.
 
