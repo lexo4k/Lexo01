@@ -78,6 +78,7 @@ function loadConfig(){try{return JSON.parse(localStorage.getItem(CFG))||{url:"",
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
 function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
 function stamp(){return new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}
+function newId(){return window.crypto&&crypto.randomUUID?newId():("lumen-"+Date.now()+"-"+Math.random().toString(36).slice(2))}
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function activity(title,detail=""){data.activity.unshift({title,detail,at:stamp()});data.activity=data.activity.slice(0,30)}
 function renderAll(){
@@ -91,18 +92,18 @@ renderMessages();
 }
 function renderList(id,items,fn){$(id).innerHTML=items.length?items.slice().reverse().map(x=>'<div class="item">'+fn(x)+'</div>').join(""):'<div class="empty">Nada por aqui ainda.</div>'}
 function renderMessages(){const el=$("messages");if(!data.messages.length)return;el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
-function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:crypto.randomUUID(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData()}
+function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData()}
 function deleteMemory(id){data.memories=data.memories.filter(x=>x.id!==id);saveData()}
-function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:crypto.randomUUID(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData()}
+function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:newId(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData()}
 function toggleTask(id){const t=data.tasks.find(x=>x.id===id);if(t){t.done=!t.done;activity(t.done?"Tarefa concluída":"Tarefa reaberta",t.title);saveData()}}
 function deleteTask(id){data.tasks=data.tasks.filter(x=>x.id!==id);saveData()}
-function saveKnowledge(){const title=$("knowTitle").value.trim(),content=$("knowContent").value.trim();if(!title||!content)return;data.knowledge.push({id:crypto.randomUUID(),title,content,source:$("knowSource").value.trim(),at:stamp()});activity("Conhecimento arquivado",title);$("knowTitle").value=$("knowContent").value=$("knowSource").value="";saveData()}
+function saveKnowledge(){const title=$("knowTitle").value.trim(),content=$("knowContent").value.trim();if(!title||!content)return;data.knowledge.push({id:newId(),title,content,source:$("knowSource").value.trim(),at:stamp()});activity("Conhecimento arquivado",title);$("knowTitle").value=$("knowContent").value=$("knowSource").value="";saveData()}
 function deleteKnowledge(id){data.knowledge=data.knowledge.filter(x=>x.id!==id);saveData()}
 function localCommand(msg){
 let m=msg.match(/^(?:criar|adicionar|nova)\s+tarefa\s*[:\-]\s*(.+)$/i);
-if(m){data.tasks.push({id:crypto.randomUUID(),title:m[1].trim(),details:"Criada pela conversa local",done:false,at:stamp()});activity("Tarefa criada pela conversa",m[1]);saveData();return "Tarefa guardada neste aparelho: "+m[1].trim()}
+if(m){data.tasks.push({id:newId(),title:m[1].trim(),details:"Criada pela conversa local",done:false,at:stamp()});activity("Tarefa criada pela conversa",m[1]);saveData();return "Tarefa guardada neste aparelho: "+m[1].trim()}
 m=msg.match(/^(?:guardar|salvar)\s+(?:memória|nota)\s*[:\-]\s*(.+)$/i);
-if(m){data.memories.push({id:crypto.randomUUID(),content:m[1].trim(),category:"nota",at:stamp()});activity("Nota guardada pela conversa",m[1]);saveData();return "Anotação salva na memória local."}
+if(m){data.memories.push({id:newId(),content:m[1].trim(),category:"nota",at:stamp()});activity("Nota guardada pela conversa",m[1]);saveData();return "Anotação salva na memória local."}
 if(/^(?:listar|mostrar)\s+tarefas$/i.test(msg)){const open=data.tasks.filter(x=>!x.done);return open.length?"Tarefas abertas:\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\n"):"Você não tem tarefas abertas."}
 if(/^(?:listar|mostrar)\s+memórias$/i.test(msg)){return data.memories.length?"Memórias:\n"+data.memories.map((x,i)=>(i+1)+". ["+x.category+"] "+x.content).join("\n"):"Ainda não há memórias salvas."}
 return null;
