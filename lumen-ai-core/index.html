@@ -28,12 +28,33 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 .statusbox{border-radius:14px;padding:12px;background:#102538;border:1px solid #29465c;font-size:12px;line-height:1.5}.statusbox.warn{border-color:#705b35;background:#2a2418;color:#f4d99f}.statusbox.good{border-color:#2c6656;background:#102a27;color:#a5e9ce}
 .hidden{display:none!important}.divider{height:1px;background:var(--line);margin:15px 0}.tag{font-size:10px;padding:5px 8px;border:1px solid var(--line);border-radius:20px;color:var(--muted)}
 @media(min-width:620px){main{padding:24px}.hero{padding:30px}.hero h2{font-size:31px}.quick{grid-template-columns:repeat(4,1fr)}.chatbox{min-height:650px}.messages{max-height:540px}.composer{bottom:0}}
+
+/* LÚMEN visual identity: animated core and cinematic command deck */
+.hero{min-height:360px;padding:26px 22px 22px;background:radial-gradient(circle at 50% 40%,#164e68 0,#102d43 30%,#0a1b2c 72%);border-color:#32728b;display:flex;flex-direction:column;align-items:center;text-align:center}
+.hero:after{width:260px;height:260px;right:calc(50% - 130px);top:38px;border-color:#75eaff24;box-shadow:0 0 0 18px #62ddeb0b,0 0 0 38px #62ddeb08,0 0 55px #35cbe51a}
+.hero .eyebrow{position:relative;z-index:1;letter-spacing:.24em}
+.hero h2{position:relative;z-index:1;max-width:520px;margin:15px 0 8px;font-size:27px;text-shadow:0 0 24px #68e8ff35}
+.hero p{position:relative;z-index:1;max-width:440px}
+.hero-foot{position:relative;z-index:1;justify-content:center}
+.core-visual{position:relative;z-index:1;width:158px;height:158px;margin:17px auto 10px;display:grid;place-items:center}
+.core-visual .ring{position:absolute;inset:4px;border:1px solid #65e5f7a8;border-radius:50%;box-shadow:0 0 25px #40d8ed25,inset 0 0 24px #40d8ed18}
+.core-visual .ring.r2{inset:17px;border-style:dashed;border-color:#8befff70;animation:core-spin 24s linear infinite}
+.core-visual .ring.r3{inset:31px;border-color:#a2f8ff55;box-shadow:0 0 28px #62e9ff25}
+.core-visual .core{width:66px;height:66px;border-radius:50%;display:grid;place-items:center;font-size:31px;font-weight:800;color:#eaffff;background:radial-gradient(circle at 35% 28%,#d9ffff 0,#74e9f3 16%,#268da8 48%,#102f50 76%);border:1px solid #b7fbff;box-shadow:0 0 22px #62eaff9c,0 0 65px #28c9ee58,inset 0 0 15px #e9ffff9c;animation:core-pulse 3.2s ease-in-out infinite}
+.core-visual .orbit-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:#a8f8ff;box-shadow:0 0 14px #64edff}
+.core-visual .orbit-dot.d1{top:16px;right:25px}.core-visual .orbit-dot.d2{bottom:19px;left:20px;width:5px;height:5px}
+@keyframes core-spin{to{transform:rotate(360deg)}}@keyframes core-pulse{0%,100%{transform:scale(.96);filter:brightness(.92)}50%{transform:scale(1.06);filter:brightness(1.22)}}
+.metric,.panel,.quick button,.item{background:linear-gradient(145deg,#11263aee,#0b1929f2);border-color:#294c65;box-shadow:0 8px 24px #0002}
+.metric{border-radius:17px}.metric b{color:#a3f1f5}.quick button{transition:transform .18s ease,border-color .18s ease,background .18s ease}.quick button:active{transform:scale(.98);border-color:#65dce9}
+.btn.primary{background:linear-gradient(135deg,#237e8e,#16465e);box-shadow:0 5px 22px #36c9df24}
+.orb,.mini-orb{box-shadow:0 0 25px #54d8e755,inset 0 0 18px #54d8e733}
+@media(min-width:620px){.hero{min-height:410px;padding:30px}.core-visual{width:180px;height:180px}.core-visual .core{width:76px;height:76px;font-size:36px}}
 </style></head>
 <body><div class="app">
 <header><div class="brand"><div class="orb">L</div><div><strong>LÚMEN</strong><small>INTELIGÊNCIA PESSOAL</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
 <main>
 <section id="home" class="screen active">
-<div class="hero"><div class="eyebrow">SEU CENTRO DE COMANDO</div><h2>Bom ter você por aqui.</h2><p>Um espaço para conversar com a IA, organizar ideias, guardar conhecimento e acompanhar o que importa.</p><div class="hero-foot"><button class="btn primary" onclick="show('chat')">✦ Abrir conversa</button><button class="btn ghost" onclick="show('settings')">Conectar núcleo</button></div></div>
+<div class="hero"><div class="eyebrow">SEU CENTRO DE COMANDO</div><div class="core-visual" aria-label="Núcleo visual do LÚMEN"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">L</div></div><h2>Bom ter você por aqui.</h2><p>Um espaço para conversar com a IA, organizar ideias, guardar conhecimento e acompanhar o que importa.</p><div class="hero-foot"><button class="btn primary" onclick="show('chat')">✦ Abrir conversa</button><button class="btn ghost" onclick="show('settings')">Conectar núcleo</button></div></div>
 <div class="grid"><div class="metric"><span>Memórias neste aparelho</span><b id="memoryCount">0</b></div><div class="metric"><span>Tarefas abertas</span><b id="taskCount">0</b></div><div class="metric"><span>Conversas locais</span><b id="chatCount">0</b></div></div>
 <div class="section-title"><h3>Atalhos</h3><span>ACESSO RÁPIDO</span></div>
 <div class="quick">
