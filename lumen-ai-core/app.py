@@ -21,7 +21,7 @@ from public_research import search_web
 
 ROOT = Path(__file__).parent
 DEFAULT_DB_PATH = (Path("/var/data/nexora.db") if os.getenv("RENDER") else Path("/tmp/lumen.db")) if os.getenv("VERCEL") or os.getenv("RENDER") else ROOT / "data" / "lumen.db"
-DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(DEFAULT_DB_PATH)))
+DB_PATH = Path(os.getenv("AURION_DB_PATH") or os.getenv("LUMEN_DB_PATH", str(DEFAULT_DB_PATH)))
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -138,9 +138,9 @@ def now() -> str:
 
 def model_config() -> dict[str, str]:
     """Configuração independente do fornecedor para APIs compatíveis com OpenAI Chat Completions."""
-    names = ("LUMEN_MODEL_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY")
+    names = ("AURION_MODEL_API_KEY", "LUMEN_MODEL_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY")
     key = next((os.getenv(name, "").strip() for name in names if os.getenv(name, "").strip()), "")
-    explicit_base = (os.getenv("LUMEN_MODEL_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "").strip()
+    explicit_base = (os.getenv("AURION_MODEL_BASE_URL") or os.getenv("LUMEN_MODEL_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "").strip()
     base = explicit_base.rstrip("/")
     if not base:
         if os.getenv("OPENROUTER_API_KEY"):
@@ -151,20 +151,20 @@ def model_config() -> dict[str, str]:
             base = "https://api.together.xyz/v1"
         else:
             base = "https://api.openai.com/v1"
-    model = (os.getenv("LUMEN_MODEL_NAME") or os.getenv("OPENAI_MODEL") or ("llama3.2" if "11434" in base else "gpt-4.1-mini")).strip()
+    model = (os.getenv("AURION_MODEL_NAME") or os.getenv("LUMEN_MODEL_NAME") or os.getenv("OPENAI_MODEL") or ("llama3.2" if "11434" in base else "gpt-4.1-mini")).strip()
     local_ollama = bool(explicit_base and ("11434" in base or "ollama" in base.lower()))
     return {"api_key": key or ("ollama-local" if local_ollama else ""), "base_url": base, "model": model, "provider": "ollama" if local_ollama else "compatible"}
 
 
 def provider_registry() -> dict[str, dict[str, Any]]:
     """Registro de provedores configurado pelo operador; segredos ficam apenas no ambiente."""
-    raw = os.getenv("NEXORA_PROVIDERS", "").strip()
+    raw = (os.getenv("AURION_PROVIDERS") or os.getenv("NEXORA_PROVIDERS") or "").strip()
     providers: dict[str, dict[str, Any]] = {}
     if raw:
         try:
             parsed = json.loads(raw)
             if not isinstance(parsed, dict):
-                raise ValueError("NEXORA_PROVIDERS precisa ser um objeto JSON.")
+                raise ValueError("AURION_PROVIDERS (ou NEXORA_PROVIDERS legado) precisa ser um objeto JSON.")
             for name, cfg in parsed.items():
                 if not isinstance(cfg, dict):
                     continue
@@ -197,7 +197,7 @@ def resolve_gateway_model(model_id: str) -> tuple[str, str, dict[str, Any]]:
     if "/" in model_id:
         provider_name, model_name = model_id.split("/", 1)
     else:
-        provider_name = os.getenv("NEXORA_DEFAULT_PROVIDER", "default").strip().lower()
+        provider_name = (os.getenv("AURION_DEFAULT_PROVIDER") or os.getenv("NEXORA_DEFAULT_PROVIDER") or "default").strip().lower()
         if provider_name not in providers and len(providers) == 1:
             provider_name = next(iter(providers))
         model_name = model_id
@@ -213,12 +213,12 @@ def resolve_gateway_model(model_id: str) -> tuple[str, str, dict[str, Any]]:
 
 def model_is_configured() -> bool:
     config = model_config()
-    return bool(config["api_key"] and (os.getenv("LUMEN_MODEL_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("TOGETHER_API_KEY") or config["provider"] == "ollama"))
+    return bool(config["api_key"] and (os.getenv("AURION_MODEL_API_KEY") or os.getenv("LUMEN_MODEL_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("TOGETHER_API_KEY") or config["provider"] == "ollama"))
 
 def require_access(authorization: str | None = Header(default=None)) -> None:
-    expected = os.getenv("LUMEN_ACCESS_TOKEN", "").strip()
+    expected = (os.getenv("AURION_ACCESS_TOKEN") or os.getenv("LUMEN_ACCESS_TOKEN") or "").strip()
     if not expected:
-        raise HTTPException(503, "Configure LUMEN_ACCESS_TOKEN no ambiente do servidor antes de usar a API.")
+        raise HTTPException(503, "Configure AURION_ACCESS_TOKEN no servidor (ou mantenha LUMEN_ACCESS_TOKEN legado) antes de usar a API.")
     supplied = (authorization or "").removeprefix("Bearer ").strip()
     if not secrets.compare_digest(supplied, expected):
         raise HTTPException(401, "Token de acesso inválido.")
@@ -296,7 +296,7 @@ def app_icon():
 
 @app.get("/api/capabilities", dependencies=[Depends(require_access)])
 async def capabilities():
-    own_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
+    own_url = (os.getenv("AURION_MODEL_URL") or os.getenv("NEXORA_MODEL_URL") or "").strip().rstrip("/")
     if own_url and not own_url.startswith(("http://", "https://")):
         own_url = "http://" + own_url
     own_ready = False
@@ -328,7 +328,7 @@ async def capabilities():
 
 @app.get("/api/health")
 async def health():
-    own_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
+    own_url = (os.getenv("AURION_MODEL_URL") or os.getenv("NEXORA_MODEL_URL") or "").strip().rstrip("/")
     if own_url and not own_url.startswith(("http://", "https://")):
         own_url = "http://" + own_url
     own_ready = False
@@ -355,7 +355,7 @@ async def health():
         "model_key_configured": provider_configured,
         "provider_gateway_models": sum(len(p["models"]) for p in provider_registry().values()),
         "correction_memory": "enabled",
-        "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
+        "access_configured": bool(os.getenv("AURION_ACCESS_TOKEN") or os.getenv("LUMEN_ACCESS_TOKEN")),
         "public_web_research_available": True,
         "storage_backend": "postgresql" if DATABASE_URL else ("sqlite_persistent_disk" if str(DB_PATH).startswith("/var/data/") else "sqlite_ephemeral"),
         "database_path_configured": str(DB_PATH),
@@ -548,7 +548,7 @@ async def research_web(item: ResearchIn):
     """Pesquisa na web usando a ferramenta web_search do provedor e devolve fontes."""
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    model = os.getenv("LUMEN_RESEARCH_MODEL", "gpt-4.1")
+    model = os.getenv("AURION_RESEARCH_MODEL") or os.getenv("LUMEN_RESEARCH_MODEL", "gpt-4.1")
     if not api_key:
         raise HTTPException(503, "Pesquisa web indisponível: esta função exige credencial OpenAI com suporte a Responses e web_search.")
     payload = {
@@ -828,10 +828,10 @@ async def gateway_chat(item: GatewayChatIn):
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
-    own_model_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
+    own_model_url = (os.getenv("AURION_MODEL_URL") or os.getenv("NEXORA_MODEL_URL") or "").strip().rstrip("/")
     if own_model_url and not own_model_url.startswith(("http://", "https://")):
         own_model_url = "http://" + own_model_url
-    own_model_token = os.getenv("NEXORA_MODEL_TOKEN", "").strip()
+    own_model_token = (os.getenv("AURION_MODEL_TOKEN") or os.getenv("NEXORA_MODEL_TOKEN") or "").strip()
     with db() as con:
         memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
         facts = [f'{r["title"]}: {r["content"]}' for r in con.execute("SELECT title,content FROM knowledge ORDER BY id DESC LIMIT 10")]
@@ -843,7 +843,7 @@ async def chat(item: ChatIn):
         )][::-1]
     if own_model_url:
         if not own_model_token:
-            raise HTTPException(503, "Modelo próprio selecionado, mas AURION_MODEL_TOKEN não foi configurado.")
+            raise HTTPException(503, "Modelo próprio selecionado, mas AURION_MODEL_TOKEN (ou NEXORA_MODEL_TOKEN legado) não foi configurado.")
         prompt_parts = ["Você é AURION, um modelo experimental próprio. Responda com honestidade e não invente capacidades."]
         if memories:
             prompt_parts.append("MEMÓRIAS:\n" + "\n".join("- " + x for x in memories))
@@ -883,7 +883,7 @@ async def chat(item: ChatIn):
     config = model_config()
     api_key, base, model = config["api_key"], config["base_url"], config["model"]
     if not api_key:
-        raise HTTPException(503, "Sem modelo próprio conectado e sem credencial externa. Configure AURION_MODEL_URL para usar os pesos próprios.")
+        raise HTTPException(503, "Sem modelo próprio conectado e sem credencial externa. Configure AURION_MODEL_URL (ou NEXORA_MODEL_URL legado) para usar os pesos próprios.")
 
     context = "\n".join([*(f"- {m}" for m in memories), *(f"- {f}" for f in facts)])
     correction_context = "\n".join(
