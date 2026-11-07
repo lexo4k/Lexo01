@@ -74,7 +74,7 @@ jobs:
               print("Bibliotecas nativas:", ", ".join(native))
               print("Interface:", html_paths[0])
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"apk_path={apk.as_posix()}\\n")
+              f.write("apk_path=" + apk.as_posix() + chr(10))
           PY
 
       - name: Upload NEXORA AI APK
