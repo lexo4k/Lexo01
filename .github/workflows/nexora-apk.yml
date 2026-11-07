@@ -1,19 +1,7 @@
 name: AURION Android APK (legacy workflow)
 
 on:
-  push:
-    branches: ["lumen-ai-core"]
-    paths:
-      - "lumen-android/**"
-      - "settings.gradle.kts"
-      - "gradle/**"
-      - "gradle.properties"
-      - "build.gradle.kts"
-      - ".github/workflows/nexora-apk.yml"
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
   build-nexora:
