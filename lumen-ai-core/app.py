@@ -246,6 +246,16 @@ def add_knowledge(item: KnowledgeIn):
                     ("Conhecimento arquivado", item.title, now()))
         return {"id": cur.lastrowid, "saved": True}
 
+@app.delete("/api/knowledge/{knowledge_id}", dependencies=[Depends(require_access)])
+def delete_knowledge(knowledge_id: int):
+    with db() as con:
+        cur = con.execute("DELETE FROM knowledge WHERE id=?", (knowledge_id,))
+        if not cur.rowcount:
+            raise HTTPException(404, "Conhecimento não encontrado.")
+        con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
+                    ("Conhecimento excluído", str(knowledge_id), now()))
+        return {"deleted": True}
+
 @app.get("/api/tasks", dependencies=[Depends(require_access)])
 def list_tasks():
     with db() as con:
