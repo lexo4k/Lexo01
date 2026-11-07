@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 tmp = tempfile.TemporaryDirectory()
 os.environ["LUMEN_DB_PATH"] = os.path.join(tmp.name, "test.db")
 os.environ["LUMEN_ACCESS_TOKEN"] = "test-token"
-from app import app, execute_agent_tool
+from app import app, execute_agent_tool, tool_mutation_authorized
 
 class CoreTests(unittest.TestCase):
     def setUp(self):
@@ -79,6 +79,19 @@ class CoreTests(unittest.TestCase):
     def test_agent_tool_rejects_unknown_tool(self):
         result = execute_agent_tool("run_shell", {})
         self.assertFalse(result["ok"])
+
+    def test_agent_mutations_require_explicit_user_intent(self):
+        self.assertTrue(tool_mutation_authorized("save_memory", "Guarde isso na minha memória: prefiro português."))
+        self.assertTrue(tool_mutation_authorized("create_task", "Crie uma tarefa para revisar o projeto."))
+        self.assertTrue(tool_mutation_authorized("save_knowledge", "Registre esta nota no conhecimento."))
+        self.assertTrue(tool_mutation_authorized("complete_task", "Marque a tarefa como concluída."))
+        self.assertFalse(tool_mutation_authorized("save_memory", "Qual é a sua opinião sobre isso?"))
+        self.assertFalse(tool_mutation_authorized("create_task", "Explique como organizar minhas tarefas."))
+        self.assertFalse(tool_mutation_authorized("save_knowledge", "Resuma esse assunto para mim."))
+        self.assertFalse(tool_mutation_authorized("complete_task", "Quais tarefas estão abertas?"))
+
+    def test_agent_mutation_authorization_is_not_granted_to_read_tools(self):
+        self.assertFalse(tool_mutation_authorized("list_tasks", "Liste minhas tarefas."))
 
     def test_web_research_requires_provider_key(self):
         with mock.patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
