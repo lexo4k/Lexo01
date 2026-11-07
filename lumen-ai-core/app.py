@@ -235,6 +235,12 @@ class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     image_data_url: str | None = Field(default=None, max_length=7_000_000)
 
+    @field_validator("image_data_url")
+    @classmethod
+    def validate_image(cls, value):
+        if value is not None and not value.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
+            raise ValueError("Envie uma imagem JPEG, PNG ou WebP.")
+        return value
 
 
 class GatewayChatIn(BaseModel):
@@ -247,13 +253,6 @@ class GatewayChatIn(BaseModel):
     tools: list[dict[str, Any]] | None = None
     tool_choice: Any | None = None
 
-
-    @field_validator("image_data_url")
-    @classmethod
-    def validate_image(cls, value):
-        if value is not None and not value.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
-            raise ValueError("Envie uma imagem JPEG, PNG ou WebP.")
-        return value
 
 @app.get("/", response_class=HTMLResponse)
 def home():
