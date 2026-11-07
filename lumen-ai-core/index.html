@@ -165,18 +165,21 @@ function aurionStartupCheck(){
  if(!window.AurionNative)return;
  const state=localModelState();
  if(state==="ready"){
-  const greeting="Sistemas locais verificados. Estou pronta para conversar. Pode me dizer o que deseja fazer.";
+  const greeting="Sistemas verificados. Estou pronto para conversar. Diga o que precisa e vou informar cada etapa do que eu conseguir executar.";
   $("homeStatus").textContent="IA local pronta. AURION disponível para conversar.";
   $("homeStatus").className="statusbox good";
   if(autoSpeakEnabled)speakText(greeting);
   return;
  }
  if(state==="missing"){
-  const message="Olá. Estou verificando meus sistemas. Ainda não consigo responder porque o modelo de inteligência local não foi instalado. Preciso baixar cerca de 1,1 GB. Vou pedir sua autorização antes de iniciar.";
-  $("homeStatus").textContent="Falta instalar o modelo local de IA. O download só começa com sua autorização.";
+  const message="Estou verificando meus sistemas. O núcleo local ainda precisa ser preparado. Vou solicitar uma única autorização para baixar o modelo e, depois disso, cuidar da preparação automaticamente.";
+  $("homeStatus").textContent="Preparação inicial necessária. O AURION solicitará autorização uma vez para baixar o modelo local.";
   $("homeStatus").className="statusbox warn";
   if(autoSpeakEnabled)speakText(message);
-  // Não abrir autorização a cada sessão. O Android retoma sozinho se a autorização já foi concedida.
+  if(window.AurionNative.autoPrepareModelOnStartup&&!window.__aurionSetupPromptRequested){
+   window.__aurionSetupPromptRequested=true;
+   setTimeout(()=>{try{window.AurionNative.autoPrepareModelOnStartup()}catch(e){$("homeStatus").textContent="Não foi possível abrir a preparação: "+e.message}},900);
+  }
   return;
  }
  if(state==="downloaded"||state==="shared"||state==="working"){
@@ -217,7 +220,7 @@ window.onAurionModelState=function(state,detail){
  const home=$("homeStatus");
  if(home){home.textContent=detail;home.className="statusbox "+(state==="ready"?"good":"warn");}
  if(el){el.textContent=detail;el.className="statusbox "+(state==="ready"?"good":state==="error"?"warn":"warn")}
- if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online");if(autoSpeakEnabled)speakText("Núcleo local pronto. Sistemas verificados. Estou disponível para conversar e executar as funções que estiverem habilitadas.");}
+ if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online");if(autoSpeakEnabled)speakText("Núcleo local pronto. Sistemas verificados. Estou disponível para conversar e executar as funções habilitadas.");}
  else if(state==="downloading"||state==="loading"||state==="restoring"){$("chatState").textContent=detail}
  else if(state==="waiting_network"||state==="wifi_required"){$("chatState").textContent=detail;$("connectionPill").textContent="● download só no Wi-Fi";$("connectionPill").classList.remove("online")}
  else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
