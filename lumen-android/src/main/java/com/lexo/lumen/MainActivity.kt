@@ -291,7 +291,7 @@ class MainActivity : Activity() {
                             CONTEXTO E HISTÓRICO (apenas referência):
                             ${history.takeLast(2600)}
                         """.trimIndent()
-                        val currentQuestion = "PERGUNTA ATUAL DO USUÁRIO:\\n" + prompt
+                        val currentQuestion = "PERGUNTA ATUAL DO USUÁRIO:\n" + prompt
                         val result = withContext(Dispatchers.IO) {
                             Llama.complete(active, currentQuestion, systemPrompt = system, maxTokens = selectedProfile().maxTokens)
                         }
