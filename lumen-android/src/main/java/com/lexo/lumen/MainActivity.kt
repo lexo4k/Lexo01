@@ -49,6 +49,7 @@ import android.widget.TextView
 
 class MainActivity : Activity() {
     private lateinit var web: WebView
+    private lateinit var aurionBridge: AurionBridge
     private lateinit var progress: ProgressBar
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var pendingWebPermission: PermissionRequest? = null
@@ -90,7 +91,8 @@ class MainActivity : Activity() {
             }
         }
         buildUi()
-        web.addJavascriptInterface(AurionBridge(), "AurionNative")
+        aurionBridge = AurionBridge()
+        web.addJavascriptInterface(aurionBridge, "AurionNative")
         web.loadUrl("file:///android_asset/index.html")
     }
 
@@ -344,7 +346,7 @@ class MainActivity : Activity() {
             }
         }
 
-        private fun startVoiceRecognitionNow() {
+        fun startVoiceRecognitionNow() {
             if (Build.VERSION.SDK_INT < 31 || !SpeechRecognizer.isOnDeviceRecognitionAvailable(this@MainActivity)) {
                 notifyVoiceResult("", "Reconhecimento de voz totalmente offline não está disponível neste aparelho. Verifique se o serviço e o pacote de português offline estão instalados.")
                 return
@@ -383,7 +385,7 @@ class MainActivity : Activity() {
             }
         }
 
-        private fun startLocationLookup() {
+        fun startLocationLookup() {
             val manager = getSystemService(LOCATION_SERVICE) as LocationManager
             if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 notifyLocationError("Ative a localização/GPS do Android e tente novamente.")
@@ -540,12 +542,12 @@ class MainActivity : Activity() {
             }
             if (pendingNativeSpeech) {
                 pendingNativeSpeech = false
-                if (granted) startVoiceRecognitionNow() else notifyVoiceResult("", "Permissão de microfone negada.")
+                if (granted) aurionBridge.startVoiceRecognitionNow() else notifyVoiceResult("", "Permissão de microfone negada.")
             }
         }
         if (requestCode == LOCATION_PERMISSION_REQUEST) {
             pendingLocationRequest = false
-            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startLocationLookup()
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) aurionBridge.startLocationLookup()
             else notifyLocationError("Permissão de localização negada. AURION não acessou sua posição.")
         }
     }
