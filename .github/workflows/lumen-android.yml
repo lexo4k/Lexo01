@@ -24,6 +24,17 @@ jobs:
       - name: Checkout LÚMEN source
         uses: actions/checkout@v4
 
+      - name: Set up Python for regression tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install LÚMEN core dependencies
+        run: python -m pip install -r lumen-ai-core/requirements.txt
+
+      - name: Verify LÚMEN core and Android interface contract
+        run: python -m unittest discover -s lumen-ai-core/tests -v
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
