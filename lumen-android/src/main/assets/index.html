@@ -71,7 +71,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 </div>
 <script>
 const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
-let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",pendingImageData=null,lastAssistantText="";
+let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",pendingImageData=null,lastAssistantText="",syncingWorkspace=false;
 function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}catch{return{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}}
 function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
 function loadConfig(){const defaultUrl="https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app";try{const saved=JSON.parse(localStorage.getItem(CFG));if(!saved)return{url:defaultUrl,token:""};if(!saved.url||saved.url==="https://lumen-ai-core.vercel.app")return{url:defaultUrl,token:saved.token||""};return{url:saved.url,token:saved.token||""}}catch{return{url:defaultUrl,token:""}}}
@@ -92,12 +92,12 @@ renderMessages();
 }
 function renderList(id,items,fn){$(id).innerHTML=items.length?items.slice().reverse().map(x=>'<div class="item">'+fn(x)+'</div>').join(""):'<div class="empty">Nada por aqui ainda.</div>'}
 function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o LÚMEN. Posso organizar suas tarefas, guardar memórias, pesquisar seus registros e montar planos iniciais mesmo sem internet. Para conversa inteligente aberta e pesquisa web, o servidor precisa de uma chave de IA configurada. Digite “ajuda” para ver os comandos disponíveis.</div>';return}el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
-function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData()}
+function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData();if(connected)syncWorkspace()}
 function deleteMemory(id){data.memories=data.memories.filter(x=>x.id!==id);saveData()}
-function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:newId(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData()}
-function toggleTask(id){const t=data.tasks.find(x=>x.id===id);if(t){t.done=!t.done;activity(t.done?"Tarefa concluída":"Tarefa reaberta",t.title);saveData()}}
+function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:newId(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData();if(connected)syncWorkspace()}
+function toggleTask(id){const t=data.tasks.find(x=>x.id===id);if(t){t.done=!t.done;activity(t.done?"Tarefa concluída":"Tarefa reaberta",t.title);saveData();if(connected)syncWorkspace()}}
 function deleteTask(id){data.tasks=data.tasks.filter(x=>x.id!==id);saveData()}
-function saveKnowledge(){const title=$("knowTitle").value.trim(),content=$("knowContent").value.trim();if(!title||!content)return;data.knowledge.push({id:newId(),title,content,source:$("knowSource").value.trim(),at:stamp()});activity("Conhecimento arquivado",title);$("knowTitle").value=$("knowContent").value=$("knowSource").value="";saveData()}
+function saveKnowledge(){const title=$("knowTitle").value.trim(),content=$("knowContent").value.trim();if(!title||!content)return;data.knowledge.push({id:newId(),title,content,source:$("knowSource").value.trim(),at:stamp()});activity("Conhecimento arquivado",title);$("knowTitle").value=$("knowContent").value=$("knowSource").value="";saveData();if(connected)syncWorkspace()}
 function deleteKnowledge(id){data.knowledge=data.knowledge.filter(x=>x.id!==id);saveData()}
 function localCommand(msg){
 const q=msg.trim();
@@ -123,7 +123,27 @@ const url=$("serverUrl").value.trim().replace(/\/+$/,""),token=$("accessToken").
 if(!/^https:\/\/[^/]+$/i.test(url)){setSettingsStatus("Informe um endereço HTTPS válido, sem caminho adicional.",false);return}
 if(!token){setSettingsStatus("Informe o token privado configurado no servidor.",false);return}
 const btn=document.querySelector("#settings .btn.primary");btn.disabled=true;btn.textContent="Testando conexão...";
-try{const h=await fetch(url+"/api/health").then(r=>{if(!r.ok)throw Error("Servidor respondeu HTTP "+r.status);return r.json()});if(h.status!=="online")throw Error("O servidor não informou estado online.");const prev=config;config={url,token};try{await api("/api/overview")}catch(e){config=prev;throw e}saveConfig();connected=true;apiCaps=await api("/api/capabilities").catch(()=>null);setConnection(true);setSettingsStatus("Conexão validada. O núcleo respondeu e a autenticação foi aceita.",true);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · chave de IA configurada":"Núcleo conectado · IA aguarda chave no servidor";$("lastCheck").textContent="VERIFICADO AGORA";activity("Núcleo conectado",url);saveData();renderCapabilities()}catch(e){connected=false;setConnection(false);setSettingsStatus("Não foi possível conectar: "+e.message,false)}finally{btn.disabled=false;btn.textContent="Testar e conectar"}
+try{const h=await fetch(url+"/api/health").then(r=>{if(!r.ok)throw Error("Servidor respondeu HTTP "+r.status);return r.json()});if(h.status!=="online")throw Error("O servidor não informou estado online.");const prev=config;config={url,token};try{await api("/api/overview")}catch(e){config=prev;throw e}saveConfig();connected=true;apiCaps=await api("/api/capabilities").catch(()=>null);setConnection(true);setSettingsStatus("Conexão validada. O núcleo respondeu e a autenticação foi aceita.",true);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · chave de IA configurada":"Núcleo conectado · IA aguarda chave no servidor";$("lastCheck").textContent="VERIFICADO AGORA";activity("Núcleo conectado",url);saveData();renderCapabilities();await syncWorkspace()}catch(e){connected=false;setConnection(false);setSettingsStatus("Não foi possível conectar: "+e.message,false)}finally{btn.disabled=false;btn.textContent="Testar e conectar"}
+}
+async function syncWorkspace(){
+if(!connected||syncingWorkspace)return;
+syncingWorkspace=true;
+try{
+let [cloudMemories,cloudKnowledge,cloudTasks]=await Promise.all([api("/api/memories"),api("/api/knowledge"),api("/api/tasks")]);
+const memoryKey=x=>(x.category||"geral").trim().toLocaleLowerCase("pt-BR")+"|"+(x.content||"").trim().toLocaleLowerCase("pt-BR");
+const knowledgeKey=x=>(x.title||"").trim().toLocaleLowerCase("pt-BR")+"|"+(x.content||"").trim().toLocaleLowerCase("pt-BR");
+const taskKey=x=>(x.title||"").trim().toLocaleLowerCase("pt-BR")+"|"+(x.details||"").trim().toLocaleLowerCase("pt-BR");
+for(const m of data.memories){if(!cloudMemories.some(x=>memoryKey(x)===memoryKey(m)))await api("/api/memories",{method:"POST",body:JSON.stringify({content:m.content,category:m.category||"geral"})});}
+for(const k of data.knowledge){if(!cloudKnowledge.some(x=>knowledgeKey(x)===knowledgeKey(k)))await api("/api/knowledge",{method:"POST",body:JSON.stringify({title:k.title,content:k.content,source:k.source||""})});}
+for(const t of data.tasks){const match=cloudTasks.find(x=>taskKey(x)===taskKey(t));if(!match)await api("/api/tasks",{method:"POST",body:JSON.stringify({title:t.title,details:t.details||""})});else{const desired=t.done?"concluída":"pendente";if(match.status!==desired)await api("/api/tasks/"+match.id,{method:"PATCH",body:JSON.stringify({status:desired})});}}
+[cloudMemories,cloudKnowledge,cloudTasks]=await Promise.all([api("/api/memories"),api("/api/knowledge"),api("/api/tasks")]);
+const localMemoryKeys=new Set(data.memories.map(memoryKey));for(const x of cloudMemories){if(!localMemoryKeys.has(memoryKey(x)))data.memories.push({id:"cloud-memory-"+x.id,content:x.content,category:x.category,at:x.created_at||""});}
+const localKnowledgeKeys=new Set(data.knowledge.map(knowledgeKey));for(const x of cloudKnowledge){if(!localKnowledgeKeys.has(knowledgeKey(x)))data.knowledge.push({id:"cloud-knowledge-"+x.id,title:x.title,content:x.content,source:x.source,at:x.created_at||""});}
+const localTaskKeys=new Set(data.tasks.map(taskKey));for(const x of cloudTasks){if(!localTaskKeys.has(taskKey(x)))data.tasks.push({id:"cloud-task-"+x.id,title:x.title,details:x.details,done:x.status==="concluída",at:x.created_at||""});}
+localStorage.setItem(KEY,JSON.stringify(data));renderAll();
+$("chatState").textContent="Núcleo conectado · memória sincronizada";
+}catch(e){$("chatState").textContent="Núcleo conectado · falha ao sincronizar memória";activity("Falha na sincronização",e.message);localStorage.setItem(KEY,JSON.stringify(data));renderAll();}
+finally{syncingWorkspace=false;}
 }
 function setSettingsStatus(msg,ok){$("settingsStatus").textContent=msg;$("settingsStatus").className="statusbox "+(ok?"good":"warn")}
 function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está aberto em modo local. Memórias e tarefas podem ser guardadas neste aparelho. Para respostas de IA e pesquisa na internet, conecte o servidor nas configurações.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
