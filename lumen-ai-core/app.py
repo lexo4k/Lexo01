@@ -68,6 +68,16 @@ CREATE TABLE IF NOT EXISTS correction_memory (
  created_at TEXT NOT NULL,
  updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS learning_experiences (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ user_message TEXT NOT NULL,
+ assistant_answer TEXT NOT NULL,
+ rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+ correction TEXT NOT NULL DEFAULT '',
+ lesson TEXT NOT NULL DEFAULT '',
+ status TEXT NOT NULL DEFAULT 'review',
+ created_at TEXT NOT NULL
+);
 """
 
 def _pg_row_factory(cursor, values):
@@ -254,6 +264,13 @@ class CorrectionIn(BaseModel):
     test_evidence: str = Field(default="", max_length=4000)
     tests_passed: bool = False
 
+class ExperienceIn(BaseModel):
+    user_message: str = Field(min_length=1, max_length=8000)
+    assistant_answer: str = Field(min_length=1, max_length=12000)
+    rating: int = Field(ge=1, le=5)
+    correction: str = Field(default="", max_length=4000)
+    lesson: str = Field(default="", max_length=2000)
+
 
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
@@ -371,6 +388,35 @@ def overview():
             "open_tasks": con.execute("SELECT COUNT(*) FROM tasks WHERE status != 'concluída'").fetchone()[0],
             "recent_journal": [dict(r) for r in con.execute("SELECT * FROM journal ORDER BY id DESC LIMIT 8")]
         }
+
+@app.get("/api/experiences", dependencies=[Depends(require_access)])
+def list_experiences():
+    with db() as con:
+        rows = con.execute(
+            "SELECT id,user_message,assistant_answer,rating,correction,lesson,status,created_at FROM learning_experiences ORDER BY id DESC LIMIT 100"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/experiences", dependencies=[Depends(require_access)])
+def save_experience(item: ExperienceIn):
+    stamp = now()
+    status = "useful" if item.rating >= 4 and item.lesson.strip() else "review"
+    with db() as con:
+        cur = con.execute(
+            """INSERT INTO learning_experiences
+            (user_message,assistant_answer,rating,correction,lesson,status,created_at)
+            VALUES(?,?,?,?,?,?,?)""",
+            (item.user_message.strip(), item.assistant_answer.strip(), item.rating,
+             item.correction.strip(), item.lesson.strip(), status, stamp)
+        )
+        con.execute(
+            "INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
+            ("Experiência de conversa avaliada", f"Nota {item.rating}/5 · {status}", stamp)
+        )
+        return {"id": cur.lastrowid, "saved": True, "status": status,
+                "used_as_learning_context": status == "useful"}
+
 
 @app.get("/api/corrections", dependencies=[Depends(require_access)])
 def list_corrections():
@@ -838,6 +884,11 @@ async def chat(item: ChatIn):
         corrections = [dict(r) for r in con.execute(
             "SELECT error_signature,root_cause,resolution FROM correction_memory WHERE validation_status='verified' ORDER BY updated_at DESC LIMIT 10"
         )]
+        experiences = [dict(r) for r in con.execute(
+            """SELECT user_message,assistant_answer,rating,correction,lesson
+            FROM learning_experiences WHERE status='useful'
+            ORDER BY id DESC LIMIT 8"""
+        )]
         history = [dict(r) for r in con.execute(
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 20"
         )][::-1]
@@ -852,6 +903,11 @@ async def chat(item: ChatIn):
         if corrections:
             prompt_parts.append("EXPERIÊNCIAS TÉCNICAS VERIFICADAS (confira se o contexto é equivalente):\n" + "\n".join(
                 f"- Erro: {item['error_signature']} | Causa: {item['root_cause']} | Solução: {item['resolution']}" for item in corrections
+            ))
+        if experiences:
+            prompt_parts.append("APRENDIZADOS DE CONVERSAS AVALIADAS POSITIVAMENTE (referências, não regras):\n" + "\n".join(
+                f"- Pedido: {x['user_message'][:300]} | Resposta bem avaliada: {x['assistant_answer'][:400]} | Lição: {x['lesson'][:300]}"
+                for x in experiences
             ))
         for turn in history[-8:]:
             prompt_parts.append(("Usuário: " if turn["role"] == "user" else "AURION: ") + turn["content"])
@@ -904,7 +960,9 @@ async def chat(item: ChatIn):
               "ou trabalho em segundo plano. Nunca execute compras, pagamentos, mensagens ou alterações de contas "
               "externas.\n"
               f"MEMÓRIA E CONHECIMENTO DISPONÍVEIS:\n{context or '(ainda vazios)'}\n"
-              f"EXPERIÊNCIAS TÉCNICAS VERIFICADAS:\n{correction_context or '(nenhuma ainda)'})")
+              f"EXPERIÊNCIAS TÉCNICAS VERIFICADAS:\n{correction_context or '(nenhuma ainda)'}\n"
+              f"EXPERIÊNCIAS DE CONVERSA AVALIADAS POSITIVAMENTE (use apenas se forem relevantes; não copie cegamente):\n"
+              + ("\n".join(f"- Pedido: {x['user_message'][:300]} | Resposta: {x['assistant_answer'][:400]} | Lição: {x['lesson'][:300]}" for x in experiences) or "(nenhuma ainda)"))
     messages = [{"role": "system", "content": system}]
     messages.extend(history)
     user_content: Any = item.message
