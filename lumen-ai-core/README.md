@@ -11,6 +11,7 @@ Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web c
 - Sincronização idempotente de memórias, tarefas e conhecimentos locais com a API autenticada, evitando duplicações por conteúdo.
 - Memória pessoal explícita e base de conhecimento persistidas em SQLite.
 - Memória de correções técnicas com causa-raiz, solução, ambiente, evidência de testes, status pendente/verificado e busca priorizando soluções verificadas. Endpoints: `GET /api/corrections`, `POST /api/corrections` e `GET /api/corrections/search?q=...`.
+- Aprendizado controlado por feedback explícito: cada resposta pode ser avaliada como útil ou pouco útil; experiências positivas com uma lição são incluídas como contexto futuro, enquanto avaliações negativas ficam para revisão. Endpoints: `GET /api/experiences` e `POST /api/experiences`. Isso não altera automaticamente os pesos do modelo nem permite autoedição do código.
 - Histórico de conversas, tarefas e diário de atividade.
 - Ciclo cognitivo limitado: compreensão do objetivo, planejamento estruturado e avaliação independente do plano.
 - Pesquisa web pelo endpoint `POST /api/research`, usando a ferramenta `web_search` da API OpenAI Responses. Retorna síntese e links das fontes encontradas.
@@ -84,6 +85,8 @@ Abra http://127.0.0.1:8000 e informe o token configurado no servidor.
 | LUMEN_DB_PATH | Caminho do banco SQLite quando PostgreSQL não está configurado |\n| DATABASE_URL | URL privada de conexão PostgreSQL; opcional |
 
 ## Memória de correções e evolução controlada
+
+O chat apresenta controles de avaliação nas respostas. Uma avaliação positiva é guardada como experiência útil somente quando acompanhada de uma lição; ela pode orientar respostas futuras nos modos de modelo próprio e provedor externo. Uma avaliação negativa é arquivada para revisão e não é usada como exemplo positivo. O usuário pode consultar as experiências em `GET /api/experiences`. Esse mecanismo é memória contextual com feedback, não treinamento automático dos pesos do modelo. Para treinamento real, seria necessário um pipeline separado de coleta consentida, curadoria, avaliação, fine-tuning e implantação versionada.
 
 A memória técnica registra assinaturas de erro, causa-raiz, resolução, ambiente e evidências de teste. Uma solução só é marcada como verificada quando o registro inclui `tests_passed=true` e evidência; a busca prioriza esses registros. O sistema reutiliza a experiência como referência, mas não altera arquivos de produção nem publica código por conta própria. Correções de código continuam sujeitas a CI, revisão e rollback.
 
