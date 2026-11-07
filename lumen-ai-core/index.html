@@ -223,7 +223,19 @@ $("recentList").innerHTML=data.activity.length?data.activity.slice(0,4).map(x=>'
 renderMessages();
 }
 function renderList(id,items,fn){$(id).innerHTML=items.length?items.slice().reverse().map(x=>'<div class="item">'+fn(x)+'</div>').join(""):'<div class="empty">Nada por aqui ainda.</div>'}
-function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o AURION. Posso conversar com o modelo conectado, organizar tarefas, guardar memórias, pesquisar seus registros e montar planos. Quando o modelo não estiver disponível, uso os recursos locais e aviso claramente.</div>';return}const start=Math.max(0,data.messages.length-100);el.innerHTML=data.messages.slice(start).map((x,j)=>{const i=start+j;const feedback=x.role==="assistant"&&!x.pendingLocal?'<div class="feedback">Esta resposta ajudou? <button class="btn" onclick="rateExperience('+i+',5)">👍 Sim</button> <button class="btn" onclick="rateExperience('+i+',2)">👎 Não</button></div>':"";return '<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small>'+feedback+'</div>'}).join("");el.scrollTop=el.scrollHeight}
+function renderMessages(){
+ const el=$("messages");
+ if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o AURION. Posso conversar com o modelo conectado, organizar tarefas, guardar memórias, pesquisar seus registros e montar planos. Quando o modelo não estiver disponível, uso os recursos locais e aviso claramente.</div>';return}
+ const start=Math.max(0,data.messages.length-100);
+ el.innerHTML=data.messages.slice(start).map((x,j)=>{
+  const i=start+j;
+  const safe=escapeHtml(x.content).replace(/(https:\/\/[^\\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  const feedback=x.role==="assistant"&&!x.pendingLocal?'<div class="feedback">Esta resposta ajudou? <button class="btn" onclick="rateExperience('+i+',5)">👍 Sim</button> <button class="btn" onclick="rateExperience('+i+',2)">👎 Não</button></div>':"";
+  return '<div class="msg '+(x.role==="user"?"user":"ai")+'">'+safe+'<small>'+escapeHtml(x.at||"")+'</small>'+feedback+'</div>';
+ }).join("");
+ el.scrollTop=el.scrollHeight;
+}
+
 async function rateExperience(index,rating){
  const answer=data.messages[index];if(!answer||answer.role!=="assistant"||answer.feedbackSaved)return;
  let user=null;for(let i=index-1;i>=0;i--){if(data.messages[i].role==="user"){user=data.messages[i];break}}
