@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from cognition import think as cognitive_cycle
 from cognition_local import plan_locally
-from public_research import search_web
+from public_research import search_web, search_nearby
 
 ROOT = Path(__file__).parent
 DEFAULT_DB_PATH = (Path("/var/data/nexora.db") if os.getenv("RENDER") else Path("/tmp/lumen.db")) if os.getenv("VERCEL") or os.getenv("RENDER") else ROOT / "data" / "lumen.db"
@@ -593,10 +593,17 @@ async def research_public(item: ResearchIn, request: Request):
     if (item.latitude is None) != (item.longitude is None):
         raise HTTPException(422, "Informe latitude e longitude juntas para pesquisa por localização.")
     search_query = item.query
-    if item.latitude is not None and item.longitude is not None:
-        search_query += " near {:.5f}, {:.5f}".format(item.latitude, item.longitude)
+    engine = "DuckDuckGo HTML"
     try:
-        sources = await search_web(search_query, limit=8)
+        if item.latitude is not None and item.longitude is not None:
+            sources = await search_nearby(item.query, item.latitude, item.longitude, limit=8)
+            engine = "OpenStreetMap Overpass"
+            if not sources:
+                search_query += " near {:.5f}, {:.5f}".format(item.latitude, item.longitude)
+                sources = await search_web(search_query, limit=8)
+                engine = "DuckDuckGo HTML (fallback GPS)"
+        else:
+            sources = await search_web(search_query, limit=8)
     except Exception as exc:
         raise HTTPException(503, "Pesquisa pública temporariamente indisponível. Tente novamente mais tarde.") from exc
     with db() as con:
@@ -605,7 +612,7 @@ async def research_public(item: ResearchIn, request: Request):
         con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES(?,?,?)", ("user", search_query, stamp))
         con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES(?,?,?)", ("assistant", "Resultados da pesquisa pública:\n" + source_text, stamp))
         con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Pesquisa pública concluída", search_query[:180], stamp))
-    return {"query": item.query, "search_query": search_query, "answer": "Encontrei páginas relacionadas. Os títulos e trechos são resultados de busca, não confirmação de funcionamento ou disponibilidade dos locais.", "sources": sources, "engine": "DuckDuckGo HTML", "web_search_used": True, "location_used": item.latitude is not None, "synthesis_by_own_model": False}
+    return {"query": item.query, "search_query": search_query, "answer": "Encontrei páginas relacionadas. Os títulos e trechos são resultados de busca, não confirmação de funcionamento ou disponibilidade dos locais.", "sources": sources, "engine": engine, "web_search_used": engine.startswith("DuckDuckGo"), "location_used": item.latitude is not None, "synthesis_by_own_model": False}
 
 @app.post("/api/research", dependencies=[Depends(require_access)])
 async def research_web(item: ResearchIn):
