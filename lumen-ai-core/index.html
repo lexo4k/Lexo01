@@ -45,7 +45,7 @@ function renderConversation(items){const log=$("chatlog");if(!items.length)retur
 function render(id,items,fn){$(id).innerHTML=items.length?items.map(x=>'<div class="entry">'+fn(x)+'</div>').join():'<p class="muted">Ainda não há registros.</p>'}
 let lastResearch=null;
 async function runResearch(){const query=$("researchQuery").value.trim();if(!query)return;const out=$("researchResult");out.textContent="Pesquisando fontes na internet...";try{const r=await api("/api/research",{method:"POST",body:JSON.stringify({query})});lastResearch=r;const links=(r.sources||[]).map(s=>'<li><a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">'+esc(s.title||s.url)+'</a></li>').join("");out.innerHTML='<h3>Resultado da pesquisa</h3><p>'+esc(r.answer).replace(/\n/g,"<br>")+'</p><h3>Fontes consultadas ('+(r.sources||[]).length+')</h3>'+(links?'<ol>'+links+'</ol>':'<p class="muted">O provedor não retornou links individuais nesta resposta.</p>')+'<small>Pesquisa web via '+esc(r.model)+'</small><p><button onclick="archiveResearch()">Guardar na base de conhecimento</button></p>';}catch(e){out.textContent=e.message}}
-async function archiveResearch(){if(!lastResearch)return;try{await api("/api/knowledge",{method:"POST",body:JSON.stringify({title:"Pesquisa: "+lastResearch.query,content:lastResearch.answer,source:(lastResearch.sources||[]).map(s=>s.url).join("\\n")})});alert("Pesquisa arquivada na base de conhecimento.");await refreshAll()}catch(e){alert(e.message)}}
+async function archiveResearch(){if(!lastResearch)return;try{await api("/api/knowledge",{method:"POST",body:JSON.stringify({title:"Pesquisa: "+lastResearch.query,content:lastResearch.answer,source:(lastResearch.sources||[]).map(s=>s.url).join("\n")})});alert("Pesquisa arquivada na base de conhecimento.");await refreshAll()}catch(e){alert(e.message)}}
 async function runThink(){const goal=$("goal").value.trim();if(!goal)return;const out=$("thinkResult");out.textContent="LÚMEN está organizando e avaliando o plano...";try{const r=await api("/api/think",{method:"POST",body:JSON.stringify({goal})});const steps=(r.plan||[]).map(x=>"<li><b>"+esc(x.action)+"</b><br><small>"+esc(x.purpose||"")+"</small></li>").join("");const issues=(r.evaluation?.issues||[]).map(esc).join("<br>")||"Nenhuma falha crítica apontada.";const unknown=(r.uncertainties||[]).map(esc).join("<br>")||"Nenhuma incerteza listada.";out.innerHTML="<h3>"+esc(r.understanding||"Objetivo analisado")+"</h3><p><b>Decisão:</b> "+esc(r.decision||"")+"</p><p><b>Confiança estimada:</b> "+Math.round((r.confidence||0)*100)+"%</p><h3>Plano</h3><ol>"+steps+"</ol><h3>Incertezas</h3><p>"+unknown+"</p><h3>Revisão</h3><p>"+issues+"</p><p><b>Próxima ação segura:</b> "+esc(r.next_action||r.evaluation?.safe_next_action||"")+"</p><p class='muted'>Estado: plano não executado. Aprovação necessária antes de qualquer ação externa.</p>";}catch(e){out.textContent=e.message}}
 async function saveMemory(){try{await api("/api/memories",{method:"POST",body:JSON.stringify({content:$("memoryText").value,category:$("memoryCategory").value||"geral"})});$("memoryText").value="";await refreshAll()}catch(e){alert(e.message)}}
 async function removeMemory(id){try{await api("/api/memories/"+id,{method:"DELETE"});await refreshAll()}catch(e){alert(e.message)}}
@@ -68,7 +68,12 @@ try{let answer="",sources=[];
 if(researchIntent&&!image){const q=msg.replace(/^(pesquise|pesquisa|procure|busque|pesquisar|buscar)\s+(na\s+web|na\s+internet)\s*/i,"").replace(/[?:]$/,"").trim()||msg;const r=await api("/api/research",{method:"POST",body:JSON.stringify({query:q})});answer=r.answer;sources=r.sources||[]}
 else{const r=await api("/api/chat",{method:"POST",body:JSON.stringify({message:msg,image_data_url:image})});answer=r.answer}
 const sourceHtml=sources.length?"<div class='entry'><b>Fontes</b><ul>"+sources.map(s=>"<li><a href='"+esc(s.url)+"' target='_blank' rel='noopener noreferrer'>"+esc(s.title||s.url)+"</a></li>").join("")+"</ul></div>":"";
-log.innerHTML+='<div class="bubble ai">'+esc(answer)+sourceHtml+'</div><button onclick="speak('+JSON.stringify(answer).replace(/</g,"\\u003c")+')">🔊 Ouvir resposta</button>';
+log.innerHTML+='<div class="bubble ai">'+esc(answer)+sourceHtml+'</div>';
+const audioButton=document.createElement("button");
+audioButton.type="button";
+audioButton.textContent="🔊 Ouvir resposta";
+audioButton.addEventListener("click",()=>speak(answer));
+log.appendChild(audioButton);
 }catch(e){log.innerHTML+='<div class="bubble ai">'+esc(e.message)+'</div>'}
 log.scrollTop=log.scrollHeight
 }
