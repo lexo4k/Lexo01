@@ -420,7 +420,10 @@ AGENT_TOOLS = [
     {"type": "function", "function": {"name": "save_memory", "description": "Guarda uma informação estável que o usuário pediu explicitamente para lembrar.", "parameters": {"type": "object", "properties": {"content": {"type": "string"}, "category": {"type": "string"}}, "required": ["content"], "additionalProperties": False}}},
     {"type": "function", "function": {"name": "create_task", "description": "Cria uma tarefa quando o usuário pedir explicitamente para organizar ou registrar uma tarefa.", "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "details": {"type": "string"}}, "required": ["title"], "additionalProperties": False}}},
     {"type": "function", "function": {"name": "list_tasks", "description": "Lista tarefas registradas do usuário.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}},
-    {"type": "function", "function": {"name": "search_memory", "description": "Busca memórias e conhecimentos salvos relevantes para a pergunta.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"], "additionalProperties": False}}}
+    {"type": "function", "function": {"name": "search_memory", "description": "Busca memórias e conhecimentos salvos relevantes para a pergunta.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"], "additionalProperties": False}}},
+    {"type": "function", "function": {"name": "save_knowledge", "description": "Arquiva conhecimento ou uma nota estruturada quando o usuário pedir para registrar.", "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}, "source": {"type": "string"}}, "required": ["title", "content"], "additionalProperties": False}}},
+    {"type": "function", "function": {"name": "complete_task", "description": "Marca como concluída uma tarefa existente quando o usuário pedir.", "parameters": {"type": "object", "properties": {"task_id": {"type": "integer"}}, "required": ["task_id"], "additionalProperties": False}}},
+    {"type": "function", "function": {"name": "get_overview", "description": "Obtém um resumo das memórias, conhecimentos e tarefas.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}}
 ]
 
 def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -454,6 +457,30 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             memories = con.execute("SELECT content,category,created_at FROM memories WHERE content LIKE ? ORDER BY id DESC LIMIT 20", (term,)).fetchall()
             knowledge = con.execute("SELECT title,content,source FROM knowledge WHERE title LIKE ? OR content LIKE ? ORDER BY id DESC LIMIT 20", (term, term)).fetchall()
             return {"ok": True, "memories": [dict(row) for row in memories], "knowledge": [dict(row) for row in knowledge]}
+        if name == "save_knowledge":
+            title = str(arguments.get("title", "")).strip()[:240]
+            content = str(arguments.get("content", "")).strip()[:12000]
+            source = str(arguments.get("source", "LÚMEN")).strip()[:1000]
+            if not title or not content:
+                return {"ok": False, "error": "Título e conteúdo são obrigatórios."}
+            cur = con.execute("INSERT INTO knowledge(title,content,source,created_at) VALUES(?,?,?,?)", (title, content, source, stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Conhecimento arquivado pela LÚMEN", title, stamp))
+            return {"ok": True, "id": cur.lastrowid, "saved": True}
+        if name == "complete_task":
+            task_id = int(arguments.get("task_id", 0))
+            cur = con.execute("UPDATE tasks SET status='concluída',updated_at=? WHERE id=?", (stamp, task_id))
+            if not cur.rowcount:
+                return {"ok": False, "error": "Tarefa não encontrada."}
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Tarefa concluída pela LÚMEN", str(task_id), stamp))
+            return {"ok": True, "task_id": task_id, "status": "concluída"}
+        if name == "get_overview":
+            return {
+                "ok": True,
+                "memories": con.execute("SELECT COUNT(*) FROM memories").fetchone()[0],
+                "knowledge": con.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0],
+                "open_tasks": con.execute("SELECT COUNT(*) FROM tasks WHERE status != 'concluída'").fetchone()[0],
+                "completed_tasks": con.execute("SELECT COUNT(*) FROM tasks WHERE status = 'concluída'").fetchone()[0]
+            }
     return {"ok": False, "error": "Ferramenta desconhecida."}
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
