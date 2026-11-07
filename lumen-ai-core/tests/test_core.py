@@ -71,7 +71,7 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["app"], "NEXORA AI")
         self.assertFalse(response.json()["model_connected"])
-        self.assertIn(response.json()["storage_backend"], ("sqlite", "postgresql"))
+        self.assertIn(response.json()["storage_backend"], ("sqlite_ephemeral", "sqlite_persistent_disk", "postgresql"))
 
 
     def test_android_origin_cors_preflight(self):
