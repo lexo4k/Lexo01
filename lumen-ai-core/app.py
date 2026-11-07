@@ -205,19 +205,35 @@ def app_icon():
     return FileResponse(ROOT / "icon.svg", media_type="image/svg+xml")
 
 @app.get("/api/capabilities", dependencies=[Depends(require_access)])
-def capabilities():
-    ready = model_is_configured()
-    return {"chat": {"implemented": True, "configured": ready},
-            "web_research": {"implemented": True, "configured": bool(os.getenv("OPENAI_API_KEY", "").strip())},
-            "memory": {"implemented": True, "configured": True},
-            "voice_input": {"implemented": True, "configured": True, "depends_on": "browser"},
-            "voice_output": {"implemented": True, "configured": True, "depends_on": "browser"},
-            "image_input": {"implemented": True, "configured": ready},
-            "planning": {"implemented": True, "configured": ready},
-            "agent_tools": {"implemented": True, "configured": ready,
-                            "available_tools": ["save_memory", "create_task", "list_tasks", "search_memory", "save_knowledge", "complete_task", "get_overview"]},
-            "ads": {"implemented": False, "configured": False},
-            "persistent_storage": {"implemented": True, "configured": bool(DATABASE_URL), "durability": "managed_postgresql" if DATABASE_URL else "depends_on_server_disk"}}
+async def capabilities():
+    own_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
+    if own_url and not own_url.startswith(("http://", "https://")):
+        own_url = "http://" + own_url
+    own_ready = False
+    if own_url:
+        try:
+            async with httpx.AsyncClient(timeout=4) as client:
+                response = await client.get(own_url + "/health")
+                response.raise_for_status()
+                own_ready = response.json().get("status") == "ready"
+        except Exception:
+            own_ready = False
+    external_ready = model_is_configured()
+    chat_ready = own_ready or external_ready
+    persistent = bool(DATABASE_URL) or str(DB_PATH).startswith("/var/data/")
+    return {
+        "chat": {"implemented": True, "configured": chat_ready, "engine": "nexora-own-model" if own_ready else ("external" if external_ready else "offline")},
+        "web_research": {"implemented": True, "configured": True, "engine": "public_search"},
+        "memory": {"implemented": True, "configured": True},
+        "voice_input": {"implemented": True, "configured": True, "depends_on": "browser"},
+        "voice_output": {"implemented": True, "configured": True, "depends_on": "browser"},
+        "image_input": {"implemented": True, "configured": external_ready},
+        "planning": {"implemented": True, "configured": external_ready},
+        "agent_tools": {"implemented": True, "configured": external_ready,
+                        "available_tools": ["save_memory", "create_task", "list_tasks", "search_memory", "save_knowledge", "complete_task", "get_overview"]},
+        "ads": {"implemented": False, "configured": False},
+        "persistent_storage": {"implemented": True, "configured": persistent, "durability": "managed_postgresql" if DATABASE_URL else ("render_persistent_disk" if persistent else "ephemeral_sqlite")}
+    }
 
 @app.get("/api/health")
 async def health():
