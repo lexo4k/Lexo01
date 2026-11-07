@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from unittest import mock
+from unittest.mock import AsyncMock
 from fastapi.testclient import TestClient
 
 tmp = tempfile.TemporaryDirectory()
@@ -175,6 +176,18 @@ class CoreTests(unittest.TestCase):
 
     def test_agent_mutation_authorization_is_not_granted_to_read_tools(self):
         self.assertFalse(tool_mutation_authorized("list_tasks", "Liste minhas tarefas."))
+
+    @mock.patch("app.search_web", new_callable=AsyncMock)
+    def test_public_research_is_available_without_access_token_and_uses_gps_coordinates(self, search):
+        search.return_value = [{"title": "Lugares próximos", "url": "https://example.org/places", "snippet": "Resultado de teste"}]
+        response = self.client.post("/api/research/public", json={
+            "query": "cafés",
+            "latitude": -23.55052,
+            "longitude": -46.63331
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["location_used"])
+        search.assert_awaited_once_with("cafés near -23.55052, -46.63331", limit=8)
 
     def test_web_research_requires_provider_key(self):
         with mock.patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
