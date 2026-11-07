@@ -25,7 +25,7 @@ DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(DEFAULT_DB_PATH)))
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="LÚMEN AI CORE", version="0.2.0", description="Núcleo pessoal de IA com memória persistente.")
+app = FastAPI(title="AURION AI CORE", version="0.2.0", description="Núcleo pessoal de IA com memória persistente.")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -203,7 +203,7 @@ def resolve_gateway_model(model_id: str) -> tuple[str, str, dict[str, Any]]:
         model_name = model_id
     provider = providers.get(provider_name.lower())
     if not provider or model_name not in provider["models"]:
-        raise HTTPException(404, "Modelo não cadastrado na API LÚMEN. Consulte GET /v1/models.")
+        raise HTTPException(404, "Modelo não cadastrado na API AURION. Consulte GET /v1/models.")
     if provider["protocol"] != "openai-chat-completions":
         raise HTTPException(501, "Este adaptador ainda não está disponível. Protocolo suportado nesta versão: OpenAI Chat Completions compatível.")
     if not provider["api_key"] and "ollama" not in provider["base_url"].lower():
@@ -345,7 +345,7 @@ async def health():
             own_status = "unreachable"
     provider_configured = model_is_configured()
     return {
-        "app": "LÚMEN AI",
+        "app": "AURION AI",
         "status": "online",
         "version": app.version,
         "model_connected": own_ready,
@@ -690,7 +690,7 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             if not content:
                 return {"ok": False, "error": "Conteúdo vazio."}
             cur = con.execute("INSERT INTO memories(content,category,created_at) VALUES(?,?,?)", (content, category, stamp))
-            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Memória registrada pela LÚMEN", category, stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Memória registrada pelo AURION", category, stamp))
             return {"ok": True, "id": cur.lastrowid, "saved": True}
         if name == "create_task":
             title = str(arguments.get("title", "")).strip()[:240]
@@ -698,7 +698,7 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             if not title:
                 return {"ok": False, "error": "Título vazio."}
             cur = con.execute("INSERT INTO tasks(title,details,status,created_at,updated_at) VALUES(?,?, 'pendente',?,?)", (title, details, stamp, stamp))
-            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Tarefa criada pela LÚMEN", title, stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Tarefa criada pelo AURION", title, stamp))
             return {"ok": True, "id": cur.lastrowid, "status": "pendente"}
         if name == "list_tasks":
             rows = con.execute("SELECT id,title,details,status FROM tasks ORDER BY id DESC LIMIT 50").fetchall()
@@ -714,18 +714,18 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if name == "save_knowledge":
             title = str(arguments.get("title", "")).strip()[:240]
             content = str(arguments.get("content", "")).strip()[:12000]
-            source = str(arguments.get("source", "LÚMEN")).strip()[:1000]
+            source = str(arguments.get("source", "AURION")).strip()[:1000]
             if not title or not content:
                 return {"ok": False, "error": "Título e conteúdo são obrigatórios."}
             cur = con.execute("INSERT INTO knowledge(title,content,source,created_at) VALUES(?,?,?,?)", (title, content, source, stamp))
-            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Conhecimento arquivado pela LÚMEN", title, stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Conhecimento arquivado pelo AURION", title, stamp))
             return {"ok": True, "id": cur.lastrowid, "saved": True}
         if name == "complete_task":
             task_id = int(arguments.get("task_id", 0))
             cur = con.execute("UPDATE tasks SET status='concluída',updated_at=? WHERE id=?", (stamp, task_id))
             if not cur.rowcount:
                 return {"ok": False, "error": "Tarefa não encontrada."}
-            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Tarefa concluída pela LÚMEN", str(task_id), stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Tarefa concluída pelo AURION", str(task_id), stamp))
             return {"ok": True, "task_id": task_id, "status": "concluída"}
         if name == "get_overview":
             return {
@@ -768,7 +768,7 @@ async def gateway_providers():
 async def gateway_chat(item: GatewayChatIn):
     """Gateway com failover apenas para modelos alternativos explicitamente permitidos."""
     if item.stream:
-        raise HTTPException(501, "Streaming ainda não está disponível nesta versão da API LÚMEN.")
+        raise HTTPException(501, "Streaming ainda não está disponível nesta versão da API AURION.")
 
     candidates = [item.model]
     requested_provider_name, _, requested_provider = resolve_gateway_model(item.model)
@@ -818,7 +818,7 @@ async def gateway_chat(item: GatewayChatIn):
         raise HTTPException(502, "Nenhum modelo principal ou alternativo configurado respondeu. " + "; ".join(errors[:5]))
 
     result["model"] = f"{selected_provider_name}/{selected_model}"
-    result["nexora_gateway"] = {
+    result["aurion_gateway"] = {
         "provider": selected_provider_name,
         "protocol": selected_provider["protocol"],
         "requested_model": item.model,
@@ -843,8 +843,8 @@ async def chat(item: ChatIn):
         )][::-1]
     if own_model_url:
         if not own_model_token:
-            raise HTTPException(503, "Modelo próprio selecionado, mas NEXORA_MODEL_TOKEN não foi configurado.")
-        prompt_parts = ["Você é LÚMEN, um modelo experimental próprio. Responda com honestidade e não invente capacidades."]
+            raise HTTPException(503, "Modelo próprio selecionado, mas AURION_MODEL_TOKEN não foi configurado.")
+        prompt_parts = ["Você é AURION, um modelo experimental próprio. Responda com honestidade e não invente capacidades."]
         if memories:
             prompt_parts.append("MEMÓRIAS:\n" + "\n".join("- " + x for x in memories))
         if facts:
@@ -854,7 +854,7 @@ async def chat(item: ChatIn):
                 f"- Erro: {item['error_signature']} | Causa: {item['root_cause']} | Solução: {item['resolution']}" for item in corrections
             ))
         for turn in history[-8:]:
-            prompt_parts.append(("Usuário: " if turn["role"] == "user" else "LÚMEN: ") + turn["content"])
+            prompt_parts.append(("Usuário: " if turn["role"] == "user" else "AURION: ") + turn["content"])
         prompt_parts.append("Usuário: " + (item.message or "Analise a imagem enviada."))
         if item.image_data_url:
             raise HTTPException(415, "O modelo próprio atual ainda não aceita imagens. Envie texto por enquanto.")
@@ -878,19 +878,19 @@ async def chat(item: ChatIn):
             stamp = now()
             con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)", (item.message, stamp))
             con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)", (answer, stamp))
-            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Conversa com LÚMEN-1 próprio", item.message[:180], stamp))
-        return {"answer": answer, "model": "nexora-transformer-byte-v1", "own_model": True, "warning": own_result.get("warning"), "tools_used": []}
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Conversa com AURION-1 próprio", item.message[:180], stamp))
+        return {"answer": answer, "model": "aurion-transformer-byte-v1", "own_model": True, "warning": own_result.get("warning"), "tools_used": []}
     config = model_config()
     api_key, base, model = config["api_key"], config["base_url"], config["model"]
     if not api_key:
-        raise HTTPException(503, "Sem modelo próprio conectado e sem credencial externa. Configure NEXORA_MODEL_URL para usar os pesos próprios.")
+        raise HTTPException(503, "Sem modelo próprio conectado e sem credencial externa. Configure AURION_MODEL_URL para usar os pesos próprios.")
 
     context = "\n".join([*(f"- {m}" for m in memories), *(f"- {f}" for f in facts)])
     correction_context = "\n".join(
         f"- Erro: {item['error_signature']} | Causa: {item['root_cause']} | Solução: {item['resolution']}"
         for item in corrections
     )
-    system = ("Você é LÚMEN, uma assistente de IA pessoal. Sua prioridade é responder corretamente à "
+    system = ("Você é AURION, uma assistente de IA pessoal. Sua prioridade é responder corretamente à "
               "MENSAGEM MAIS RECENTE do usuário, no idioma em que ele escreveu, normalmente português brasileiro. "
               "Identifique o pedido central e confira se cada frase da resposta serve a esse pedido. Não misture "
               "assuntos antigos com a pergunta atual. Use o histórico apenas para resolver referências como 'isso', "
@@ -951,7 +951,7 @@ async def chat(item: ChatIn):
                     messages.append({"role": "tool", "tool_call_id": tool_call_id,
                                      "name": name, "content": json.dumps(result, ensure_ascii=False)})
             if not answer:
-                raise HTTPException(502, "A LÚMEN atingiu o limite de etapas das ferramentas sem concluir a resposta.")
+                raise HTTPException(502, "O AURION atingiu o limite de etapas das ferramentas sem concluir a resposta.")
     except httpx.HTTPStatusError as exc:
         raise HTTPException(502, f"Provedor de IA respondeu com erro HTTP {exc.response.status_code}.") from exc
     except httpx.HTTPError as exc:
