@@ -44,7 +44,7 @@ class MainActivity : Activity() {
             setPadding(14, 5, 14, 5)
         }
         val title = TextView(this).apply {
-            text = "LÚMEN AI"
+            text = "NEXORA AI"
             textSize = 17f
             setTextColor(Color.WHITE)
             letterSpacing = .12f
