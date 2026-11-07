@@ -1,0 +1,51 @@
+name: NEXORA own model checks
+
+on:
+  push:
+    branches: [lumen-ai-core]
+    paths:
+      - "lumen-model/**"
+      - ".github/workflows/nexora-own-model.yml"
+  pull_request:
+    paths:
+      - "lumen-model/**"
+      - ".github/workflows/nexora-own-model.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  own-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: lumen-model/requirements-serve.txt
+      - name: Install own model dependencies
+        run: pip install -r lumen-model/requirements-serve.txt
+      - name: Test authenticated inference service and honest readiness
+        working-directory: lumen-model
+        run: python -m unittest -v test_serve.py
+      - name: Create a tiny synthetic corpus for pipeline validation
+        run: |
+          mkdir -p /tmp/nexora-corpus
+          python - <<'PY'
+          from pathlib import Path
+          text = ("NEXORA é um projeto experimental de inteligência artificial própria. "
+                  "Este texto serve apenas para verificar o pipeline de treinamento. ") * 80
+          Path("/tmp/nexora-corpus/smoke.txt").write_text(text, encoding="utf-8")
+          PY
+      - name: Train a tiny disposable checkpoint
+        working-directory: lumen-model
+        run: |
+          python train.py --data /tmp/nexora-corpus --out /tmp/nexora-smoke.pt --steps 5 --batch 2 --context 64 --width 64 --layers 2 --heads 2 --save-every 5
+      - name: Evaluate the training pipeline output
+        working-directory: lumen-model
+        run: |
+          cp /tmp/nexora-corpus/smoke.txt /tmp/nexora-heldout.txt
+          python evaluate.py /tmp/nexora-smoke.pt --data /tmp/nexora-heldout.txt
