@@ -15,10 +15,10 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
-from cognition import think as cognitive_cycle
+from cognition import think as cognitive_cycle\nfrom public_research import search_web
 
 ROOT = Path(__file__).parent
-DEFAULT_DB_PATH = Path("/tmp/lumen.db") if os.getenv("VERCEL") else ROOT / "data" / "lumen.db"
+DEFAULT_DB_PATH = (Path("/var/data/nexora.db") if os.getenv("RENDER") else Path("/tmp/lumen.db")) if os.getenv("VERCEL") or os.getenv("RENDER") else ROOT / "data" / "lumen.db"
 DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(DEFAULT_DB_PATH)))
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -334,6 +334,21 @@ def conversations(limit: int = 100):
         ).fetchall()
         return [dict(row) for row in reversed(rows)]
 
+@app.post("/api/research/public", dependencies=[Depends(require_access)])
+async def research_public(item: ResearchIn):
+    """Pesquisa aberta sem chave de IA; entrega resultados e URLs, sem inventar síntese."""
+    try:
+        sources = await search_web(item.query, limit=8)
+    except Exception as exc:
+        raise HTTPException(503, "Pesquisa pública temporariamente indisponível. Tente novamente mais tarde.") from exc
+    with db() as con:
+        stamp = now()
+        source_text = "\\n".join(f'{x["title"]}: {x["url"]}\\n{x["snippet"]}' for x in sources)
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)", (item.query, stamp))
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)", ("Resultados da pesquisa pública:\\n" + source_text, stamp))
+        con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Pesquisa pública concluída", item.query[:180], stamp))
+    return {"query": item.query, "answer": "Encontrei páginas relacionadas. Os títulos e trechos são fornecidos pelo mecanismo de busca e precisam ser conferidos nas fontes.", "sources": sources, "engine": "DuckDuckGo HTML", "web_search_used": True, "synthesis_by_own_model": False}
+
 @app.post("/api/research", dependencies=[Depends(require_access)])
 async def research_web(item: ResearchIn):
     """Pesquisa na web usando a ferramenta web_search do provedor e devolve fontes."""
@@ -526,7 +541,7 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
-    own_model_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
+    own_model_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")\n    if own_model_url and not own_model_url.startswith(("http://", "https://")):\n        own_model_url = "https://" + own_model_url
     own_model_token = os.getenv("NEXORA_MODEL_TOKEN", "").strip()
     with db() as con:
         memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
