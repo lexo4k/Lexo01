@@ -220,7 +220,7 @@ window.onAurionModelState=function(state,detail){
  const home=$("homeStatus");
  if(home){home.textContent=detail;home.className="statusbox "+(state==="ready"?"good":"warn");}
  if(el){el.textContent=detail;el.className="statusbox "+(state==="ready"?"good":state==="error"?"warn":"warn")}
- if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online")}
+ if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online");if(autoSpeakEnabled)speakText("Núcleo local pronto. Sistemas verificados. Estou disponível para conversar e executar as funções que estiverem habilitadas.");}
  else if(state==="downloading"||state==="loading"||state==="restoring"){$("chatState").textContent=detail}
  else if(state==="waiting_network"||state==="wifi_required"){$("chatState").textContent=detail;$("connectionPill").textContent="● download só no Wi-Fi";$("connectionPill").classList.remove("online")}
  else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
