@@ -24,7 +24,7 @@ class UiContractTests(unittest.TestCase):
             'id="knowledge"',
             'id="settings"',
             '<section id="home" class="screen active">',
-            'Olá. Sou o NEXORA.',
+            'Olá. Sou o AURION.',
             'function localCommand(msg)',
             'function loadConfig()',
             'saved.url==="https://lumen-ai-core.vercel.app"',
@@ -51,7 +51,7 @@ class UiContractTests(unittest.TestCase):
 
     def test_on_device_model_has_priority_and_receives_local_context(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("const nativeLocalReady=Boolean(window.NexoraNative&&(localModelState()===" + '"ready"' + "||localModelState()===" + '"downloaded"' + "))", html)
+        self.assertIn("const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()===" + '"ready"' + "||localModelState()===" + '"downloaded"' + "))", html)
         self.assertIn("if(nativeLocalReady&&activeMode!==", html)
         self.assertIn("MEMÓRIAS RELEVANTES:", html)
         self.assertIn("BASE DE CONHECIMENTO:", html)
