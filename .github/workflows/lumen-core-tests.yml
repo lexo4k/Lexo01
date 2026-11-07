@@ -29,3 +29,19 @@ jobs:
         run: python -m pip install -r lumen-ai-core/requirements.txt
       - name: Run backend and interface contract tests
         run: PYTHONPATH=lumen-ai-core python -m unittest discover -s lumen-ai-core/tests -v
+      - name: Validate AURION interface JavaScript and Android asset mirror
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          web = Path("lumen-ai-core/index.html").read_text(encoding="utf-8")
+          android = Path("lumen-android/src/main/assets/index.html").read_text(encoding="utf-8")
+          if web != android:
+              raise SystemExit("AURION web interface and Android asset are out of sync.")
+          scripts = re.findall(r"<script[^>]*>(.*?)</script>", web, flags=re.I | re.S)
+          if not scripts:
+              raise SystemExit("No application JavaScript block found.")
+          Path("/tmp/aurion-ui.js").write_text("\n".join(scripts), encoding="utf-8")
+          print(f"Validated mirror and extracted {len(scripts)} script block(s).")
+          PY
+          node --check /tmp/aurion-ui.js
