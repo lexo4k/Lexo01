@@ -331,7 +331,7 @@ class MainActivity : Activity() {
                 while (cursor.moveToNext()) {
                     val name = cursor.getString(nameCol) ?: continue
                     val size = cursor.getLong(sizeCol)
-                    if (!name.lowercase(Locale.ROOT).endsWith(".gguf") || size < 450_000_000L || size > safeLimit) continue
+                    if (!name.lowercase(Locale.ROOT).endsWith(".gguf") || size < 491_400_032L || size > safeLimit) continue
                     candidates.add(DownloadedModel(Uri.withAppendedPath(collection, cursor.getLong(idCol).toString()), name, size))
                 }
             }
@@ -340,8 +340,8 @@ class MainActivity : Activity() {
 
         private fun selectProfileForDownloadedSize(size: Long) {
             selectedModelId = when {
-                size >= 1_850_000_000L -> "qwen-3b"
-                size >= 1_050_000_000L -> "qwen-1.5b"
+                size >= 1_900_000_000L -> "qwen-3b"
+                size >= 1_117_320_736L -> "qwen-1.5b"
                 else -> "qwen-0.5b"
             }
             getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", selectedModelId).apply()
