@@ -744,6 +744,17 @@ class MainActivity : Activity() {
         if (::web.isInitialized && web.canGoBack()) web.goBack() else super.onBackPressed()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::aurionBridge.isInitialized &&
+            getSharedPreferences("aurion_permissions", MODE_PRIVATE).getBoolean("model_download_authorized", false) &&
+            aurionBridge.modelState() == "missing") {
+            mainHandler.postDelayed({
+                if (::aurionBridge.isInitialized && aurionBridge.modelState() == "missing") aurionBridge.downloadModel()
+            }, 700L)
+        }
+    }
+
     override fun onStop() {
         liveConversationEnabled = false
         speechRecognizer?.cancel()
