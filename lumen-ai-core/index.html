@@ -300,7 +300,7 @@ data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada
 const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
 const command=(!modelReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
-if(!modelReady&&localModelState()==="ready"&&activeMode!=="research"&&!imageData){
+if(!modelReady&&(localModelState()==="ready"||localModelState()==="downloaded")&&activeMode!=="research"&&!imageData){
  const pending={role:"assistant",content:"Pensando com a IA local…",at:stamp(),pendingLocal:true};
  data.messages.push(pending);renderMessages();
  const history=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"NEXORA")+": "+x.content).join("\n").slice(-4500);
