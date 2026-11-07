@@ -15,6 +15,23 @@ class CoreTests(unittest.TestCase):
         self.client = TestClient(app)
         self.headers = {"Authorization": "Bearer test-token"}
 
+    def test_agent_web_research_returns_source_links(self):
+        from app import execute_agent_research
+        with mock.patch("app.search_web", new=AsyncMock(return_value=[
+            {"title": "Documentação oficial", "url": "https://example.test/docs", "snippet": "Trecho relevante."}
+        ])):
+            import asyncio
+            result = asyncio.run(execute_agent_research({"query": "documentação de IA"}))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["source_count"], 1)
+        self.assertEqual(result["sources"][0]["url"], "https://example.test/docs")
+
+    def test_agent_web_research_rejects_empty_query(self):
+        from app import execute_agent_research
+        import asyncio
+        result = asyncio.run(execute_agent_research({"query": "  "}))
+        self.assertFalse(result["ok"])
+
     def test_video_study_archives_researched_principles(self):
         from app import search_web
         with mock.patch("app.search_web", new=AsyncMock(return_value=[
