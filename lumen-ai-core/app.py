@@ -290,6 +290,13 @@ class ChatIn(BaseModel):
 class ImageGenerateIn(BaseModel):
     prompt: str = Field(min_length=3, max_length=2000)
 
+class VideoStudyIn(BaseModel):
+    topic: str = Field(default="como vídeos gerados por IA são planejados e produzidos", min_length=3, max_length=500)
+
+class VideoTestIn(BaseModel):
+    idea: str = Field(min_length=3, max_length=1200)
+
+
 
 
 class GatewayChatIn(BaseModel):
@@ -956,6 +963,104 @@ async def gateway_chat(item: GatewayChatIn):
         "fallback_used": item.model != f"{selected_provider_name}/{selected_model}",
     }
     return result
+
+
+
+@app.post("/api/video/study", dependencies=[Depends(require_access)])
+async def study_ai_video(item: VideoStudyIn):
+    """Pesquisa pública e arquiva princípios práticos; não altera pesos do modelo."""
+    queries = [
+        item.topic + " texto para vídeo enquadramento movimento câmera iluminação continuidade",
+        "guia oficial prompt vídeo IA storyboard plano de câmera ação iluminação",
+        "produção de vídeo generativo IA consistência visual sequência de cenas edição"
+    ]
+    collected = []
+    seen = set()
+    for query in queries:
+        try:
+            results = await search_web(query, limit=5)
+        except Exception:
+            continue
+        for result in results:
+            url = str(result.get("url", "")).strip()
+            if url and url not in seen:
+                seen.add(url)
+                collected.append({
+                    "title": str(result.get("title", "Fonte consultada"))[:240],
+                    "url": url[:1200],
+                    "snippet": str(result.get("snippet", ""))[:900]
+                })
+    if not collected:
+        raise HTTPException(503, "A pesquisa pública não retornou fontes. Tente novamente quando a conexão estiver disponível.")
+    principles = [
+        "Definir o objetivo e a ação principal de cada tomada antes de escrever o prompt.",
+        "Descrever sujeito, ambiente, enquadramento, iluminação, estilo e movimento de câmera.",
+        "Manter poucos movimentos claros por tomada para reduzir ambiguidades.",
+        "Planejar continuidade entre cenas: aparência, posição, direção do movimento, luz e paleta.",
+        "Separar roteiro, geração de cada tomada e edição final; revisar o resultado em vez de presumir que o modelo acertou."
+    ]
+    source_lines = "\n".join(f"- {x['title']}: {x['snippet']} ({x['url']})" for x in collected[:12])
+    lesson = "Princípios de trabalho extraídos da pesquisa pública:\n" + "\n".join(f"{i+1}. {x}" for i,x in enumerate(principles)) + "\n\nFontes consultadas:\n" + source_lines
+    with db() as con:
+        cur = con.execute(
+            "INSERT INTO knowledge(title,content,source,created_at) VALUES(?,?,?,?)",
+            ("Vídeo IA: princípios de criação", lesson, "Pesquisa pública AURION; " + ", ".join(x["url"] for x in collected[:5]), now())
+        )
+        con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
+                    ("Estudo sobre vídeo IA concluído", item.topic[:180], now()))
+    return {
+        "studied": True, "knowledge_id": cur.lastrowid, "topic": item.topic,
+        "principles": principles, "sources": collected[:12],
+        "learning_type": "pesquisa e memória recuperável",
+        "model_weights_changed": False,
+        "note": "O AURION arquivou princípios e fontes para reutilizar no planejamento. Isso não é treinamento dos pesos do modelo."
+    }
+
+
+@app.post("/api/video/test", dependencies=[Depends(require_access)])
+async def create_video_test(item: VideoTestIn):
+    """Demonstra aplicação do conhecimento em um roteiro de teste, sem fingir renderização de vídeo."""
+    with db() as con:
+        saved = con.execute(
+            "SELECT id,content FROM knowledge WHERE title='Vídeo IA: princípios de criação' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    if not saved:
+        raise HTTPException(409, "Primeiro execute Estudar vídeos com IA para registrar as fontes e princípios.")
+    idea = item.idea.strip()
+    shots = [
+        {"shot": 1, "duration": "3 segundos", "framing": "Plano geral de abertura",
+         "action": f"Apresentar {idea} em um ambiente amplo e legível.",
+         "camera": "Câmera faz uma aproximação lenta e estável.",
+         "light": "Luz suave e paleta de cores consistente."},
+        {"shot": 2, "duration": "3 segundos", "framing": "Plano médio",
+         "action": "Mostrar a ação principal acontecendo com um único movimento claro.",
+         "camera": "Movimento lateral suave, mantendo o assunto no mesmo lado do quadro.",
+         "light": "Manter direção e intensidade da iluminação da tomada anterior."},
+        {"shot": 3, "duration": "3 segundos", "framing": "Plano de detalhe e encerramento",
+         "action": "Destacar o resultado da ação e terminar com composição estável.",
+         "camera": "Aproximação curta e final sem corte brusco.",
+         "light": "Preservar a mesma paleta e fechar com contraste suave."}
+    ]
+    prompt = (
+        f"Crie um vídeo curto sobre: {idea}. "
+        "Estruture em três tomadas contínuas. Em cada tomada, mantenha identidade visual, "
+        "direção da luz, paleta e posição espacial coerentes. Use movimentos de câmera suaves, "
+        "uma ação principal por tomada e transições simples. "
+        "Tomada 1: plano geral para situar o ambiente e o assunto. "
+        "Tomada 2: plano médio mostrando a ação principal. "
+        "Tomada 3: plano de detalhe mostrando o resultado e encerrando a cena. "
+        "Estilo visual original, sem personagens ou marcas protegidas."
+    )
+    with db() as con:
+        con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
+                    ("Teste de roteiro de vídeo criado", idea[:180], now()))
+    return {
+        "created": True, "type": "storyboard_and_video_prompt",
+        "idea": idea, "based_on_knowledge_id": saved["id"],
+        "shots": shots, "video_prompt": prompt,
+        "rendered_video": False,
+        "note": "Este teste comprova a aplicação do roteiro aprendido. Ele não é um arquivo de vídeo renderizado; a geração de vídeo exige um provedor de vídeo ativo e compatível."
+    }
 
 
 @app.post("/api/images/generate", dependencies=[Depends(require_access)])
