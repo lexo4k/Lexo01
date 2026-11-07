@@ -69,7 +69,7 @@ class CoreTests(unittest.TestCase):
     def test_health_is_public(self):
         response = self.client.get("/api/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["app"], "LÚMEN AI CORE")
+        self.assertEqual(response.json()["app"], "NEXORA AI")
         self.assertFalse(response.json()["model_connected"])
         self.assertIn(response.json()["storage_backend"], ("sqlite", "postgresql"))
 
