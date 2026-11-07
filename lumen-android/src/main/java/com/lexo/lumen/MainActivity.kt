@@ -61,6 +61,8 @@ class MainActivity : Activity() {
     @Volatile private var localModel: LlamaModel? = null
     @Volatile private var modelBusy = false
     private val inferenceMutex = Mutex()
+    // Serializa a carga nativa: a inicialização da tela e o primeiro envio podem ocorrer juntos.
+    private val modelLoadMutex = Mutex()
     private var textToSpeech: TextToSpeech? = null
     @Volatile private var ttsReady = false
     @Volatile private var pendingSpeechText: String? = null
@@ -330,16 +332,18 @@ class MainActivity : Activity() {
             when (modelState()) {
                 "ready", "working" -> return
                 "downloaded" -> {
-                    localScope.launch { try { loadLocalModel() } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao carregar o modelo local") } }
+                    modelBusy = true
+                    localScope.launch { try { loadLocalModel() } catch (e: Exception) { modelBusy = false; notifyModel("error", e.message ?: "Falha ao carregar o modelo local") } }
                     return
                 }
                 "shared" -> {
+                    modelBusy = true
                     localScope.launch {
                         try {
                             notifyModel("restoring", "Modelo encontrado em Downloads/AURION AI. Preparando para esta instalação sem novo download da internet…")
                             withContext(Dispatchers.IO) { restoreSharedModel(selectedProfile(), modelFile) }
                             loadLocalModel()
-                        } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao recuperar o modelo salvo") }
+                        } catch (e: Exception) { modelBusy = false; notifyModel("error", e.message ?: "Falha ao recuperar o modelo salvo") }
                     }
                     return
                 }
@@ -352,16 +356,18 @@ class MainActivity : Activity() {
             val profile = selectedProfile()
             val target = modelFile
             if (target.exists() && target.length() >= profile.minBytes) {
-                localScope.launch { try { loadLocalModel() } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao carregar o modelo") } }
+                modelBusy = true
+                localScope.launch { try { loadLocalModel() } catch (e: Exception) { modelBusy = false; notifyModel("error", e.message ?: "Falha ao carregar o modelo") } }
                 return
             }
             if (findSharedModelUri(profile) != null) {
+                modelBusy = true
                 localScope.launch {
                     try {
                         notifyModel("restoring", "Modelo já guardado no aparelho. Recuperando sem baixar novamente…")
                         withContext(Dispatchers.IO) { restoreSharedModel(profile, target) }
                         loadLocalModel()
-                    } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao recuperar o modelo salvo") }
+                    } catch (e: Exception) { modelBusy = false; notifyModel("error", e.message ?: "Falha ao recuperar o modelo salvo") }
                 }
                 return
             }
@@ -671,12 +677,14 @@ class MainActivity : Activity() {
         }
     }
 
-    private suspend fun loadLocalModel(): LlamaModel {
-        localModel?.let { return it }
-        if (!modelFile.exists() || modelFile.length() < selectedProfile().minBytes) throw IllegalStateException("O modelo selecionado ainda não foi baixado. Abra Configurar e toque em Baixar e ativar IA local.")
+    private suspend fun loadLocalModel(): LlamaModel = modelLoadMutex.withLock {
+        localModel?.let { return@withLock it }
+        if (!modelFile.exists() || modelFile.length() < selectedProfile().minBytes) {
+            throw IllegalStateException("O modelo selecionado ainda não foi baixado. Abra Configurar e toque em Baixar e ativar IA local.")
+        }
         modelBusy = true
         notifyModel("loading", "Carregando o modelo no aparelho. Na primeira vez pode demorar um pouco.")
-        return try {
+        try {
             val loaded = withContext(Dispatchers.IO) {
                 Llama.loadModel(
                     modelPath = modelFile.absolutePath,
