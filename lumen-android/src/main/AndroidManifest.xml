@@ -4,6 +4,8 @@
     <application
         android:allowBackup="false"
         android:label="LÚMEN AI"
+        android:icon="@drawable/ic_lumen_launcher"
+        android:roundIcon="@drawable/ic_lumen_launcher"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
