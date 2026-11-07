@@ -1,4 +1,8 @@
 from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +36,19 @@ class UiContractTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertNotIn("lumen-ai-core.vercel.app", html)
         self.assertIn("lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app", html)
+
+    def test_embedded_javascript_parses(self):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node.js is not installed in this test environment")
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        scripts = re.findall(r"<script>(.*?)</script>", html, flags=re.DOTALL)
+        self.assertTrue(scripts, "No inline application script found")
+        with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8") as source:
+            source.write("\\n".join(scripts))
+            source.flush()
+            result = subprocess.run([node, "--check", source.name], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":
