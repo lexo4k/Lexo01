@@ -21,6 +21,19 @@ class CoreTests(unittest.TestCase):
         self.assertFalse(response.json()["model_connected"])
         self.assertIn(response.json()["storage_backend"], ("sqlite", "postgresql"))
 
+
+    def test_android_origin_cors_preflight(self):
+        response = self.client.options(
+            "/api/overview",
+            headers={
+                "Origin": "null",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "authorization,content-type",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("access-control-allow-origin"), "*")
+
     def test_memory_persists_and_lists(self):
         saved = self.client.post("/api/memories", headers=self.headers,
                                  json={"content": "Preferência de teste", "category": "teste"})
