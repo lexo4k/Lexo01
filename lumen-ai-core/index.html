@@ -492,7 +492,7 @@ if(activeMode==="research"){
   if(useLocationForNextResearch&&data.lastLocation){payload.latitude=data.lastLocation.latitude;payload.longitude=data.lastLocation.longitude;}
   useLocationForNextResearch=false;
   const r=await api("/api/research/public",{method:"POST",body:JSON.stringify(payload)});
-  pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url+(x.snippet?"\n"+x.snippet:"")).join("\n\n"):"\n\nO mecanismo não retornou links de fontes.");
+  pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url+(x.snippet?"\n"+x.snippet:"")).join("\n\n"):"\n\nO mecanismo não retornou links de fontes.")+(r.attribution?"\n\n"+r.attribution+" · "+r.attribution_url:"");
  }catch(e){useLocationForNextResearch=false;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
  pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);return;
 }
