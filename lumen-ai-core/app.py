@@ -526,16 +526,54 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
-    config = model_config()
-    api_key, base, model = config["api_key"], config["base_url"], config["model"]
-    if not api_key:
-        raise HTTPException(503, "O motor está pronto, mas falta a credencial do provedor. Configure LUMEN_MODEL_API_KEY e LUMEN_MODEL_BASE_URL no servidor.")
+    own_model_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
+    own_model_token = os.getenv("NEXORA_MODEL_TOKEN", "").strip()
     with db() as con:
         memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
         facts = [f'{r["title"]}: {r["content"]}' for r in con.execute("SELECT title,content FROM knowledge ORDER BY id DESC LIMIT 10")]
         history = [dict(r) for r in con.execute(
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 20"
         )][::-1]
+    if own_model_url:
+        if not own_model_token:
+            raise HTTPException(503, "Modelo próprio selecionado, mas NEXORA_MODEL_TOKEN não foi configurado.")
+        prompt_parts = ["Você é NEXORA, um modelo experimental próprio. Responda com honestidade e não invente capacidades."]
+        if memories:
+            prompt_parts.append("MEMÓRIAS:\\n" + "\\n".join("- " + x for x in memories))
+        if facts:
+            prompt_parts.append("CONHECIMENTO ARQUIVADO:\\n" + "\\n".join("- " + x for x in facts))
+        for turn in history[-8:]:
+            prompt_parts.append(("Usuário: " if turn["role"] == "user" else "NEXORA: ") + turn["content"])
+        prompt_parts.append("Usuário: " + (item.message or "Analise a imagem enviada."))
+        if item.image_data_url:
+            raise HTTPException(415, "O modelo próprio atual ainda não aceita imagens. Envie texto por enquanto.")
+        try:
+            async with httpx.AsyncClient(timeout=90) as client:
+                response = await client.post(
+                    own_model_url + "/generate",
+                    headers={"X-Model-Token": own_model_token},
+                    json={"prompt": "\\n\\n".join(prompt_parts), "max_new_tokens": 180}
+                )
+                response.raise_for_status()
+                own_result = response.json()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(503, "O servidor do modelo próprio não está pronto ou recusou a solicitação.") from exc
+        except httpx.HTTPError as exc:
+            raise HTTPException(503, "Não foi possível alcançar o servidor do modelo próprio.") from exc
+        answer = str(own_result.get("text", "")).strip()
+        if not answer:
+            raise HTTPException(502, "O modelo próprio não gerou texto.")
+        with db() as con:
+            stamp = now()
+            con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)", (item.message, stamp))
+            con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)", (answer, stamp))
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Conversa com NEXORA-1 próprio", item.message[:180], stamp))
+        return {"answer": answer, "model": "nexora-transformer-byte-v1", "own_model": True, "warning": own_result.get("warning"), "tools_used": []}
+    config = model_config()
+    api_key, base, model = config["api_key"], config["base_url"], config["model"]
+    if not api_key:
+        raise HTTPException(503, "Sem modelo próprio conectado e sem credencial externa. Configure NEXORA_MODEL_URL para usar os pesos próprios.")
+
     context = "\n".join([*(f"- {m}" for m in memories), *(f"- {f}" for f in facts)])
     system = ("Você é LÚMEN, uma IA pessoal útil, proativa e honesta. Você pode usar ferramentas locais "
               "para guardar memórias explicitamente solicitadas, criar tarefas solicitadas, listar tarefas e "
