@@ -55,7 +55,12 @@ jobs:
               candidates = sorted(Path(".").glob("**/build/outputs/apk/debug/*.apk"))
           if not candidates:
               raise SystemExit("Gradle concluiu, mas nenhum APK foi localizado. Verifique a configuração de output do módulo :lumen.")
-          apk = candidates[0]
+          source = candidates[0]
+          from shutil import copy2
+          target = Path("dist/lumen-debug.apk")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          copy2(source, target)
+          apk = target
           print("APK localizado:", apk)
 
           with ZipFile(apk) as z:
@@ -81,6 +86,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NEXORA-AI-on-device-debug
-          path: ${{ steps.verify.outputs.apk_path }}
+          path: dist/lumen-debug.apk
           if-no-files-found: error
           retention-days: 14
