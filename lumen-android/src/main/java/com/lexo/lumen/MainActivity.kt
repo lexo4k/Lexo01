@@ -313,6 +313,124 @@ class MainActivity : Activity() {
             }
         }
 
+        @JavascriptInterface fun speakText(text: String) {
+            val clean = text.take(3500).trim()
+            if (clean.isBlank()) return
+            runOnUiThread {
+                if (!ttsReady) notifySpeechStatus("Voz em português indisponível. Confira se há uma voz pt-BR instalada no Android.")
+                else textToSpeech?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "aurion-answer")
+            }
+        }
+
+        @JavascriptInterface fun stopSpeaking() {
+            runOnUiThread { textToSpeech?.stop() }
+        }
+
+        @JavascriptInterface fun startVoiceRecognition() {
+            runOnUiThread {
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    pendingNativeSpeech = true
+                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), AUDIO_PERMISSION_REQUEST)
+                } else startVoiceRecognitionNow()
+            }
+        }
+
+        @JavascriptInterface fun requestCurrentLocation() {
+            runOnUiThread {
+                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    pendingLocationRequest = true
+                    requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), LOCATION_PERMISSION_REQUEST)
+                } else startLocationLookup()
+            }
+        }
+
+        private fun startVoiceRecognitionNow() {
+            if (Build.VERSION.SDK_INT < 31 || !SpeechRecognizer.isOnDeviceRecognitionAvailable(this@MainActivity)) {
+                notifyVoiceResult("", "Reconhecimento de voz totalmente offline não está disponível neste aparelho. Verifique se o serviço e o pacote de português offline estão instalados.")
+                return
+            }
+            try {
+                speechRecognizer?.cancel()
+                speechRecognizer?.destroy()
+                speechRecognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(this@MainActivity).apply {
+                    setRecognitionListener(object : RecognitionListener {
+                        override fun onReadyForSpeech(params: Bundle?) { notifySpeechStatus("Microfone ativo. AURION está ouvindo somente esta solicitação.") }
+                        override fun onBeginningOfSpeech() {}
+                        override fun onRmsChanged(rmsdB: Float) {}
+                        override fun onBufferReceived(buffer: ByteArray?) {}
+                        override fun onEndOfSpeech() { notifySpeechStatus("Áudio recebido. Convertendo fala em texto no aparelho…") }
+                        override fun onError(error: Int) { notifyVoiceResult("", "Não foi possível reconhecer a fala offline (código " + error + ").") }
+                        override fun onResults(results: Bundle?) {
+                            val transcript = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
+                            if (transcript.isBlank()) notifyVoiceResult("", "Não consegui entender a fala. Tente novamente.")
+                            else notifyVoiceResult(transcript, null)
+                        }
+                        override fun onPartialResults(partialResults: Bundle?) {}
+                        override fun onEvent(eventType: Int, params: Bundle?) {}
+                    })
+                }
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
+                    putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                }
+                speechRecognizer?.startListening(intent)
+            } catch (e: Exception) {
+                notifyVoiceResult("", "Falha ao iniciar reconhecimento offline: " + (e.message ?: "serviço indisponível"))
+            }
+        }
+
+        private fun startLocationLookup() {
+            val manager = getSystemService(LOCATION_SERVICE) as LocationManager
+            if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                notifyLocationError("Ative a localização/GPS do Android e tente novamente.")
+                return
+            }
+            try {
+                val cached = manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                if (cached != null && System.currentTimeMillis() - cached.time < 120000) {
+                    notifyLocation(cached)
+                    return
+                }
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(location: Location) {
+                        stopLocationUpdates()
+                        notifyLocation(location)
+                    }
+                    override fun onProviderEnabled(provider: String) {}
+                    override fun onProviderDisabled(provider: String) {}
+                    @Deprecated("Deprecated by Android")
+                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+                }
+                activeLocationListener = listener
+                manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener, Looper.getMainLooper())
+                locationTimeout = Runnable {
+                    val fallback = try { manager.getLastKnownLocation(LocationManager.GPS_PROVIDER) } catch (_: SecurityException) { null }
+                    stopLocationUpdates()
+                    if (fallback != null) notifyLocation(fallback)
+                    else notifyLocationError("O GPS ainda não conseguiu uma posição. Vá para um local com céu aberto e tente novamente.")
+                }
+                mainHandler.postDelayed(locationTimeout!!, 20000L)
+                notifySpeechStatus("Obtendo posição pelo GPS. Isso pode levar alguns segundos.")
+            } catch (e: SecurityException) {
+                notifyLocationError("Permissão de localização precisa não concedida.")
+            } catch (e: Exception) {
+                notifyLocationError("Falha ao consultar GPS: " + (e.message ?: "erro desconhecido"))
+            }
+        }
+
+        private fun stopLocationUpdates() {
+            activeLocationListener?.let { listener ->
+                try { (getSystemService(LOCATION_SERVICE) as LocationManager).removeUpdates(listener) } catch (_: Exception) {}
+            }
+            activeLocationListener = null
+            locationTimeout?.let { mainHandler.removeCallbacks(it) }
+            locationTimeout = null
+        }
+
         @JavascriptInterface fun sendLocalMessage(prompt: String, history: String) {
             if (modelBusy) {
                 notifyAnswer("A IA local ainda está carregando. Aguarde alguns instantes.", true)
@@ -393,15 +511,21 @@ class MainActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == AUDIO_PERMISSION_REQUEST) {
+            val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
             val request = pendingWebPermission
             pendingWebPermission = null
             if (request != null) {
-                if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
-                    request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
-                } else {
-                    request.deny()
-                }
+                if (granted) request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) else request.deny()
             }
+            if (pendingNativeSpeech) {
+                pendingNativeSpeech = false
+                if (granted) startVoiceRecognitionNow() else notifyVoiceResult("", "Permissão de microfone negada.")
+            }
+        }
+        if (requestCode == LOCATION_PERMISSION_REQUEST) {
+            pendingLocationRequest = false
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startLocationLookup()
+            else notifyLocationError("Permissão de localização negada. AURION não acessou sua posição.")
         }
     }
 
@@ -421,11 +545,18 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         localScope.cancel()
+        stopLocationUpdates()
+        speechRecognizer?.cancel()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        textToSpeech?.stop()
+        textToSpeech?.shutdown()
+        textToSpeech = null
         localModel?.let { Llama.releaseModel(it) }
         localModel = null
         if (::web.isInitialized) web.destroy()
         super.onDestroy()
     }
 
-    companion object { private const val FILE_REQUEST = 7104; private const val AUDIO_PERMISSION_REQUEST = 7105 }
+    companion object { private const val FILE_REQUEST = 7104; private const val AUDIO_PERMISSION_REQUEST = 7105; private const val LOCATION_PERMISSION_REQUEST = 7106 }
 }
