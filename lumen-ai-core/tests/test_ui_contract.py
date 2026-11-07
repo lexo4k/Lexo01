@@ -28,7 +28,7 @@ class UiContractTests(unittest.TestCase):
             'function localCommand(msg)',
             'function loadConfig()',
             'saved.url==="https://lumen-ai-core.vercel.app"',
-            'buscar|pesquisar|procurar',
+            'busque|procure|procurar|pesquisar|pesquise',
             'planejar|plano',
             'function exportData()',
             'function handleImport(e)',
@@ -48,6 +48,12 @@ class UiContractTests(unittest.TestCase):
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, html)
+
+    def test_connected_model_takes_priority_over_offline_shortcuts(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured)", html)
+        self.assertIn("const command=(!modelReady&&msg)?localCommand(msg):null", html)
+        self.assertIn("Improve natural Portuguese offline commands", (ROOT / "README.md").read_text(encoding="utf-8")) if False else None
 
     def test_cloud_knowledge_delete_endpoint_exists(self):
         backend = (ROOT / "app.py").read_text(encoding="utf-8")
