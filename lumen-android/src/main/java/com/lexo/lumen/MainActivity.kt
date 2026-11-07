@@ -258,6 +258,9 @@ class MainActivity : Activity() {
             return modelState()
         }
 
+        @JavascriptInterface fun canRunLocalModel(): Boolean =
+            localModel != null || (modelFile.exists() && modelFile.length() >= selectedProfile().minBytes)
+
         @JavascriptInterface fun modelState(): String {
             val profile = selectedProfile()
             return when {
