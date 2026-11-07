@@ -144,6 +144,59 @@ def model_config() -> dict[str, str]:
     return {"api_key": key or ("ollama-local" if local_ollama else ""), "base_url": base, "model": model, "provider": "ollama" if local_ollama else "compatible"}
 
 
+def provider_registry() -> dict[str, dict[str, Any]]:
+    """Registro de provedores configurado pelo operador; segredos ficam apenas no ambiente."""
+    raw = os.getenv("NEXORA_PROVIDERS", "").strip()
+    providers: dict[str, dict[str, Any]] = {}
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if not isinstance(parsed, dict):
+                raise ValueError("NEXORA_PROVIDERS precisa ser um objeto JSON.")
+            for name, cfg in parsed.items():
+                if not isinstance(cfg, dict):
+                    continue
+                base = str(cfg.get("base_url", "")).strip().rstrip("/")
+                key_env = str(cfg.get("api_key_env", "")).strip()
+                key = os.getenv(key_env, "").strip() if key_env else ""
+                models = cfg.get("models", [])
+                if base and isinstance(models, list):
+                    providers[str(name).lower()] = {
+                        "base_url": base, "api_key": key,
+                        "models": [str(m) for m in models if str(m).strip()],
+                        "protocol": str(cfg.get("protocol", "openai-chat-completions")),
+                    }
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return {}
+    if not providers:
+        cfg = model_config()
+        if cfg.get("api_key"):
+            providers["default"] = {
+                "base_url": cfg["base_url"], "api_key": cfg["api_key"],
+                "models": [cfg["model"]], "protocol": "openai-chat-completions",
+            }
+    return providers
+
+
+def resolve_gateway_model(model_id: str) -> tuple[str, str, dict[str, Any]]:
+    providers = provider_registry()
+    if "/" in model_id:
+        provider_name, model_name = model_id.split("/", 1)
+    else:
+        provider_name = os.getenv("NEXORA_DEFAULT_PROVIDER", "default").strip().lower()
+        if provider_name not in providers and len(providers) == 1:
+            provider_name = next(iter(providers))
+        model_name = model_id
+    provider = providers.get(provider_name.lower())
+    if not provider or model_name not in provider["models"]:
+        raise HTTPException(404, "Modelo não cadastrado na API NEXORA. Consulte GET /v1/models.")
+    if provider["protocol"] != "openai-chat-completions":
+        raise HTTPException(501, "Este adaptador ainda não está disponível. Protocolo suportado nesta versão: OpenAI Chat Completions compatível.")
+    if not provider["api_key"] and "ollama" not in provider["base_url"].lower():
+        raise HTTPException(503, "Credencial do provedor não configurada no servidor.")
+    return provider_name.lower(), model_name, provider
+
+
 def model_is_configured() -> bool:
     config = model_config()
     return bool(config["api_key"] and (os.getenv("LUMEN_MODEL_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("TOGETHER_API_KEY") or config["provider"] == "ollama"))
@@ -181,6 +234,18 @@ class ResearchIn(BaseModel):
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     image_data_url: str | None = Field(default=None, max_length=7_000_000)
+
+
+class GatewayChatIn(BaseModel):
+    model: str = Field(min_length=1, max_length=240)
+    messages: list[dict[str, Any]] = Field(min_length=1, max_length=100)
+    temperature: float | None = Field(default=None, ge=0, le=2)
+    max_tokens: int | None = Field(default=None, ge=1, le=32768)
+    top_p: float | None = Field(default=None, gt=0, le=1)
+    stream: bool = False
+    tools: list[dict[str, Any]] | None = None
+    tool_choice: Any | None = None
+
 
     @field_validator("image_data_url")
     @classmethod
@@ -582,6 +647,50 @@ def execute_agent_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                 "completed_tasks": con.execute("SELECT COUNT(*) FROM tasks WHERE status = 'concluída'").fetchone()[0]
             }
     return {"ok": False, "error": "Ferramenta desconhecida."}
+
+
+
+@app.get("/v1/models", dependencies=[Depends(require_access)])
+async def gateway_models():
+    """Lista apenas identificadores públicos; nunca revela chaves nem configuração secreta."""
+    data = []
+    for provider_name, provider in provider_registry().items():
+        for model_name in provider["models"]:
+            data.append({"id": f"{provider_name}/{model_name}", "object": "model", "owned_by": provider_name})
+    return {"object": "list", "data": data}
+
+
+@app.post("/v1/chat/completions", dependencies=[Depends(require_access)])
+async def gateway_chat(item: GatewayChatIn):
+    """Gateway NEXORA com contrato Chat Completions compatível e roteamento por provedor/modelo."""
+    if item.stream:
+        raise HTTPException(501, "Streaming ainda não está disponível nesta versão da API NEXORA.")
+    provider_name, model_name, provider = resolve_gateway_model(item.model)
+    payload: dict[str, Any] = {
+        "model": model_name,
+        "messages": item.messages,
+    }
+    for field in ("temperature", "max_tokens", "top_p", "tools", "tool_choice"):
+        value = getattr(item, field)
+        if value is not None:
+            payload[field] = value
+    headers = {"Content-Type": "application/json"}
+    if provider["api_key"]:
+        headers["Authorization"] = f"Bearer {provider['api_key']}"
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            response = await client.post(provider["base_url"] + "/chat/completions", headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"O provedor {provider_name} retornou HTTP {exc.response.status_code}.") from exc
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(502, f"Falha ao comunicar com o provedor {provider_name}.") from exc
+    if not isinstance(result, dict) or not isinstance(result.get("choices"), list):
+        raise HTTPException(502, "O provedor retornou uma resposta fora do contrato Chat Completions.")
+    result["model"] = f"{provider_name}/{model_name}"
+    result["nexora_gateway"] = {"provider": provider_name, "protocol": provider["protocol"]}
+    return result
 
 @app.post("/api/chat", dependencies=[Depends(require_access)])
 async def chat(item: ChatIn):
