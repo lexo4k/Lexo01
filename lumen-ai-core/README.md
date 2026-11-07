@@ -26,7 +26,7 @@ Núcleo experimental de IA com memória, planejamento cognitivo e pesquisa web c
 
 O núcleo agora expõe um contrato público inspirado em **OpenAI Chat Completions**, hospedado no domínio da NEXORA. Aplicativos e agentes podem chamar `GET /v1/models` e `POST /v1/chat/completions` usando o token da NEXORA no cabeçalho `Authorization: Bearer SEU_TOKEN`. O identificador do modelo segue `provedor/modelo`, por exemplo `openai/gpt-4.1-mini`.
 
-Os provedores são cadastrados pela variável de ambiente `NEXORA_PROVIDERS` (JSON). Cada entrada informa `base_url`, `api_key_env` e a lista permitida em `models`. `api_key_env` contém somente o nome da variável secreta; o valor real fica no ambiente privado do Render, nunca no código, no app Android ou no Git. A primeira versão encaminha o protocolo OpenAI Chat Completions para provedores que implementam esse formato. Não promete compatibilidade universal: APIs proprietárias com protocolos diferentes, streaming, áudio e formatos multimodais específicos exigem adaptadores próprios. O gateway rejeita streaming nesta versão e valida a estrutura básica da resposta upstream.
+Os provedores são cadastrados pela variável de ambiente `NEXORA_PROVIDERS` (JSON). Cada entrada informa `base_url`, `api_key_env` e a lista permitida em `models`. `api_key_env` contém somente o nome da variável secreta; o valor real fica no ambiente privado do Render, nunca no código, no app Android ou no Git. A primeira versão encaminha o protocolo OpenAI Chat Completions para provedores que implementam esse formato. Não promete compatibilidade universal: APIs proprietárias com protocolos diferentes, streaming, áudio e formatos multimodais específicos exigem adaptadores próprios. O gateway rejeita streaming nesta versão e valida a estrutura básica da resposta upstream. Cada provedor pode declarar `fallbacks` com IDs `provedor/modelo` que também estejam na lista permitida. Se o principal falhar, o gateway tenta os alternativos na ordem definida e informa o modelo realmente usado. `GET /v1/providers` mostra o estado do catálogo sem revelar segredos.
 
 Exemplo de chamada:
 
@@ -133,3 +133,10 @@ Agora existe também o módulo Android próprio em `lumen-android/`. O APK inclu
 - `index.html`: interface web responsiva.
 - `lumen-android/`: aplicativo Android nativo que conecta ao servidor HTTPS.
 - `tests/`: testes automatizados.
+
+
+## Manutenção e atualização contínua
+
+O workflow `NEXORA Continuous Maintenance` roda a cada seis horas e também a cada alteração relevante da branch. Ele compila os módulos Python, executa os testes automatizados e audita dependências. O Dependabot verifica semanalmente atualizações de bibliotecas Python e GitHub Actions, abrindo pull requests para análise e validação. O Render publica commits da branch automaticamente. Atualizações de dependências não são instaladas às cegas: entram como propostas, passam pelos testes e precisam ser aceitas antes de chegar à produção. Isso reduz o risco de uma atualização quebrar o app ou expor dados.
+
+A lista de provedores é atualizada por configuração do servidor e pode ser consultada em `GET /v1/providers`; o gateway faz failover apenas para modelos alternativos explicitamente cadastrados. APIs nativas incompatíveis precisam de adaptadores próprios. A NEXORA não descobre credenciais privadas, não cria acesso a satélites, redes ou serviços fechados e não altera hardware remotamente.
