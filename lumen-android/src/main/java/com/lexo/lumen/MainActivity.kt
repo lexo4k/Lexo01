@@ -230,72 +230,85 @@ class MainActivity : Activity() {
                     localScope.launch { try { loadLocalModel() } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao carregar o modelo local") } }
                     return
                 }
-            }
-            val manager = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            val network = manager.activeNetwork
-            val capabilities = network?.let { manager.getNetworkCapabilities(it) }
-            if (capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true) {
-                downloadModel()
-            } else {
-                notifyModel("waiting_network", "O AURION está pronto para preparar a IA local. O modelo ocupa cerca de 450 MB; o download começará automaticamente quando houver Wi-Fi, para não consumir seus dados móveis.")
+                else -> notifyModel("missing", "O modelo ainda não está salvo neste aparelho. Baixe uma única vez usando Wi-Fi. Depois ele ficará guardado e será carregado automaticamente ao abrir o AURION.")
             }
         }
 
         @JavascriptInterface fun downloadModel() {
             if (modelBusy || localModel != null) return
-            if (modelFile.exists() && modelFile.length() >= selectedProfile().minBytes) {
-                localScope.launch { try { loadLocalModel() } catch (_: Exception) { } }
+            val profile = selectedProfile()
+            val target = modelFile
+            if (target.exists() && target.length() >= profile.minBytes) {
+                localScope.launch { try { loadLocalModel() } catch (e: Exception) { notifyModel("error", e.message ?: "Falha ao carregar o modelo") } }
+                return
+            }
+            val manager = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val capabilities = manager.activeNetwork?.let { manager.getNetworkCapabilities(it) }
+            if (capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) != true) {
+                notifyModel("wifi_required", "Download bloqueado para proteger seus dados móveis. Conecte ao Wi-Fi e toque em Baixar novamente. Se uma transferência foi interrompida, ela continuará do ponto salvo.")
                 return
             }
             modelBusy = true
-            notifyModel("downloading", "Baixando ${selectedProfile().name}. ${selectedProfile().note} Use Wi-Fi e mantenha o app aberto.")
+            notifyModel("downloading", "Baixando " + profile.name + ". O arquivo ficará salvo no aparelho; não será baixado de novo se estiver íntegro.")
             localScope.launch {
                 try {
                     withContext(Dispatchers.IO) {
-                        val parent = modelFile.parentFile ?: throw IllegalStateException("Pasta privada do modelo indisponível")
+                        val parent = target.parentFile ?: throw IllegalStateException("Pasta privada do modelo indisponível")
                         if (!parent.exists() && !parent.mkdirs()) throw IllegalStateException("Não foi possível criar a pasta do modelo")
-                        val temp = File(parent, modelFile.name + ".part")
-                        val connection = (URL(selectedProfile().url).openConnection() as HttpURLConnection).apply {
+                        val temp = File(parent, target.name + ".part")
+                        if (!temp.exists() && target.exists()) target.renameTo(temp)
+                        var existing = temp.length()
+                        val connection = (URL(profile.url).openConnection() as HttpURLConnection).apply {
                             connectTimeout = 30000
                             readTimeout = 60000
                             instanceFollowRedirects = true
                             setRequestProperty("User-Agent", "AURION-AI-Android")
+                            if (existing > 0) setRequestProperty("Range", "bytes=" + existing + "-")
                         }
                         try {
                             connection.connect()
-                            if (connection.responseCode !in 200..299) throw IllegalStateException("Download HTTP ${connection.responseCode}")
-                            val total = connection.contentLengthLong
+                            val code = connection.responseCode
+                            if (code !in 200..299) throw IllegalStateException("Download HTTP " + code)
+                            val append = existing > 0 && code == HttpURLConnection.HTTP_PARTIAL
+                            if (existing > 0 && !append) {
+                                temp.delete()
+                                existing = 0L
+                            }
+                            val remaining = connection.contentLengthLong
+                            val total = if (remaining > 0) remaining + existing else -1L
                             connection.inputStream.use { input ->
-                                temp.outputStream().buffered().use { output ->
+                                FileOutputStream(temp, append).use { raw ->
+                                    val output = raw.buffered()
                                     val buffer = ByteArray(64 * 1024)
                                     var count: Int
-                                    var received = 0L
                                     var lastPercent = -1
+                                    var received = existing
                                     while (input.read(buffer).also { count = it } != -1) {
                                         output.write(buffer, 0, count)
                                         received += count
                                         if (total > 0) {
-                                            val percent = ((received * 100) / total).toInt()
+                                            val percent = ((received * 100) / total).toInt().coerceIn(0, 100)
                                             if (percent != lastPercent) {
                                                 lastPercent = percent
-                                                runOnUiThread { notifyModel("downloading", "Baixando o modelo local: $percent%") }
+                                                runOnUiThread { notifyModel("downloading", "Baixando o modelo local: " + percent + "%") }
                                             }
                                         }
                                     }
+                                    output.flush()
+                                    raw.fd.sync()
                                 }
                             }
-                            if (temp.length() < selectedProfile().minBytes) throw IllegalStateException("Arquivo do modelo incompleto para ${selectedProfile().name}")
-                            if (modelFile.exists()) modelFile.delete()
-                            if (!temp.renameTo(modelFile)) throw IllegalStateException("Não foi possível finalizar o arquivo do modelo")
+                            if (temp.length() < profile.minBytes) throw IllegalStateException("Arquivo incompleto. " + temp.length() + " bytes salvos; toque em baixar para continuar sem reiniciar.")
+                            if (target.exists()) target.delete()
+                            if (!temp.renameTo(target)) throw IllegalStateException("Não foi possível finalizar o arquivo do modelo")
                         } finally {
                             connection.disconnect()
-                            if (temp.exists()) temp.delete()
                         }
                     }
                     loadLocalModel()
                 } catch (e: Exception) {
                     modelBusy = false
-                    notifyModel("error", e.message ?: "Falha ao baixar ou carregar o modelo")
+                    notifyModel("error", e.message ?: "Falha ao baixar ou carregar o modelo. O trecho baixado foi preservado para continuar depois.")
                 }
             }
         }
