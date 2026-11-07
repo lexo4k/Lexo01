@@ -37,12 +37,12 @@ def main():
     total_tokens = 0
     with torch.no_grad():
         for start in range(0, len(tokens) - 1, context):
-            x = tokens[max(0, start - context + 1):start + context]
-            if len(x) < 2:
+            x = tokens[start:start + context]
+            y = tokens[start + 1:start + context + 1]
+            if len(x) < 1 or len(y) != len(x):
                 continue
-            y = tokens[max(1, start - context + 2):start + context + 1]
-            x = x[:-1].unsqueeze(0)
-            y = y[:x.shape[1]].unsqueeze(0)
+            x = x.unsqueeze(0)
+            y = y.unsqueeze(0)
             if x.shape[1] == 0:
                 continue
             _, loss = model(x, y)
