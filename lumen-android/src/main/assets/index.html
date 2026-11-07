@@ -77,7 +77,38 @@ function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
 function loadConfig(){const defaultUrl="https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app";try{const saved=JSON.parse(localStorage.getItem(CFG));if(!saved)return{url:defaultUrl,token:""};if(!saved.url||saved.url==="https://lumen-ai-core.vercel.app")return{url:defaultUrl,token:saved.token||""};return{url:saved.url,token:saved.token||""}}catch{return{url:defaultUrl,token:""}}}
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
 function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
-function demo(prompt){show("chat");$("message").value=prompt;sendMessage()}function stamp(){return new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}
+function demo(prompt){show("chat");$("message").value=prompt;sendMessage()}
+function setMode(mode){
+ if(!["chat","research","think"].includes(mode))return;
+ activeMode=mode;
+ $("chatMode").classList.toggle("selected",mode==="chat");
+ $("researchMode").classList.toggle("selected",mode==="research");
+ $("thinkMode").classList.toggle("selected",mode==="think");
+ $("modeLabel").textContent=mode==="research"?"PESQUISA NA WEB":mode==="think"?"PLANEJAMENTO COGNITIVO":"MODO CONVERSA";
+}
+function startVoiceInput(){
+ const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!Speech){$("chatState").textContent="Reconhecimento de voz não disponível neste navegador.";return}
+ const recognition=new Speech();recognition.lang="pt-BR";recognition.interimResults=false;recognition.maxAlternatives=1;
+ recognition.onstart=()=>{$("chatState").textContent="Ouvindo… fale agora."};
+ recognition.onresult=e=>{$("message").value=e.results[0][0].transcript;$("chatState").textContent="Voz convertida em texto. Revise e envie.";$("message").focus()};
+ recognition.onerror=e=>{$("chatState").textContent="Não foi possível reconhecer a voz: "+(e.error||"erro")};
+ recognition.onend=()=>{if($("chatState").textContent==="Ouvindo… fale agora.")$("chatState").textContent="Entrada de voz encerrada."};
+ recognition.start();
+}
+function speakLastAnswer(){
+ if(!("speechSynthesis" in window)||typeof SpeechSynthesisUtterance==="undefined"){$("chatState").textContent="Leitura em voz alta não disponível neste navegador.";return}
+ const text=lastAssistantText||data.messages.filter(x=>x.role==="assistant").slice(-1)[0]?.content;
+ if(!text){$("chatState").textContent="Ainda não há resposta para ler.";return}
+ window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang="pt-BR";window.speechSynthesis.speak(utterance);
+}
+function selectImage(event){
+ const file=event.target.files&&event.target.files[0];if(!file)return;
+ if(!["image/jpeg","image/png","image/webp"].includes(file.type)){$("attachPreview").textContent="Use uma imagem JPG, PNG ou WebP.";event.target.value="";return}
+ if(file.size>5*1024*1024){$("attachPreview").textContent="A imagem precisa ter até 5 MB.";event.target.value="";return}
+ const reader=new FileReader();reader.onload=()=>{pendingImageData=String(reader.result||"");$("attachPreview").textContent="Imagem pronta: "+file.name+" · envie uma mensagem para analisar.";};reader.onerror=()=>{$("attachPreview").textContent="Não foi possível carregar a imagem.";pendingImageData=null};reader.readAsDataURL(file);
+}
+function stamp(){return new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}
 function newId(){return window.crypto&&crypto.randomUUID?crypto.randomUUID():("lumen-"+Date.now()+"-"+Math.random().toString(36).slice(2))}
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function activity(title,detail=""){data.activity.unshift({title,detail,at:stamp()});data.activity=data.activity.slice(0,30)}
