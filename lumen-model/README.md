@@ -1,4 +1,4 @@
-# LÚMEN-1: modelo experimental próprio
+# NEXORA-1: modelo experimental próprio
 
 Este diretório contém uma arquitetura Transformer causal criada para o projeto LÚMEN,
 com pesos inicializados do zero e tokenizer UTF-8 byte-level (256 bytes + EOS).
@@ -34,9 +34,23 @@ python lumen-model/train.py --data lumen-model/corpus --steps 5000 --context 256
 
 `--steps` representa o total de passos desejado, não passos adicionais. O treinamento registra validação determinística e salva checkpoints periodicamente. Use somente textos próprios ou com licença compatível.
 
+## Servidor de inferência próprio
+
+O serviço carrega exclusivamente pesos treinados neste projeto. Não faz fallback para provedores externos. Sem checkpoint válido, /health informa not_ready e /generate responde 503.
+
+```bash
+pip install -r lumen-model/requirements-serve.txt
+cd lumen-model
+export NEXORA_MODEL_CHECKPOINT=artifacts/lumen-1.pt
+export NEXORA_MODEL_TOKEN="gere-um-segredo-forte-no-servidor"
+uvicorn serve:app --host 0.0.0.0 --port 8000
+```
+
+Consulte GET /health e envie POST /generate com o cabeçalho X-Model-Token. Esta é a primeira etapa de integração da inferência própria, mas ainda não é um assistente conversacional. O modelo precisa de corpus amplo, treinamento, ajuste para instruções e avaliação antes de ser usado como cérebro da NEXORA.
+
 ## Testar geração
 ```bash
-python lumen-model/infer.py --model lumen-model/artifacts/lumen-1.pt --prompt "LÚMEN:"
+python lumen-model/infer.py --model lumen-model/artifacts/lumen-1.pt --prompt "NEXORA:"
 ```
 
 ## Avaliação independente
