@@ -372,7 +372,7 @@ const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configur
 const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()==="ready"||localModelState()==="downloaded"));
 const command=(!modelReady&&!nativeLocalReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
-if(nativeLocalReady&&activeMode!=="research"&&!imageData){
+if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
  data.messages.push(pending);renderMessages();
  const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
