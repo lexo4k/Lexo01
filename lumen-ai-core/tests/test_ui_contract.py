@@ -16,7 +16,8 @@ class UiContractTests(unittest.TestCase):
 
     def test_android_model_is_loaded_on_start_and_download_is_wifi_only_and_resumable(self):
         activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
-        self.assertIn("window.AurionNative.prepareLocalModel()", activity)
+        self.assertIn("window.AurionNative.resumeAuthorizedModelSetup()", activity)
+        self.assertIn("@JavascriptInterface fun resumeAuthorizedModelSetup()", activity)
         self.assertIn("Download bloqueado para proteger seus dados móveis", activity)
         self.assertIn('setRequestProperty("Range", "bytes="', activity)
         start = activity.index("@JavascriptInterface fun prepareLocalModel()")
