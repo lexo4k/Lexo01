@@ -2,6 +2,7 @@ package com.lexo.lumen
 
 import android.Manifest
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.pm.PackageManager
 import android.content.ContentValues
 import android.provider.MediaStore
@@ -80,6 +81,9 @@ class MainActivity : Activity() {
         "qwen-3b" to LocalModelProfile("qwen-3b", "Qwen 3B · experimental", "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf", "aurion-qwen-3b-q4km.gguf", 1_900_000_000L, 2048, 160, "Modelo de 3 bilhões de parâmetros, arquivo de aproximadamente 2,1 GB. Experimental: pode ficar muito lento ou não carregar em celulares com pouca RAM. Escolha manualmente.")
     )
     @Volatile private var selectedModelId = "qwen-1.5b"
+    @Volatile private var discoveredModelUri: Uri? = null
+    @Volatile private var discoveredModelName: String = ""
+    @Volatile private var discoveredModelSize: Long = 0L
     private fun selectedProfile() = modelProfiles[selectedModelId] ?: modelProfiles.getValue("qwen-1.5b")
     private val modelFile: File get() = File(getExternalFilesDir("models") ?: File(filesDir, "models"), selectedProfile().fileName)
 
@@ -276,7 +280,7 @@ class MainActivity : Activity() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
             val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
             val relativePath = Environment.DIRECTORY_DOWNLOADS + "/AURION AI/"
-            return try {
+            val exact = try {
                 contentResolver.query(
                     collection,
                     arrayOf(android.provider.MediaStore.MediaColumns._ID),
@@ -288,6 +292,69 @@ class MainActivity : Activity() {
                     else Uri.withAppendedPath(collection, cursor.getLong(0).toString())
                 }
             } catch (_: Exception) { null }
+            if (exact != null) return exact
+            return discoveredModelUri?.takeIf { discoveredModelSize >= profile.minBytes }
+        }
+
+        private data class DownloadedModel(val uri: Uri, val name: String, val size: Long)
+
+        private fun scanDownloadedModels(): DownloadedModel? {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+            val memory = ActivityManager.MemoryInfo()
+            (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
+            // Reserva memória para Android, WebView, KV cache e buffers nativos do llama.cpp.
+            val safeLimit = minOf(2_500_000_000L, (memory.totalMem * 0.30).toLong())
+            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            val columns = arrayOf(
+                android.provider.MediaStore.MediaColumns._ID,
+                android.provider.MediaStore.MediaColumns.DISPLAY_NAME,
+                android.provider.MediaStore.MediaColumns.SIZE
+            )
+            val candidates = mutableListOf<DownloadedModel>()
+            contentResolver.query(collection, columns, null, null, android.provider.MediaStore.MediaColumns.DATE_MODIFIED + " DESC")?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns._ID)
+                val nameCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.DISPLAY_NAME)
+                val sizeCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.SIZE)
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(nameCol) ?: continue
+                    val size = cursor.getLong(sizeCol)
+                    if (!name.lowercase(Locale.ROOT).endsWith(".gguf") || size < 450_000_000L || size > safeLimit) continue
+                    candidates.add(DownloadedModel(Uri.withAppendedPath(collection, cursor.getLong(idCol).toString()), name, size))
+                }
+            }
+            return candidates.maxByOrNull { it.size }
+        }
+
+        private fun selectProfileForDownloadedSize(size: Long) {
+            selectedModelId = when {
+                size >= 1_850_000_000L -> "qwen-3b"
+                size >= 1_050_000_000L -> "qwen-1.5b"
+                else -> "qwen-0.5b"
+            }
+            getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", selectedModelId).apply()
+        }
+
+        private fun restoreDiscoveredModel(candidate: DownloadedModel) {
+            val profile = selectedProfile()
+            val target = modelFile
+            notifyModel("restoring", "Encontrei " + candidate.name + " em Downloads (" + String.format(Locale.US, "%.2f", candidate.size / 1_000_000_000.0) + " GB). Vou reutilizar o maior modelo compatível com a memória estimada, sem baixar novamente.")
+            val temp = File(target.parentFile, target.name + ".restore")
+            target.parentFile?.let { if (!it.exists() && !it.mkdirs()) throw IllegalStateException("Não foi possível criar a pasta do modelo.") }
+            contentResolver.openInputStream(candidate.uri)?.use { input ->
+                FileOutputStream(temp).use { output ->
+                    input.copyTo(output, 64 * 1024)
+                    output.fd.sync()
+                }
+            } ?: throw IllegalStateException("Não consegui abrir o modelo encontrado em Downloads.")
+            if (temp.length() < profile.minBytes) {
+                temp.delete()
+                throw IllegalStateException("O arquivo " + candidate.name + " está incompleto para o perfil selecionado.")
+            }
+            if (target.exists()) target.delete()
+            if (!temp.renameTo(target)) throw IllegalStateException("Não consegui preparar o modelo para o motor local.")
+            discoveredModelUri = candidate.uri
+            discoveredModelName = candidate.name
+            discoveredModelSize = candidate.size
         }
 
         private fun restoreSharedModel(profile: LocalModelProfile, target: File) {
@@ -453,44 +520,37 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun resumeAuthorizedModelSetup() {
-            runOnUiThread {
-                if (modelState() == "missing") {
-                    val authorized = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
-                        .getBoolean("model_download_authorized", false)
-                    if (authorized) {
-                        downloadModel()
+            if (modelState() != "missing") {
+                prepareLocalModel()
+                return
+            }
+            modelBusy = true
+            localScope.launch {
+                try {
+                    val candidate = withContext(Dispatchers.IO) { scanDownloadedModels() }
+                    if (candidate != null) {
+                        selectProfileForDownloadedSize(candidate.size)
+                        discoveredModelUri = candidate.uri
+                        discoveredModelName = candidate.name
+                        discoveredModelSize = candidate.size
+                        withContext(Dispatchers.IO) { restoreDiscoveredModel(candidate) }
+                        loadLocalModel()
                     } else {
-                        notifyModel("missing", "O modelo local ainda não foi instalado. A autorização inicial só será solicitada quando você escolher ativar o núcleo; depois disso, o app retoma a preparação automaticamente.")
+                        modelBusy = false
+                        val authorized = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
+                            .getBoolean("model_download_authorized", false)
+                        if (authorized) downloadModel()
+                        else notifyModel("missing", "Procurei os Downloads do aparelho e não encontrei um modelo GGUF compatível com a memória disponível. Se o arquivo estiver em outra pasta ou formato, será necessário selecioná-lo pelo gerenciador de arquivos.")
                     }
-                } else {
-                    prepareLocalModel()
+                } catch (e: Exception) {
+                    modelBusy = false
+                    notifyModel("error", "Falha ao localizar ou preparar o modelo já baixado: " + (e.message ?: "erro desconhecido"))
                 }
             }
         }
 
         @JavascriptInterface fun autoPrepareModelOnStartup() {
-            runOnUiThread {
-                if (modelState() != "missing") {
-                    prepareLocalModel()
-                    return@runOnUiThread
-                }
-                val prefs = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
-                if (prefs.getBoolean("model_download_authorized", false)) {
-                    downloadModel()
-                    return@runOnUiThread
-                }
-                if (prefs.getBoolean("model_setup_prompted", false)) return@runOnUiThread
-                prefs.edit().putBoolean("model_setup_prompted", true).apply()
-                android.app.AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Preparar o AURION")
-                    .setMessage("Para responder sem depender da internet, o AURION precisa baixar uma vez o modelo local (aproximadamente 1,1 GB). Autorize agora para ele preparar o núcleo automaticamente. O download usa Wi-Fi e verifica o espaço disponível.")
-                    .setNegativeButton("Depois", null)
-                    .setPositiveButton("Autorizar uma vez") { _, _ ->
-                        prefs.edit().putBoolean("model_download_authorized", true).apply()
-                        downloadModel()
-                    }
-                    .show()
-            }
+            resumeAuthorizedModelSetup()
         }
 
         @JavascriptInterface fun confirmModelDownload() {
