@@ -14,6 +14,20 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.PermissionRequest
+import android.webkit.JavascriptInterface
+import dev.ffmpegkit.llama.Llama
+import dev.ffmpegkit.llama.LlamaConfig
+import dev.ffmpegkit.llama.LlamaModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -24,12 +38,18 @@ class MainActivity : Activity() {
     private lateinit var progress: ProgressBar
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var pendingWebPermission: PermissionRequest? = null
+    private val localScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    @Volatile private var localModel: LlamaModel? = null
+    @Volatile private var modelBusy = false
+    private val modelUrl = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+    private val modelFile: File by lazy { File(getExternalFilesDir("models"), "nexora-qwen-0.5b-q4km.gguf") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.rgb(7, 17, 31)
         window.navigationBarColor = Color.rgb(7, 17, 31)
         buildUi()
+        web.addJavascriptInterface(NexoraBridge(), "NexoraNative")
         web.loadUrl("file:///android_asset/index.html")
     }
 
@@ -122,6 +142,125 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
+
+    private inner class NexoraBridge {
+        @JavascriptInterface fun modelState(): String {
+            return when {
+                localModel != null -> "ready"
+                modelBusy -> "working"
+                modelFile.exists() && modelFile.length() > 300_000_000L -> "downloaded"
+                else -> "missing"
+            }
+        }
+
+        @JavascriptInterface fun downloadModel() {
+            if (modelBusy || localModel != null) return
+            modelBusy = true
+            notifyModel("downloading", "Baixando o modelo local (aprox. 470 MiB). Mantenha o app aberto e use Wi-Fi.")
+            localScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        val parent = modelFile.parentFile ?: throw IllegalStateException("Pasta privada do modelo indisponível")
+                        if (!parent.exists() && !parent.mkdirs()) throw IllegalStateException("Não foi possível criar a pasta do modelo")
+                        val temp = File(parent, modelFile.name + ".part")
+                        val connection = (URL(modelUrl).openConnection() as HttpURLConnection).apply {
+                            connectTimeout = 30000
+                            readTimeout = 60000
+                            instanceFollowRedirects = true
+                            setRequestProperty("User-Agent", "NEXORA-AI-Android")
+                        }
+                        try {
+                            connection.connect()
+                            if (connection.responseCode !in 200..299) throw IllegalStateException("Download HTTP ${connection.responseCode}")
+                            val total = connection.contentLengthLong
+                            connection.inputStream.use { input ->
+                                temp.outputStream().buffered().use { output ->
+                                    val buffer = ByteArray(64 * 1024)
+                                    var count: Int
+                                    var received = 0L
+                                    var lastPercent = -1
+                                    while (input.read(buffer).also { count = it } != -1) {
+                                        output.write(buffer, 0, count)
+                                        received += count
+                                        if (total > 0) {
+                                            val percent = ((received * 100) / total).toInt()
+                                            if (percent != lastPercent) {
+                                                lastPercent = percent
+                                                runOnUiThread { notifyModel("downloading", "Baixando o modelo local: $percent%") }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (temp.length() < 300_000_000L) throw IllegalStateException("Arquivo do modelo incompleto")
+                            if (modelFile.exists()) modelFile.delete()
+                            if (!temp.renameTo(modelFile)) throw IllegalStateException("Não foi possível finalizar o arquivo do modelo")
+                        } finally {
+                            connection.disconnect()
+                            if (temp.exists()) temp.delete()
+                        }
+                    }
+                    loadLocalModel()
+                } catch (e: Exception) {
+                    modelBusy = false
+                    notifyModel("error", e.message ?: "Falha ao baixar ou carregar o modelo")
+                }
+            }
+        }
+
+        @JavascriptInterface fun sendLocalMessage(prompt: String, history: String) {
+            if (modelBusy) {
+                notifyAnswer("A IA local ainda está carregando. Aguarde alguns instantes.", true)
+                return
+            }
+            localScope.launch {
+                try {
+                    val active = localModel ?: loadLocalModel()
+                    val system = "Você é a NEXORA, uma assistente de IA independente que funciona localmente no aparelho. Responda em português brasileiro, com clareza, honestidade e utilidade. Não invente pesquisas, ações executadas, fatos ou capacidades. Se não souber, diga. Use o contexto recente apenas como histórico da conversa.\n\nHistórico recente:\n" + history
+                    val result = withContext(Dispatchers.IO) {
+                        Llama.complete(active, prompt.take(5000), systemPrompt = system.take(7000), maxTokens = 220)
+                    }
+                    notifyAnswer(result.text.ifBlank { "O modelo não gerou uma resposta. Tente reformular a mensagem." }, false)
+                } catch (e: Exception) {
+                    notifyAnswer("A IA local encontrou um erro: ${e.message ?: "falha de inferência"}", true)
+                }
+            }
+        }
+    }
+
+    private suspend fun loadLocalModel(): LlamaModel {
+        localModel?.let { return it }
+        if (!modelFile.exists() || modelFile.length() < 300_000_000L) throw IllegalStateException("O modelo ainda não foi baixado. Abra Configurar e toque em Baixar e ativar IA local.")
+        modelBusy = true
+        notifyModel("loading", "Carregando o modelo no aparelho. Na primeira vez pode demorar um pouco.")
+        return try {
+            val loaded = withContext(Dispatchers.IO) {
+                Llama.loadModel(
+                    modelPath = modelFile.absolutePath,
+                    config = LlamaConfig(contextSize = 2048, threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4))
+                )
+            }
+            localModel = loaded
+            modelBusy = false
+            notifyModel("ready", "IA local pronta. As conversas podem funcionar sem servidor.")
+            loaded
+        } catch (e: Exception) {
+            modelBusy = false
+            notifyModel("error", e.message ?: "Não foi possível carregar o modelo")
+            throw e
+        }
+    }
+
+    private fun notifyModel(state: String, detail: String) {
+        val script = "window.onNexoraModelState && window.onNexoraModelState(${JSONObject.quote(state)},${JSONObject.quote(detail)})"
+        if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
+    }
+
+    private fun notifyAnswer(answer: String, failed: Boolean) {
+        val script = "window.onNexoraNativeAnswer && window.onNexoraNativeAnswer(${JSONObject.quote(answer)},$failed)"
+        if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == AUDIO_PERMISSION_REQUEST) {
@@ -152,6 +291,9 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        localScope.cancel()
+        localModel?.let { Llama.releaseModel(it) }
+        localModel = null
         if (::web.isInitialized) web.destroy()
         super.onDestroy()
     }
