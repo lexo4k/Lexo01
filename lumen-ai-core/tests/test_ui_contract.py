@@ -78,8 +78,8 @@ class UiContractTests(unittest.TestCase):
     def test_chat_ui_exposes_explicit_learning_feedback(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn("function rateExperience(index,rating)", html)
-        self.assertIn('rateExperience('+i+',5)', html)
-        self.assertIn('rateExperience('+i+',2)', html)
+        self.assertIn("rateExperience('+i+',5)", html)
+        self.assertIn("rateExperience('+i+',2)", html)
         self.assertIn('api("/api/experiences"', html)
         self.assertIn("feedbackSaved", html)
 
