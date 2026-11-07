@@ -1,0 +1,42 @@
+name: NEXORA backend checks
+
+on:
+  push:
+    branches: [lumen-ai-core]
+    paths:
+      - "lumen-ai-core/**"
+      - "lumen-model/**"
+      - "render.yaml"
+      - ".github/workflows/nexora-backend.yml"
+  pull_request:
+    paths:
+      - "lumen-ai-core/**"
+      - "lumen-model/**"
+      - "render.yaml"
+      - ".github/workflows/nexora-backend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install API dependencies
+        run: pip install -r lumen-ai-core/requirements.txt
+      - name: Compile API and model code
+        run: python -m compileall -q lumen-ai-core lumen-model
+      - name: Test public research parser
+        working-directory: lumen-ai-core
+        run: python -m unittest -v test_public_research.py
+      - name: Test own-model server
+        working-directory: lumen-model
+        run: |
+          pip install -r requirements-serve.txt
+          python -m unittest -v test_serve.py
