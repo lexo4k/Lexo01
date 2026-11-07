@@ -44,13 +44,20 @@ class MainActivity : Activity() {
     @Volatile private var localModel: LlamaModel? = null
     @Volatile private var modelBusy = false
     private val inferenceMutex = Mutex()
-    private val modelUrl = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
-    private val modelFile: File by lazy { File(getExternalFilesDir("models"), "nexora-qwen-0.5b-q4km.gguf") }
+    private data class LocalModelProfile(val id: String, val name: String, val url: String, val fileName: String, val minBytes: Long, val contextSize: Int, val maxTokens: Int, val note: String)
+    private val modelProfiles = mapOf(
+        "qwen-0.5b" to LocalModelProfile("qwen-0.5b", "Qwen 0.5B · leve", "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf", "nexora-qwen-0.5b-q4km.gguf", 300_000_000L, 2048, 320, "Modelo compacto para aparelhos com menos memória."),
+        "qwen-1.5b" to LocalModelProfile("qwen-1.5b", "Qwen 1.5B · avançado", "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf", "nexora-qwen-1.5b-q4km.gguf", 800_000_000L, 4096, 384, "Modelo maior, exige bastante armazenamento e RAM. Pode ficar lento ou não carregar em aparelhos com pouca memória.")
+    )
+    @Volatile private var selectedModelId = "qwen-0.5b"
+    private fun selectedProfile() = modelProfiles[selectedModelId] ?: modelProfiles.getValue("qwen-0.5b")
+    private val modelFile: File get() = File(getExternalFilesDir("models"), selectedProfile().fileName)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.rgb(7, 17, 31)
         window.navigationBarColor = Color.rgb(7, 17, 31)
+        selectedModelId = getSharedPreferences("nexora_local", MODE_PRIVATE).getString("model_id", "qwen-0.5b")?.takeIf { modelProfiles.containsKey(it) } ?: "qwen-0.5b"
         buildUi()
         web.addJavascriptInterface(NexoraBridge(), "NexoraNative")
         web.loadUrl("file:///android_asset/index.html")
@@ -147,30 +154,55 @@ class MainActivity : Activity() {
 
 
     inner class NexoraBridge {
+        @JavascriptInterface fun modelOptions(): String = JSONObject().apply {
+            put("selected", selectedModelId)
+            put("models", org.json.JSONArray().apply {
+                modelProfiles.values.forEach { p ->
+                    put(JSONObject().apply {
+                        put("id", p.id); put("name", p.name); put("note", p.note)
+                        put("context", p.contextSize); put("maxTokens", p.maxTokens)
+                    })
+                }
+            })
+        }.toString()
+
+        @JavascriptInterface fun selectModel(id: String): String {
+            if (modelBusy || inferenceMutex.isLocked) return "busy"
+            if (!modelProfiles.containsKey(id)) return "invalid"
+            if (selectedModelId != id) {
+                localModel?.let { Llama.releaseModel(it) }
+                localModel = null
+                selectedModelId = id
+                getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", id).apply()
+            }
+            return modelState()
+        }
+
         @JavascriptInterface fun modelState(): String {
+            val profile = selectedProfile()
             return when {
                 localModel != null -> "ready"
                 modelBusy -> "working"
-                modelFile.exists() && modelFile.length() > 300_000_000L -> "downloaded"
+                modelFile.exists() && modelFile.length() >= profile.minBytes -> "downloaded"
                 else -> "missing"
             }
         }
 
         @JavascriptInterface fun downloadModel() {
             if (modelBusy || localModel != null) return
-            if (modelFile.exists() && modelFile.length() > 300_000_000L) {
+            if (modelFile.exists() && modelFile.length() >= selectedProfile().minBytes) {
                 localScope.launch { try { loadLocalModel() } catch (_: Exception) { } }
                 return
             }
             modelBusy = true
-            notifyModel("downloading", "Baixando o modelo local (aprox. 470 MiB). Mantenha o app aberto e use Wi-Fi.")
+            notifyModel("downloading", "Baixando ${selectedProfile().name}. ${selectedProfile().note} Use Wi-Fi e mantenha o app aberto.")
             localScope.launch {
                 try {
                     withContext(Dispatchers.IO) {
                         val parent = modelFile.parentFile ?: throw IllegalStateException("Pasta privada do modelo indisponível")
                         if (!parent.exists() && !parent.mkdirs()) throw IllegalStateException("Não foi possível criar a pasta do modelo")
                         val temp = File(parent, modelFile.name + ".part")
-                        val connection = (URL(modelUrl).openConnection() as HttpURLConnection).apply {
+                        val connection = (URL(selectedProfile().url).openConnection() as HttpURLConnection).apply {
                             connectTimeout = 30000
                             readTimeout = 60000
                             instanceFollowRedirects = true
@@ -199,7 +231,7 @@ class MainActivity : Activity() {
                                     }
                                 }
                             }
-                            if (temp.length() < 300_000_000L) throw IllegalStateException("Arquivo do modelo incompleto")
+                            if (temp.length() < selectedProfile().minBytes) throw IllegalStateException("Arquivo do modelo incompleto para ${selectedProfile().name}")
                             if (modelFile.exists()) modelFile.delete()
                             if (!temp.renameTo(modelFile)) throw IllegalStateException("Não foi possível finalizar o arquivo do modelo")
                         } finally {
@@ -226,7 +258,7 @@ class MainActivity : Activity() {
                         val active = localModel ?: loadLocalModel()
                         val system = "Você é a NEXORA, uma assistente de IA independente que funciona localmente no aparelho. Responda em português brasileiro, com clareza, honestidade e utilidade. Não invente pesquisas, ações executadas, fatos ou capacidades. Se não souber, diga. Use o contexto recente apenas como histórico da conversa.\n\nHistórico recente:\n" + history
                         val result = withContext(Dispatchers.IO) {
-                            Llama.complete(active, prompt.take(5000), systemPrompt = system.take(7000), maxTokens = 220)
+                            Llama.complete(active, prompt.take(12000), systemPrompt = system.take(12000), maxTokens = selectedProfile().maxTokens)
                         }
                         notifyAnswer(result.text.ifBlank { "O modelo não gerou uma resposta. Tente reformular a mensagem." }, false)
                     } catch (e: Exception) {
@@ -239,19 +271,19 @@ class MainActivity : Activity() {
 
     private suspend fun loadLocalModel(): LlamaModel {
         localModel?.let { return it }
-        if (!modelFile.exists() || modelFile.length() < 300_000_000L) throw IllegalStateException("O modelo ainda não foi baixado. Abra Configurar e toque em Baixar e ativar IA local.")
+        if (!modelFile.exists() || modelFile.length() < selectedProfile().minBytes) throw IllegalStateException("O modelo selecionado ainda não foi baixado. Abra Configurar e toque em Baixar e ativar IA local.")
         modelBusy = true
         notifyModel("loading", "Carregando o modelo no aparelho. Na primeira vez pode demorar um pouco.")
         return try {
             val loaded = withContext(Dispatchers.IO) {
                 Llama.loadModel(
                     modelPath = modelFile.absolutePath,
-                    config = LlamaConfig(contextSize = 2048, threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4))
+                    config = LlamaConfig(contextSize = selectedProfile().contextSize, threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4))
                 )
             }
             localModel = loaded
             modelBusy = false
-            notifyModel("ready", "IA local pronta. As conversas podem funcionar sem servidor.")
+            notifyModel("ready", "${selectedProfile().name} pronto no aparelho. Contexto configurado: ${selectedProfile().contextSize} tokens. As conversas podem funcionar sem servidor.")
             loaded
         } catch (e: Exception) {
             modelBusy = false
