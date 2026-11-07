@@ -79,6 +79,9 @@ class LumenGPT(nn.Module):
             probs = F.softmax(logits, dim=-1)
             nxt = torch.multinomial(probs, 1)
             idx = torch.cat((idx, nxt), dim=1)
+            # EOS encerra a geração quando toda a amostra terminou.
+            if torch.all(nxt.squeeze(-1) == 256):
+                break
         return idx
 
 def encode(text: str) -> list[int]:
