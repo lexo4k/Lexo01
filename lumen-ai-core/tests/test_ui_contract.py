@@ -75,6 +75,14 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('@app.delete("/api/knowledge/{knowledge_id}"', backend)
         self.assertIn('DELETE FROM knowledge WHERE id=?', backend)
 
+    def test_chat_ui_exposes_explicit_learning_feedback(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("function rateExperience(index,rating)", html)
+        self.assertIn('rateExperience('+i+',5)', html)
+        self.assertIn('rateExperience('+i+',2)', html)
+        self.assertIn('api("/api/experiences"', html)
+        self.assertIn("feedbackSaved", html)
+
     def test_android_has_practical_default_and_optional_larger_local_model(self):
         activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn('"qwen-1.5b" to LocalModelProfile', activity)
