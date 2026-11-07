@@ -1135,19 +1135,52 @@ async def chat(item: ChatIn):
         own_model_url = "http://" + own_model_url
     own_model_token = (os.getenv("AURION_MODEL_TOKEN") or os.getenv("NEXORA_MODEL_TOKEN") or "").strip()
     with db() as con:
-        memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
-        facts = [f'{r["title"]}: {r["content"]}' for r in con.execute("SELECT title,content FROM knowledge ORDER BY id DESC LIMIT 10")]
-        corrections = [dict(r) for r in con.execute(
-            "SELECT error_signature,root_cause,resolution FROM correction_memory WHERE validation_status='verified' ORDER BY updated_at DESC LIMIT 10"
+        memory_rows = [dict(r) for r in con.execute(
+            "SELECT id,content,category,created_at FROM memories ORDER BY id DESC LIMIT 300"
         )]
-        experiences = [dict(r) for r in con.execute(
+        knowledge_rows = [dict(r) for r in con.execute(
+            "SELECT id,title,content,source,created_at FROM knowledge ORDER BY id DESC LIMIT 300"
+        )]
+        correction_rows = [dict(r) for r in con.execute(
+            "SELECT error_signature,root_cause,resolution FROM correction_memory WHERE validation_status='verified' ORDER BY updated_at DESC LIMIT 100"
+        )]
+        experience_rows = [dict(r) for r in con.execute(
             """SELECT user_message,assistant_answer,rating,correction,lesson
-            FROM learning_experiences WHERE status='useful'
-            ORDER BY id DESC LIMIT 8"""
+            FROM learning_experiences WHERE status='useful' AND lesson!=''
+            ORDER BY id DESC LIMIT 100"""
         )]
         history = [dict(r) for r in con.execute(
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 20"
         )][::-1]
+
+    # Recupera contexto por relevância sem apagar nem reescrever as memórias originais.
+    selected_memories = select_relevant(memory_rows, item.message, limit=16, max_chars=6000)
+    selected_facts = select_relevant(knowledge_rows, item.message, limit=12, max_chars=7000)
+    selected_corrections = select_relevant(
+        [{"title": row["error_signature"], "content": row["root_cause"] + " " + row["resolution"]}
+         for row in correction_rows],
+        item.message, limit=5, max_chars=2200
+    )
+    selected_experiences = select_relevant(
+        [{"title": "Lição avaliada positivamente",
+          "content": row["user_message"] + " " + row["lesson"] + " " + row["correction"]}
+         for row in experience_rows],
+        item.message, limit=5, max_chars=2200
+    )
+    if not selected_memories:
+        selected_memories = memory_rows[:5]
+    if not selected_facts:
+        selected_facts = knowledge_rows[:4]
+    memories = [row["content"] for row in selected_memories]
+    facts = [f'{row["title"]}: {row["content"]}' for row in selected_facts]
+    corrections = [
+        {"error_signature": row["title"], "root_cause": row["content"][:1000], "resolution": ""}
+        for row in selected_corrections
+    ]
+    experiences = [
+        {"user_message": row["title"], "assistant_answer": "", "lesson": row["content"][:1200]}
+        for row in selected_experiences
+    ]
     if own_model_url and not item.image_data_url:
         if not own_model_token:
             raise HTTPException(503, "Modelo próprio selecionado, mas AURION_MODEL_TOKEN (ou NEXORA_MODEL_TOKEN legado) não foi configurado.")
