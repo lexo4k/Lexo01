@@ -54,7 +54,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <header><div class="brand"><div class="orb">N</div><div><strong>NEXORA AI</strong><small>NÚCLEO DE INTELIGÊNCIA</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
 <main>
 <section id="home" class="screen active">
-<div class="hero"><div class="eyebrow">NÚCLEO DE INTELIGÊNCIA PESSOAL</div><div class="core-visual" aria-label="Núcleo NEXORA"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">N</div></div><h2>Uma IA que pensa, aprende e evolui com você.</h2><p>Conversa, memória persistente, planejamento, pesquisa e ferramentas em um único ambiente. Cada capacidade mostra seu estado real, sem simular recursos que ainda não estão ativos.</p><div class="hero-foot"><button class="btn primary" onclick="show('chat')">✦ Iniciar conversa</button><button class="btn ghost" onclick="activateFullMind()">◎ Ativar mente completa</button><button class="btn ghost" onclick="show('settings')">Estado do núcleo</button></div></div>
+<div class="hero"><div class="eyebrow">NÚCLEO DE INTELIGÊNCIA PESSOAL</div><div class="core-visual" aria-label="Núcleo NEXORA"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">N</div></div><h2>Seu núcleo de inteligência, reunido em um só lugar.</h2><p>Conversa local, memória, voz, imagens, pesquisa e ferramentas. O cérebro local precisa ser baixado e ativado antes da primeira conversa inteligente.</p><div class="hero-foot"><button class="btn primary" onclick="prepareBrain()">🧠 Preparar IA no aparelho</button><button class="btn ghost" onclick="show('chat')">✦ Abrir conversa</button><button class="btn ghost" onclick="activateFullMind()">◎ Diagnosticar módulos</button></div></div>
 <div class="grid"><div class="metric"><span>Memórias</span><b id="memoryCount">0</b></div><div class="metric"><span>Planos / tarefas abertas</span><b id="taskCount">0</b></div><div class="metric"><span>Mensagens salvas</span><b id="chatCount">0</b></div></div>
 <div class="section-title"><h3>Centro de capacidades</h3><span>ACESSO DIRETO</span></div>
 <div class="quick">
@@ -110,6 +110,11 @@ function loadConfig(){const defaultUrl="https://nexora-ai-core.onrender.com";try
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
 function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities();loadCorrectionMemory();refreshLocalModel()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
 function demo(prompt){show("chat");$("message").value=prompt;sendMessage()}
+function prepareBrain(){
+ if(!window.NexoraNative){show("settings");$("localModelStatus").textContent="O motor local só está disponível no APK Android.";return}
+ show("settings");
+ try{window.NexoraNative.prepareLocalModel()}catch(e){$("localModelStatus").textContent="Falha ao iniciar o motor local: "+e.message}
+}
 function localModelState(){
  try{return window.NexoraNative?window.NexoraNative.modelState():"unavailable"}catch{return "unavailable"}
 }
@@ -126,6 +131,8 @@ function downloadLocalModel(){
 }
 window.onNexoraModelState=function(state,detail){
  const el=$("localModelStatus");
+ const home=$("homeStatus");
+ if(home){home.textContent=detail;home.className="statusbox "+(state==="ready"?"good":"warn");}
  if(el){el.textContent=detail;el.className="statusbox "+(state==="ready"?"good":state==="error"?"warn":"warn")}
  if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online")}
  else if(state==="downloading"||state==="loading"){$("chatState").textContent=detail}
