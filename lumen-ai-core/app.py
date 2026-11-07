@@ -594,18 +594,24 @@ async def research_public(item: ResearchIn, request: Request):
         raise HTTPException(422, "Informe latitude e longitude juntas para pesquisa por localização.")
     search_query = item.query
     engine = "DuckDuckGo HTML"
-    try:
-        if item.latitude is not None and item.longitude is not None:
+    if item.latitude is not None and item.longitude is not None:
+        try:
             sources = await search_nearby(item.query, item.latitude, item.longitude, limit=8)
             engine = "OpenStreetMap Overpass"
-            if not sources:
-                search_query += " near {:.5f}, {:.5f}".format(item.latitude, item.longitude)
+        except Exception:
+            sources = []
+        if not sources:
+            search_query += " near {:.5f}, {:.5f}".format(item.latitude, item.longitude)
+            engine = "DuckDuckGo HTML (fallback GPS)"
+            try:
                 sources = await search_web(search_query, limit=8)
-                engine = "DuckDuckGo HTML (fallback GPS)"
-        else:
+            except Exception as exc:
+                raise HTTPException(503, "Pesquisa de locais e busca pública estão temporariamente indisponíveis.") from exc
+    else:
+        try:
             sources = await search_web(search_query, limit=8)
-    except Exception as exc:
-        raise HTTPException(503, "Pesquisa pública temporariamente indisponível. Tente novamente mais tarde.") from exc
+        except Exception as exc:
+            raise HTTPException(503, "Pesquisa pública temporariamente indisponível. Tente novamente mais tarde.") from exc
     with db() as con:
         stamp = now()
         source_text = "\n".join("{}: {}\n{}".format(x.get("title", ""), x.get("url", ""), x.get("snippet", "")) for x in sources)
