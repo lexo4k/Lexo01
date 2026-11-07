@@ -734,7 +734,20 @@ if(Array.isArray(r.agent_trace)&&r.agent_trace.length){pending.content+="\\n\\nC
 if(r.verification){pending.content+="\\nVerificação das ferramentas: "+(r.verification.tools_succeeded?"sem erros reportados":"atenção, consulte os resultados")+". "+r.verification.claim_scope;}
 }
 pending.at=stamp();lastAssistantText=pending.content;
-}catch(e){pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;}
+}catch(e){
+ const localState=localModelState();
+ const canFallback=!imageData&&activeMode==="chat"&&window.AurionNative&&["ready","downloaded"].includes(localState);
+ if(canFallback){
+  pending.content="O núcleo remoto falhou. Estou continuando com o modelo local deste aparelho…";
+  pending.pendingLocal=true;
+  pending.at=stamp();saveData();renderMessages();
+  const fallbackHistory=data.messages.slice(-10,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\\n");
+  window.AurionNative.sendLocalMessage(msg,fallbackHistory);
+  setCoreActivity("FALLBACK LOCAL","A conexão remota falhou; a solicitação foi encaminhada ao modelo local.");
+  return;
+ }
+ pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;
+}
 saveData();renderMessages();setCoreActivity(pending.content.startsWith("Falha")?"ERRO":"CONCLUÍDO",pending.content.slice(0,220));if(autoSpeakEnabled)speakText(pending.content);
 }
 function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aurion-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
