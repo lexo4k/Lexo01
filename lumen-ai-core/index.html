@@ -129,6 +129,7 @@ window.onNexoraModelState=function(state,detail){
  if(el){el.textContent=detail;el.className="statusbox "+(state==="ready"?"good":state==="error"?"warn":"warn")}
  if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online")}
  else if(state==="downloading"||state==="loading"){$("chatState").textContent=detail}
+ else if(state==="waiting_network"){$("chatState").textContent="Preparação automática aguardando Wi-Fi";$("connectionPill").textContent="● preparando IA local";$("connectionPill").classList.remove("online")}
 };
 window.onNexoraNativeAnswer=function(answer,failed){
  const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
@@ -370,7 +371,7 @@ function importData(){$("importFile").click()}
 function handleImport(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result),d=x.data||x;if(!Array.isArray(d.memories)||!Array.isArray(d.tasks))throw Error("Arquivo não reconhecido");data={memories:d.memories||[],tasks:d.tasks||[],knowledge:d.knowledge||[],messages:d.messages||[],activity:d.activity||[]};saveData();setSettingsStatus("Dados importados neste aparelho.",true)}catch(err){setSettingsStatus("Falha ao importar: "+err.message,false)}};reader.readAsText(f);e.target.value=""}
 $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
 if(config.url&&config.token){$("serverUrl").value=config.url;$("accessToken").value=config.token;fetch(config.url+"/api/health").then(r=>r.json()).then(async h=>{if(h.status==="online"){try{await api("/api/overview");setConnection(true);apiCaps=await api("/api/capabilities").catch(()=>null);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · IA configurada":"Núcleo conectado · IA aguarda configuração";$("lastCheck").textContent="VERIFICADO";renderCapabilities();await syncWorkspace()}catch{setConnection(false)}}}).catch(()=>setConnection(false))}
-renderAll();renderCapabilities();refreshLocalModel();
+renderAll();renderCapabilities();refreshLocalModel();if(window.NexoraNative){try{window.NexoraNative.prepareLocalModel()}catch(e){}}
 if(config.url&&!config.token){fetch(config.url.replace(/\/+$/,"")+"/api/health").then(r=>r.json()).then(h=>{if(h.status==="online"){$("connectionPill").textContent="● servidor online";$("homeStatus").textContent=h.model_key_configured?"Servidor NEXORA online. Informe seu token privado em Configurar para sincronizar os dados.":"Servidor NEXORA online. O modelo de IA ainda aguarda configuração no servidor; o modo local já está disponível.";$("homeStatus").className="statusbox warn";$("lastCheck").textContent="SERVIDOR VERIFICADO";}}).catch(()=>{});}
 if("serviceWorker"in navigator&&location.protocol==="https:")navigator.serviceWorker.register("/sw.js").catch(()=>{});
 </script></body></html>
