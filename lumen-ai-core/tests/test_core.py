@@ -95,6 +95,8 @@ class CoreTests(unittest.TestCase):
         response = self.client.get("/api/capabilities", headers=self.headers)
         self.assertEqual(response.status_code, 200)
         self.assertIn("web_research", response.json())
+        self.assertTrue(response.json()["agent_tools"]["implemented"])
+        self.assertIn("save_knowledge", response.json()["agent_tools"]["available_tools"])
         self.assertFalse(response.json()["ads"]["implemented"])
 
     def test_image_mime_is_validated(self):
