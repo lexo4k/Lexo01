@@ -49,6 +49,14 @@ class UiContractTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 self.assertIn(marker, html)
 
+    def test_android_voice_permission_is_user_gated(self):
+        manifest = (ROOT.parent / "lumen-android" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
+        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn('android.permission.RECORD_AUDIO', manifest)
+        self.assertIn('override fun onPermissionRequest', activity)
+        self.assertIn('request.resources.all { it == PermissionRequest.RESOURCE_AUDIO_CAPTURE }', activity)
+        self.assertIn('requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO)', activity)
+
     def test_no_fake_default_server_hostname(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertNotIn('url:"https://lumen-ai-core.vercel.app"', html)
