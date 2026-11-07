@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
 from cognition import think as cognitive_cycle
@@ -20,7 +21,14 @@ DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(ROOT / "data" / "lumen.db")))
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="LÚMEN AI CORE", version="0.1.0", description="Núcleo pessoal de IA com memória persistente.")
+app = FastAPI(title="LÚMEN AI CORE", version="0.2.0", description="Núcleo pessoal de IA com memória persistente.")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS memories (
  id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT NOT NULL,
