@@ -1043,8 +1043,9 @@ async def create_video_test(item: VideoTestIn):
     ]
     prompt = (
         f"Crie um vídeo curto sobre: {idea}. "
-        "Estruture em três tomadas contínuas. Em cada tomada, mantenha identidade visual, "
-        "direção da luz, paleta e posição espacial coerentes. Use movimentos de câmera suaves, "
+        "Estruture em três tomadas contínuas, garantindo continuidade visual entre as cenas. "
+        "Em cada tomada, mantenha identidade visual, direção da luz, paleta e posição espacial coerentes. "
+        "Use movimentos de câmera suaves, "
         "uma ação principal por tomada e transições simples. "
         "Tomada 1: plano geral para situar o ambiente e o assunto. "
         "Tomada 2: plano médio mostrando a ação principal. "
