@@ -433,10 +433,10 @@ def tool_mutation_authorized(name: str, user_message: str) -> bool:
     import re
     text = user_message.casefold()
     patterns = {
-        "save_memory": r"\\b(lembre|lembra|guarde|guardar|salve|salvar|registre|registrar)\\b.{0,100}\\b(mem[oó]ria|isso|que|prefer[eê]ncia|fato)\\b|\\b(mem[oó]ria)\\b.{0,80}\\b(guarde|salve|registre)\\b",
-        "create_task": r"\\b(crie|criar|adicione|adicionar|registre|registrar|coloque|anote)\\b.{0,100}\\b(tarefa|lista|pend[eê]ncia|afazer)\\b",
-        "save_knowledge": r"\\b(arquive|arquivar|guarde|guardar|salve|salvar|registre|registrar)\\b.{0,100}\\b(conhecimento|nota|documento|informa[cç][aã]o)\\b",
-        "complete_task": r"\\b(conclua|concluir|finalize|finalizar|marque|marcar)\\b.{0,100}\\b(tarefa|como conclu[ií]da|conclu[ií]do)\\b",
+        "save_memory": r"\b(lembre|lembra|guarde|guardar|salve|salvar|registre|registrar)\b.{0,100}\b(mem[oó]ria|isso|que|prefer[eê]ncia|fato)\b|\b(mem[oó]ria)\b.{0,80}\b(guarde|salve|registre)\b",
+        "create_task": r"\b(crie|criar|adicione|adicionar|registre|registrar|coloque|anote)\b.{0,100}\b(tarefa|lista|pend[eê]ncia|afazer)\b",
+        "save_knowledge": r"\b(arquive|arquivar|guarde|guardar|salve|salvar|registre|registrar)\b.{0,100}\b(conhecimento|nota|documento|informa[cç][aã]o)\b",
+        "complete_task": r"\b(conclua|concluir|finalize|finalizar|marque|marcar)\b.{0,100}\b(tarefa|como conclu[ií]da|conclu[ií]do)\b",
     }
     pattern = patterns.get(name)
     return bool(pattern and re.search(pattern, text))
