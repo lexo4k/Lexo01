@@ -62,6 +62,7 @@ class MainActivity : Activity() {
     private val inferenceMutex = Mutex()
     private var textToSpeech: TextToSpeech? = null
     @Volatile private var ttsReady = false
+    @Volatile private var pendingSpeechText: String? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var pendingNativeSpeech = false
     private var pendingLocationRequest = false
@@ -104,6 +105,11 @@ class MainActivity : Activity() {
                     languageStatus != TextToSpeech.LANG_NOT_SUPPORTED
                 val voiceMode = if (preferredVoice != null && !preferredVoice.isNetworkConnectionRequired) "offline" else "com serviço de voz do Android"
                 notifySpeechStatus(if (ttsReady) "Voz pt-BR pronta ($voiceMode)." else "O Android não disponibilizou voz em português. Instale uma voz pt-BR nas configurações de fala.")
+                if (ttsReady) {
+                    val queued = pendingSpeechText
+                    pendingSpeechText = null
+                    if (!queued.isNullOrBlank()) textToSpeech?.speak(queued, TextToSpeech.QUEUE_FLUSH, null, "aurion-startup")
+                }
             } else {
                 ttsReady = false
                 notifySpeechStatus("O mecanismo de voz do Android não está disponível.")
@@ -157,7 +163,7 @@ class MainActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.AurionNative.prepareLocalModel();}", null)
+                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.AurionNative.prepareLocalModel();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
                 }
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val uri = request?.url ?: return true
@@ -421,12 +427,29 @@ class MainActivity : Activity() {
             }
         }
 
+        @JavascriptInterface fun confirmModelDownload() {
+            runOnUiThread {
+                if (modelState() != "missing") {
+                    prepareLocalModel()
+                    return@runOnUiThread
+                }
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Preparar a inteligência local")
+                    .setMessage("Para responder sem depender de servidor, o AURION precisa baixar o modelo de IA (aproximadamente 1,1 GB). O download só começa depois da sua confirmação e exige Wi-Fi e espaço livre.")
+                    .setNegativeButton("Agora não", null)
+                    .setPositiveButton("Autorizar download") { _, _ -> downloadModel() }
+                    .show()
+            }
+        }
+
         @JavascriptInterface fun speakText(text: String) {
             val clean = text.take(3500).trim()
             if (clean.isBlank()) return
             runOnUiThread {
-                if (!ttsReady) notifySpeechStatus("Voz em português indisponível. Confira se há uma voz pt-BR instalada no Android.")
-                else textToSpeech?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "aurion-answer")
+                if (!ttsReady) {
+                    pendingSpeechText = clean
+                    notifySpeechStatus("Preparando a voz pt-BR do Android.")
+                } else textToSpeech?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "aurion-answer")
             }
         }
 
