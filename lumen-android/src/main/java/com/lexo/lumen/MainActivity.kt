@@ -143,7 +143,7 @@ class MainActivity : Activity() {
     }
 
 
-    private inner class NexoraBridge {
+    inner class NexoraBridge {
         @JavascriptInterface fun modelState(): String {
             return when {
                 localModel != null -> "ready"
