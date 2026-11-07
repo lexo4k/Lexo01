@@ -186,7 +186,7 @@ window.onAurionModelState=function(state,detail){
  if(home){home.textContent=detail;home.className="statusbox "+(state==="ready"?"good":"warn");}
  if(el){el.textContent=detail;el.className="statusbox "+(state==="ready"?"good":state==="error"?"warn":"warn")}
  if(state==="ready"){$("chatState").textContent="IA local pronta · funciona sem servidor";$("connectionPill").textContent="● IA no aparelho";$("connectionPill").classList.add("online")}
- else if(state==="downloading"||state==="loading"){$("chatState").textContent=detail}
+ else if(state==="downloading"||state==="loading"||state==="restoring"){$("chatState").textContent=detail}
  else if(state==="waiting_network"||state==="wifi_required"){$("chatState").textContent=detail;$("connectionPill").textContent="● download só no Wi-Fi";$("connectionPill").classList.remove("online")}
  else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
 };
@@ -202,6 +202,7 @@ function refreshLocalModel(){
  const state=localModelState();
  if(state==="ready")window.onAurionModelState("ready","IA local pronta neste aparelho.");
  else if(state==="downloaded")window.onAurionModelState("loading","Modelo salvo neste aparelho. Preparando automaticamente…");
+ else if(state==="shared")window.onAurionModelState("restoring","Modelo preservado em Downloads/AURION AI. Recuperando sem novo download…");
  else if(state==="working")window.onAurionModelState("loading","A IA local está sendo preparada.");
  else if(state==="missing")window.onAurionModelState("missing","Modelo ainda não baixado. Toque no botão para ativar a IA local.");
  else if(state==="unavailable")window.onAurionModelState("unavailable","A IA local roda no aplicativo Android. A prévia web não tem acesso ao motor nativo.");
