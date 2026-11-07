@@ -28,6 +28,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import dev.ffmpegkit.llama.Llama
 import dev.ffmpegkit.llama.LlamaConfig
 import dev.ffmpegkit.llama.LlamaModel
@@ -63,6 +64,7 @@ class MainActivity : Activity() {
     private var textToSpeech: TextToSpeech? = null
     @Volatile private var ttsReady = false
     @Volatile private var pendingSpeechText: String? = null
+    @Volatile private var liveConversationEnabled = false
     private var speechRecognizer: SpeechRecognizer? = null
     private var pendingNativeSpeech = false
     private var pendingLocationRequest = false
@@ -99,10 +101,24 @@ class MainActivity : Activity() {
                     ?.firstOrNull()
                 if (preferredVoice != null) textToSpeech?.voice = preferredVoice
                 // Perfil de locução: calmo, firme e ligeiramente grave, sem imitar uma voz protegida.
-                textToSpeech?.setSpeechRate(0.92f)
-                textToSpeech?.setPitch(0.88f)
+                textToSpeech?.setSpeechRate(0.88f)
+                textToSpeech?.setPitch(0.78f)
                 ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA &&
                     languageStatus != TextToSpeech.LANG_NOT_SUPPORTED
+                textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {}
+                    override fun onDone(utteranceId: String?) {
+                        if (utteranceId == "aurion-answer" && liveConversationEnabled) {
+                            mainHandler.post { if (liveConversationEnabled && ::aurionBridge.isInitialized) aurionBridge.startVoiceRecognitionNow() }
+                        }
+                    }
+                    @Deprecated("Deprecated by Android")
+                    override fun onError(utteranceId: String?) {
+                        if (utteranceId == "aurion-answer" && liveConversationEnabled) {
+                            mainHandler.postDelayed({ if (liveConversationEnabled && ::aurionBridge.isInitialized) aurionBridge.startVoiceRecognitionNow() }, 900L)
+                        }
+                    }
+                })
                 val voiceMode = if (preferredVoice != null && !preferredVoice.isNetworkConnectionRequired) "offline" else "com serviço de voz do Android"
                 notifySpeechStatus(if (ttsReady) "Voz pt-BR pronta ($voiceMode)." else "O Android não disponibilizou voz em português. Instale uma voz pt-BR nas configurações de fala.")
                 if (ttsReady) {
@@ -457,6 +473,22 @@ class MainActivity : Activity() {
             runOnUiThread { textToSpeech?.stop() }
         }
 
+        @JavascriptInterface fun startLiveConversation() {
+            runOnUiThread {
+                liveConversationEnabled = true
+                notifySpeechStatus("Conversa ao vivo ativada. O microfone fica ativo enquanto o AURION estiver aberto e em primeiro plano.")
+                startVoiceRecognition()
+            }
+        }
+
+        @JavascriptInterface fun stopLiveConversation() {
+            runOnUiThread {
+                liveConversationEnabled = false
+                speechRecognizer?.cancel()
+                notifySpeechStatus("Conversa ao vivo pausada. O microfone não está ouvindo.")
+            }
+        }
+
         @JavascriptInterface fun startVoiceRecognition() {
             runOnUiThread {
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -494,7 +526,12 @@ class MainActivity : Activity() {
                         override fun onRmsChanged(rmsdB: Float) {}
                         override fun onBufferReceived(buffer: ByteArray?) {}
                         override fun onEndOfSpeech() { notifySpeechStatus("Áudio recebido. Convertendo fala em texto…") }
-                        override fun onError(error: Int) { notifyVoiceResult("", "O reconhecimento de voz falhou (código " + error + "). Confira o serviço de voz e a conexão, se necessária.") }
+                        override fun onError(error: Int) {
+                            notifyVoiceResult("", "O reconhecimento de voz falhou (código " + error + ").")
+                            if (liveConversationEnabled && error in listOf(6, 7, 8)) {
+                                mainHandler.postDelayed({ if (liveConversationEnabled) startVoiceRecognitionNow() }, 850L)
+                            }
+                        }
                         override fun onResults(results: Bundle?) {
                             val transcript = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
                             if (transcript.isBlank()) notifyVoiceResult("", "Não consegui entender a fala. Tente novamente.")
@@ -598,28 +635,14 @@ class MainActivity : Activity() {
                         """.trimIndent()
                         val currentQuestion = "SOLICITAÇÃO ATUAL:\\n" + prompt
                         val result = withContext(Dispatchers.IO) {
-                            val draft = Llama.complete(
-                                active,
-                                currentQuestion,
-                                systemPrompt = system + "\\n\\nFASE 1: formule uma solução preliminar concisa, identifique lacunas e verifique a coerência. Não mostre esta fase ao usuário.",
-                                maxTokens = selectedProfile().maxTokens
-                            )
-                            val reviewPrompt = """
-                                FASE 2: revise a resposta preliminar abaixo para corrigir erros, remover suposições sem base e responder diretamente à solicitação original.
-                                SOLICITAÇÃO ORIGINAL:
-                                $prompt
-                                RESPOSTA PRELIMINAR:
-                                ${draft.text}
-                                Entregue somente a resposta final ao usuário. Não afirme que executou ações externas.
-                            """.trimIndent()
                             Llama.complete(
                                 active,
-                                reviewPrompt,
-                                systemPrompt = system + "\\n\\nREVISÃO: seja crítico, mas não invente fatos para preencher lacunas.",
+                                currentQuestion,
+                                systemPrompt = system + "\\n\\nResponda diretamente, em português brasileiro, com clareza e concisão. Não invente ações ou fatos.",
                                 maxTokens = selectedProfile().maxTokens
                             )
                         }
-                        notifyAnswer(result.text.ifBlank { "O modelo não gerou uma resposta. Tente reformular a mensagem." }, false)
+                        notifyAnswer(result.text.ifBlank { "Não consegui formular uma resposta. Tente novamente com uma pergunta mais curta." }, false)
                     } catch (e: Exception) {
                         notifyAnswer("A IA local encontrou um erro: ${e.message ?: "falha de inferência"}", true)
                     }
