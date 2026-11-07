@@ -40,7 +40,7 @@ class UiContractTests(unittest.TestCase):
             'async function syncWorkspace()',
             'await syncWorkspace()',
             'function setMode(mode)',
-            'api("/api/research"',
+            'api("/api/research/public"',
             'api("/api/think"',
             'image_data_url:imageData',
             'PESQUISA NA WEB',
