@@ -1,4 +1,4 @@
-name: NEXORA AI on-device APK
+name: AURION Android APK (legacy workflow)
 
 on:
   push:
