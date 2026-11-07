@@ -56,6 +56,18 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
  id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL CHECK(role IN ('user','assistant')),
  content TEXT NOT NULL, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS correction_memory (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ error_signature TEXT NOT NULL,
+ error_type TEXT NOT NULL DEFAULT 'general',
+ root_cause TEXT NOT NULL,
+ resolution TEXT NOT NULL,
+ environment TEXT NOT NULL DEFAULT '',
+ test_evidence TEXT NOT NULL DEFAULT '',
+ validation_status TEXT NOT NULL DEFAULT 'pending',
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL
+);
 """
 
 def _pg_row_factory(cursor, values):
@@ -233,6 +245,16 @@ class ThinkIn(BaseModel):
 class ResearchIn(BaseModel):
     query: str = Field(min_length=2, max_length=2000)
 
+class CorrectionIn(BaseModel):
+    error_signature: str = Field(min_length=4, max_length=500)
+    error_type: str = Field(default="general", max_length=100)
+    root_cause: str = Field(min_length=4, max_length=4000)
+    resolution: str = Field(min_length=4, max_length=6000)
+    environment: str = Field(default="", max_length=1000)
+    test_evidence: str = Field(default="", max_length=4000)
+    tests_passed: bool = False
+
+
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     image_data_url: str | None = Field(default=None, max_length=7_000_000)
@@ -293,6 +315,7 @@ async def capabilities():
         "chat": {"implemented": True, "configured": chat_ready, "engine": "nexora-own-model" if own_ready else ("external" if external_ready else "offline")},
         "web_research": {"implemented": True, "configured": True, "engine": "public_search"},
         "memory": {"implemented": True, "configured": True},
+        "correction_memory": {"implemented": True, "configured": True, "automatic_code_changes": False, "verified_solution_reuse": True},
         "voice_input": {"implemented": True, "configured": True, "depends_on": "browser"},
         "voice_output": {"implemented": True, "configured": True, "depends_on": "browser"},
         "image_input": {"implemented": True, "configured": external_ready},
@@ -329,6 +352,8 @@ async def health():
         "own_model_configured": bool(own_url),
         "own_model_status": own_status,
         "external_provider_configured": provider_configured,
+        "provider_gateway_models": sum(len(p["models"]) for p in provider_registry().values()),
+        "correction_memory": "enabled",
         "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
         "public_web_research_available": True,
         "storage_backend": "postgresql" if DATABASE_URL else ("sqlite_persistent_disk" if str(DB_PATH).startswith("/var/data/") else "sqlite_ephemeral"),
@@ -345,6 +370,67 @@ def overview():
             "open_tasks": con.execute("SELECT COUNT(*) FROM tasks WHERE status != 'concluída'").fetchone()[0],
             "recent_journal": [dict(r) for r in con.execute("SELECT * FROM journal ORDER BY id DESC LIMIT 8")]
         }
+
+@app.get("/api/corrections", dependencies=[Depends(require_access)])
+def list_corrections():
+    with db() as con:
+        rows = con.execute(
+            "SELECT * FROM correction_memory ORDER BY CASE validation_status WHEN 'verified' THEN 0 ELSE 1 END, updated_at DESC LIMIT 200"
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+@app.post("/api/corrections", dependencies=[Depends(require_access)])
+def save_correction(item: CorrectionIn):
+    stamp = now()
+    status = "verified" if item.tests_passed and item.test_evidence.strip() else "pending"
+    signature = item.error_signature.strip()
+    with db() as con:
+        existing = con.execute(
+            "SELECT id FROM correction_memory WHERE error_signature=? AND resolution=? ORDER BY id DESC LIMIT 1",
+            (signature, item.resolution.strip())
+        ).fetchone()
+        if existing:
+            con.execute(
+                "UPDATE correction_memory SET root_cause=?, error_type=?, environment=?, test_evidence=?, validation_status=?, updated_at=? WHERE id=?",
+                (item.root_cause.strip(), item.error_type.strip(), item.environment.strip(), item.test_evidence.strip(), status, stamp, existing["id"])
+            )
+            record_id = existing["id"]
+            created = False
+        else:
+            cur = con.execute(
+                """INSERT INTO correction_memory
+                (error_signature,error_type,root_cause,resolution,environment,test_evidence,validation_status,created_at,updated_at)
+                VALUES(?,?,?,?,?,?,?,?,?)""",
+                (signature, item.error_type.strip(), item.root_cause.strip(), item.resolution.strip(),
+                 item.environment.strip(), item.test_evidence.strip(), status, stamp, stamp)
+            )
+            record_id = cur.lastrowid
+            created = True
+        con.execute(
+            "INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
+            ("Experiência técnica registrada", f"{item.error_type}: {signature[:160]}", stamp)
+        )
+    return {"id": record_id, "created": created, "validation_status": status,
+            "reusable_automatically": status == "verified"}
+
+
+@app.get("/api/corrections/search", dependencies=[Depends(require_access)])
+def search_corrections(q: str = ""):
+    query = q.strip()[:200]
+    if len(query) < 3:
+        raise HTTPException(422, "Informe ao menos três caracteres para buscar experiências.")
+    term = f"%{query}%"
+    with db() as con:
+        rows = con.execute(
+            """SELECT * FROM correction_memory
+            WHERE error_signature LIKE ? OR error_type LIKE ? OR root_cause LIKE ? OR resolution LIKE ?
+            ORDER BY CASE validation_status WHEN 'verified' THEN 0 ELSE 1 END, updated_at DESC LIMIT 20""",
+            (term, term, term, term)
+        ).fetchall()
+    return {"query": query, "matches": [dict(row) for row in rows],
+            "verified_count": sum(1 for row in rows if row["validation_status"] == "verified")}
+
 
 @app.get("/api/memories", dependencies=[Depends(require_access)])
 def list_memories():
