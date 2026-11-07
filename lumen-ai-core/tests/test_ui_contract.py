@@ -95,7 +95,8 @@ class UiContractTests(unittest.TestCase):
 
     def test_on_device_model_has_priority_and_receives_local_context(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()===" + '"ready"' + "||localModelState()===" + '"downloaded"' + "))", html)
+        self.assertIn("typeof window.AurionNative.canRunLocalModel===\"function\"", html)
+        self.assertIn("@JavascriptInterface fun canRunLocalModel(): Boolean", (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8"))
         self.assertIn("if(nativeLocalReady&&!modelReady&&activeMode!==", html)
         self.assertIn("MEMÓRIAS RELEVANTES:", html)
         self.assertIn("BASE DE CONHECIMENTO:", html)
