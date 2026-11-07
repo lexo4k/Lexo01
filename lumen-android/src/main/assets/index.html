@@ -105,6 +105,33 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
 let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",pendingImageData=null,lastAssistantText="",syncingWorkspace=false,autoSpeakEnabled=localStorage.getItem("aurion_auto_speak_v1")!=="false",useLocationForNextResearch=false;
 function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}catch{return{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}}
+function wormholeTerms(value){
+ return String(value||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().match(/[a-z0-9]+/g)||[];
+}
+function wormholeRetrieve(records,query,limit,maxChars){
+ const terms=[...new Set(wormholeTerms(query).filter(x=>x.length>1))];
+ if(!terms.length)return records.slice(-Math.min(4,limit)).reverse();
+ const seen=new Set(),ranked=[];
+ records.forEach((record,index)=>{
+  const content=String(record.content||"");
+  const key=content.trim().replace(/\\s+/g," ").toLowerCase();
+  if(!content.trim()||seen.has(key))return;
+  seen.add(key);
+  const words=new Set(wormholeTerms((record.title||"")+" "+content));
+  const overlap=terms.filter(term=>words.has(term)).length;
+  if(!overlap)return;
+  const score=.75*(overlap/terms.length)+.25*(overlap/Math.max(1,words.size));
+  ranked.push({record,index,score,size:String(record.title||"").length+content.length});
+ });
+ ranked.sort((a,b)=>b.score-a.score||b.index-a.index);
+ const selected=[];let used=0;
+ for(const item of ranked){
+  if(item.size>maxChars||(selected.length&&used+item.size>maxChars))continue;
+  selected.push(item.record);used+=item.size;
+  if(selected.length>=limit)break;
+ }
+ return selected.length?selected:records.slice(-Math.min(4,limit)).reverse();
+}
 function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
 function loadConfig(){const defaultUrl="https://nexora-ai-core.onrender.com";try{const saved=JSON.parse(localStorage.getItem(CFG));if(!saved)return{url:defaultUrl,token:""};if(!saved.url||saved.url==="https://lumen-ai-core.vercel.app"||saved.url==="https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app")return{url:defaultUrl,token:""};return{url:saved.url,token:saved.token||""}}catch{return{url:defaultUrl,token:""}}}
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
@@ -477,11 +504,13 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
  data.messages.push(pending);saveData();renderMessages();
  const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
+ const relevantMemories=wormholeRetrieve(data.memories,msg,16,1800);
+ const relevantKnowledge=wormholeRetrieve(data.knowledge,msg,12,2200);
  const memoryContext=[
-  "MEMÓRIAS RELEVANTES:\n"+data.memories.slice(-12).map(x=>"- "+x.content).join("\n"),
-  "BASE DE CONHECIMENTO:\n"+data.knowledge.slice(-8).map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\n"),
-  "TAREFAS EM ABERTO:\n"+data.tasks.filter(x=>!x.done).slice(0,12).map(x=>"- "+x.title).join("\n")
- ].join("\n\n");
+  "MEMÓRIAS RECUPERADAS PELO WORMHOLE LOCAL (originais preservados):\\n"+relevantMemories.map(x=>"- "+x.content).join("\\n"),
+  "CONHECIMENTO RECUPERADO PELO WORMHOLE LOCAL:\\n"+relevantKnowledge.map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\\n"),
+  "TAREFAS EM ABERTO:\\n"+data.tasks.filter(x=>!x.done).slice(-12).reverse().map(x=>"- "+x.title).join("\\n")
+ ].join("\\n\\n");
  const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
  window.AurionNative.sendLocalMessage(msg,history);return;
 }
