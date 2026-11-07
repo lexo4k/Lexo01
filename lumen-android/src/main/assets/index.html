@@ -222,6 +222,26 @@ const saveMemory=(content)=>{
   activity("Memoria guardada pela conversa",clean.slice(0,100));saveData();
   return "Memoria guardada neste aparelho: "+clean;
 };
+// Executor local de tarefas compostas: transforma um pedido simples em várias ações verificáveis.
+m=q.match(/^(?:organize|organizar|prepare|preparar|crie|criar|monte|montar)\s+(?:minhas?\s+)?tarefas\s+(?:para|de|sobre|com)\s+(.+)$/);
+if(m){
+  const items=m[1].split(/\s*(?:,|;|\be\b)\s*/).map(x=>x.trim()).filter(Boolean).slice(0,8);
+  if(!items.length)return "Diga quais tarefas devo criar.";
+  for(const title of items)data.tasks.push({id:newId(),title,details:"Criada pelo executor local AURION",done:false,at:stamp()});
+  activity("Executor local criou tarefas",items.length+" tarefa(s)");saveData();
+  return "EXECUÇÃO CONCLUÍDA\nCriei "+items.length+" tarefa(s) no aparelho:\n"+items.map((x,i)=>(i+1)+". "+x).join("\n");
+}
+if(/^(?:organize|organizar|priorize|priorizar) minhas tarefas$/.test(q)){
+  data.tasks.sort((a,b)=>String(a.done).localeCompare(String(b.done))||String(a.at||"").localeCompare(String(b.at||"")));
+  activity("Lista de tarefas organizada","Pendentes primeiro");saveData();
+  const open=data.tasks.filter(x=>!x.done);
+  return open.length?"TAREFAS ORGANIZADAS\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\n"):"Não há tarefas abertas para organizar.";
+}
+if(/^(?:limpe|limpar|remova|remover|apague|apagar) tarefas concluidas$/.test(q)){
+  const before=data.tasks.length;data.tasks=data.tasks.filter(x=>!x.done);const removed=before-data.tasks.length;
+  activity("Limpeza local de tarefas concluídas",removed+" removida(s)");saveData();
+  return "Concluído. Removi "+removed+" tarefa(s) já concluída(s) deste aparelho.";
+}
 let m=q.match(/^(?:por favor\s+)?(?:crie|criar|adicione|adicionar|registre|registrar|coloque|colocar|anote|anotar)\s+(?:uma?\s+)?tarefa(?:\s+(?:para|de|sobre))?\s*[:\-]?\s+(.+)$/);
 if(!m)m=q.match(/^(?:nova tarefa)\s*[:\-]?\s*(.+)$/);
 if(m)return addTask(m[1]);
