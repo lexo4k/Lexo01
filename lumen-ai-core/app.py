@@ -333,6 +333,7 @@ async def capabilities():
         "web_research": {"implemented": True, "configured": True, "engine": "public_search"},
         "memory": {"implemented": True, "configured": True},
         "correction_memory": {"implemented": True, "configured": True, "automatic_code_changes": False, "verified_solution_reuse": True},
+        "experience_learning": {"implemented": True, "configured": True, "requires_explicit_feedback": True, "changes_model_weights": False},
         "voice_input": {"implemented": True, "configured": True, "depends_on": "browser"},
         "voice_output": {"implemented": True, "configured": True, "depends_on": "browser"},
         "image_input": {"implemented": True, "configured": external_ready},
