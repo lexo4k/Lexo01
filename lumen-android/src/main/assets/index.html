@@ -176,10 +176,7 @@ function aurionStartupCheck(){
   $("homeStatus").textContent="Falta instalar o modelo local de IA. O download só começa com sua autorização.";
   $("homeStatus").className="statusbox warn";
   if(autoSpeakEnabled)speakText(message);
-  if(!sessionStorage.getItem("aurion_model_consent_prompted")){
-   sessionStorage.setItem("aurion_model_consent_prompted","1");
-   setTimeout(()=>window.AurionNative.confirmModelDownload(),900);
-  }
+  // Não abrir autorização a cada sessão. O Android retoma sozinho se a autorização já foi concedida.
   return;
  }
  if(state==="downloaded"||state==="shared"||state==="working"){
