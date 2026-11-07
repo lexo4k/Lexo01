@@ -15,6 +15,44 @@ class CoreTests(unittest.TestCase):
         self.client = TestClient(app)
         self.headers = {"Authorization": "Bearer test-token"}
 
+    def test_video_study_archives_researched_principles(self):
+        from app import search_web
+        with mock.patch("app.search_web", new=AsyncMock(return_value=[
+            {"title": "Guia de vídeo", "url": "https://example.test/video", "snippet": "Enquadramento e continuidade."}
+        ])):
+            response = self.client.post("/api/video/study", headers=self.headers, json={
+                "topic": "Como planejar vídeos gerados por IA"
+            })
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["studied"])
+        self.assertFalse(payload["model_weights_changed"])
+        self.assertGreaterEqual(len(payload["sources"]), 1)
+        self.assertIn("continuidade", payload["principles"][3].lower())
+
+    def test_video_test_requires_study_and_returns_storyboard_not_fake_video(self):
+        response = self.client.post("/api/video/test", headers=self.headers, json={
+            "idea": "Um robô explorando uma floresta luminosa"
+        })
+        self.assertEqual(response.status_code, 409)
+        from app import search_web
+        with mock.patch("app.search_web", new=AsyncMock(return_value=[
+            {"title": "Guia de vídeo", "url": "https://example.test/video", "snippet": "Enquadramento e continuidade."}
+        ])):
+            study = self.client.post("/api/video/study", headers=self.headers, json={
+                "topic": "Como planejar vídeos gerados por IA"
+            })
+        self.assertEqual(study.status_code, 200)
+        result = self.client.post("/api/video/test", headers=self.headers, json={
+            "idea": "Um robô explorando uma floresta luminosa"
+        })
+        self.assertEqual(result.status_code, 200)
+        payload = result.json()
+        self.assertTrue(payload["created"])
+        self.assertFalse(payload["rendered_video"])
+        self.assertEqual(len(payload["shots"]), 3)
+        self.assertIn("continuidade", payload["video_prompt"].lower())
+
     def test_learning_experience_requires_positive_rating_and_lesson_for_reuse(self):
         response = self.client.post("/api/experiences", headers=self.headers, json={
             "user_message": "Explique como organizar tarefas",
