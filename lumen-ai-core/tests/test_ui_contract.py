@@ -52,7 +52,7 @@ class UiContractTests(unittest.TestCase):
     def test_on_device_model_has_priority_and_receives_local_context(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn("const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()===" + '"ready"' + "||localModelState()===" + '"downloaded"' + "))", html)
-        self.assertIn("if(nativeLocalReady&&activeMode!==", html)
+        self.assertIn("if(nativeLocalReady&&!modelReady&&activeMode!==", html)
         self.assertIn("MEMÓRIAS RELEVANTES:", html)
         self.assertIn("BASE DE CONHECIMENTO:", html)
         self.assertIn("TAREFAS EM ABERTO:", html)
