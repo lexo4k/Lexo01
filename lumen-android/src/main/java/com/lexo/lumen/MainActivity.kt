@@ -15,6 +15,16 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.PermissionRequest
 import android.webkit.JavascriptInterface
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
 import dev.ffmpegkit.llama.Llama
 import dev.ffmpegkit.llama.LlamaConfig
 import dev.ffmpegkit.llama.LlamaModel
@@ -28,6 +38,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
+import java.util.Locale
 import java.net.HttpURLConnection
 import java.net.URL
 import android.widget.Button
@@ -44,6 +56,14 @@ class MainActivity : Activity() {
     @Volatile private var localModel: LlamaModel? = null
     @Volatile private var modelBusy = false
     private val inferenceMutex = Mutex()
+    private var textToSpeech: TextToSpeech? = null
+    @Volatile private var ttsReady = false
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var pendingNativeSpeech = false
+    private var pendingLocationRequest = false
+    private var activeLocationListener: LocationListener? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var locationTimeout: Runnable? = null
     private data class LocalModelProfile(val id: String, val name: String, val url: String, val fileName: String, val minBytes: Long, val contextSize: Int, val maxTokens: Int, val note: String)
     private val modelProfiles = mapOf(
         "qwen-0.5b" to LocalModelProfile("qwen-0.5b", "Qwen 0.5B · econômico", "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf", "nexora-qwen-0.5b-q4km.gguf", 450_000_000L, 1536, 128, "Mais leve e rápido. Ideal para aparelhos com pouca memória."),
@@ -52,13 +72,23 @@ class MainActivity : Activity() {
     )
     @Volatile private var selectedModelId = "qwen-1.5b"
     private fun selectedProfile() = modelProfiles[selectedModelId] ?: modelProfiles.getValue("qwen-1.5b")
-    private val modelFile: File get() = File(getExternalFilesDir("models"), selectedProfile().fileName)
+    private val modelFile: File get() = File(getExternalFilesDir("models") ?: File(filesDir, "models"), selectedProfile().fileName)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.rgb(7, 17, 31)
         window.navigationBarColor = Color.rgb(7, 17, 31)
         selectedModelId = getSharedPreferences("nexora_local", MODE_PRIVATE).getString("model_id", "qwen-1.5b")?.takeIf { modelProfiles.containsKey(it) } ?: "qwen-1.5b"
+        textToSpeech = TextToSpeech(applicationContext) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val languageStatus = textToSpeech?.setLanguage(Locale("pt", "BR")) ?: TextToSpeech.LANG_MISSING_DATA
+                ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA && languageStatus != TextToSpeech.LANG_NOT_SUPPORTED
+                notifySpeechStatus(if (ttsReady) "Voz em português pronta no aparelho." else "Instale uma voz em português no mecanismo de fala do Android para ouvir respostas offline.")
+            } else {
+                ttsReady = false
+                notifySpeechStatus("O mecanismo de voz do Android não está disponível.")
+            }
+        }
         buildUi()
         web.addJavascriptInterface(AurionBridge(), "AurionNative")
         web.loadUrl("file:///android_asset/index.html")
@@ -104,6 +134,10 @@ class MainActivity : Activity() {
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
             settings.javaScriptCanOpenWindowsAutomatically = false
             webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.AurionNative.prepareLocalModel();}", null)
+                }
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val uri = request?.url ?: return true
                     if (uri.scheme == "file" && uri.path?.contains("/android_asset/") == true) return false
