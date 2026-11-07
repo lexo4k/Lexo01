@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
 from cognition import think as cognitive_cycle
+from cognition_local import plan_locally
 from public_research import search_web
 
 ROOT = Path(__file__).parent
@@ -470,8 +471,6 @@ async def think_endpoint(item: ThinkIn):
     """Planeja e avalia um objetivo sem executar ações externas."""
     config = model_config()
     api_key, base, model = config["api_key"], config["base_url"], config["model"]
-    if not api_key:
-        raise HTTPException(503, "O motor cognitivo está pronto, mas falta a credencial do provedor configurada no servidor.")
     with db() as con:
         memories = [r["content"] for r in con.execute(
             "SELECT content FROM memories ORDER BY id DESC LIMIT 40"
@@ -482,6 +481,12 @@ async def think_endpoint(item: ThinkIn):
         history = [dict(r) for r in con.execute(
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 12"
         )][::-1]
+    if not api_key:
+        result = plan_locally(item.goal, memories=memories, knowledge=knowledge)
+        with db() as con:
+            con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
+                        ("Planejamento local concluído", item.goal[:180], now()))
+        return result
     try:
         async with httpx.AsyncClient(timeout=90) as client:
             result = await cognitive_cycle(
