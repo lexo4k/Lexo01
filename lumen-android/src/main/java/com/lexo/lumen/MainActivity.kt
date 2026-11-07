@@ -449,11 +449,19 @@ class MainActivity : Activity() {
                     prepareLocalModel()
                     return@runOnUiThread
                 }
+                val prefs = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
+                if (prefs.getBoolean("model_download_authorized", false)) {
+                    downloadModel()
+                    return@runOnUiThread
+                }
                 android.app.AlertDialog.Builder(this@MainActivity)
                     .setTitle("Preparar a inteligência local")
-                    .setMessage("Para responder sem depender de servidor, o AURION precisa baixar o modelo de IA (aproximadamente 1,1 GB). O download só começa depois da sua confirmação e exige Wi-Fi e espaço livre.")
+                    .setMessage("O AURION precisa baixar uma vez o modelo de IA (aproximadamente 1,1 GB). Com sua autorização, ele tentará concluir o download automaticamente quando houver Wi-Fi e espaço livre. Essa autorização fica salva neste aparelho.")
                     .setNegativeButton("Agora não", null)
-                    .setPositiveButton("Autorizar download") { _, _ -> downloadModel() }
+                    .setPositiveButton("Autorizar uma vez") { _, _ ->
+                        prefs.edit().putBoolean("model_download_authorized", true).apply()
+                        downloadModel()
+                    }
                     .show()
             }
         }
@@ -604,10 +612,6 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun sendLocalMessage(prompt: String, history: String) {
-            if (modelBusy) {
-                notifyAnswer("A IA local ainda está carregando. Aguarde alguns instantes.", true)
-                return
-            }
             localScope.launch {
                 inferenceMutex.withLock {
                     try {
