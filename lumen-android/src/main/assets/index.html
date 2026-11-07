@@ -269,7 +269,7 @@ const pending={role:"assistant",content:activeMode==="research"?"Pesquisando fon
 try{
 let r;
 if(activeMode==="research"){
-r=await api("/api/research",{method:"POST",body:JSON.stringify({query:msg})});
+r=await api("/api/research/public",{method:"POST",body:JSON.stringify({query:msg})});
 pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((s,i)=>(i+1)+". "+s.title+"\n"+s.url).join("\n\n"):"\n\nO provedor não retornou links de fontes.");
 }else if(activeMode==="think"){
 r=await api("/api/think",{method:"POST",body:JSON.stringify({goal:msg})});
