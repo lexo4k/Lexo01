@@ -24,6 +24,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -41,6 +43,7 @@ class MainActivity : Activity() {
     private val localScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     @Volatile private var localModel: LlamaModel? = null
     @Volatile private var modelBusy = false
+    private val inferenceMutex = Mutex()
     private val modelUrl = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
     private val modelFile: File by lazy { File(getExternalFilesDir("models"), "nexora-qwen-0.5b-q4km.gguf") }
 
@@ -218,15 +221,17 @@ class MainActivity : Activity() {
                 return
             }
             localScope.launch {
-                try {
-                    val active = localModel ?: loadLocalModel()
-                    val system = "Você é a NEXORA, uma assistente de IA independente que funciona localmente no aparelho. Responda em português brasileiro, com clareza, honestidade e utilidade. Não invente pesquisas, ações executadas, fatos ou capacidades. Se não souber, diga. Use o contexto recente apenas como histórico da conversa.\n\nHistórico recente:\n" + history
-                    val result = withContext(Dispatchers.IO) {
-                        Llama.complete(active, prompt.take(5000), systemPrompt = system.take(7000), maxTokens = 220)
+                inferenceMutex.withLock {
+                    try {
+                        val active = localModel ?: loadLocalModel()
+                        val system = "Você é a NEXORA, uma assistente de IA independente que funciona localmente no aparelho. Responda em português brasileiro, com clareza, honestidade e utilidade. Não invente pesquisas, ações executadas, fatos ou capacidades. Se não souber, diga. Use o contexto recente apenas como histórico da conversa.\n\nHistórico recente:\n" + history
+                        val result = withContext(Dispatchers.IO) {
+                            Llama.complete(active, prompt.take(5000), systemPrompt = system.take(7000), maxTokens = 220)
+                        }
+                        notifyAnswer(result.text.ifBlank { "O modelo não gerou uma resposta. Tente reformular a mensagem." }, false)
+                    } catch (e: Exception) {
+                        notifyAnswer("A IA local encontrou um erro: ${e.message ?: "falha de inferência"}", true)
                     }
-                    notifyAnswer(result.text.ifBlank { "O modelo não gerou uma resposta. Tente reformular a mensagem." }, false)
-                } catch (e: Exception) {
-                    notifyAnswer("A IA local encontrou um erro: ${e.message ?: "falha de inferência"}", true)
                 }
             }
         }
