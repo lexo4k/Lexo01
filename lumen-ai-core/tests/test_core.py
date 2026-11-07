@@ -14,6 +14,37 @@ class CoreTests(unittest.TestCase):
         self.client = TestClient(app)
         self.headers = {"Authorization": "Bearer test-token"}
 
+    def test_learning_experience_requires_positive_rating_and_lesson_for_reuse(self):
+        response = self.client.post("/api/experiences", headers=self.headers, json={
+            "user_message": "Explique como organizar tarefas",
+            "assistant_answer": "Separe por prioridade e prazo.",
+            "rating": 5,
+            "lesson": "A pessoa prefere passos curtos e priorizados."
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "useful")
+        self.assertTrue(response.json()["used_as_learning_context"])
+
+    def test_low_rated_experience_is_stored_for_review_not_reused(self):
+        response = self.client.post("/api/experiences", headers=self.headers, json={
+            "user_message": "Faça um plano",
+            "assistant_answer": "Resposta inadequada",
+            "rating": 2,
+            "correction": "A resposta não atendeu ao pedido."
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "review")
+        self.assertFalse(response.json()["used_as_learning_context"])
+
+    def test_learning_experience_endpoint_requires_authentication(self):
+        response = self.client.post("/api/experiences", json={
+            "user_message": "Teste",
+            "assistant_answer": "Teste",
+            "rating": 5,
+            "lesson": "Teste"
+        })
+        self.assertEqual(response.status_code, 503)
+
     def test_model_config_accepts_generic_provider_credentials(self):
         from app import model_config
         with mock.patch.dict(os.environ, {
