@@ -506,9 +506,19 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
  const relevantMemories=wormholeRetrieve(data.memories,msg,16,1800);
  const relevantKnowledge=wormholeRetrieve(data.knowledge,msg,12,2200);
+ // Aprendizado contextual automático: reutiliza conversas anteriores salvas no próprio aparelho.
+ // O histórico original permanece intacto; apenas trechos relevantes entram no contexto atual.
+ const relevantExperiences=wormholeRetrieve(
+  data.messages.slice(0,-2).filter(x=>x&&x.content).map(x=>({
+   title:x.role==="user"?"Pedido anterior":"Resposta anterior",
+   content:String(x.content).slice(0,900)
+  })),
+  msg,8,1400
+ );
  const memoryContext=[
   "MEMÓRIAS RELEVANTES: (recuperadas pelo Wormhole local; originais preservados)\\n"+relevantMemories.map(x=>"- "+x.content).join("\\n"),
   "BASE DE CONHECIMENTO: (itens relevantes recuperados pelo Wormhole local)\\n"+relevantKnowledge.map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\\n"),
+  "EXPERIÊNCIAS RELEVANTES: (conversas anteriores recuperadas automaticamente do histórico local)\\n"+relevantExperiences.map(x=>"- "+x.title+": "+x.content.slice(0,450)).join("\\n"),
   "TAREFAS EM ABERTO:\\n"+data.tasks.filter(x=>!x.done).slice(-12).reverse().map(x=>"- "+x.title).join("\\n")
  ].join("\\n\\n");
  const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
