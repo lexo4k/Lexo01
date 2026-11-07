@@ -179,7 +179,7 @@ class MainActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.AurionNative.prepareLocalModel();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
+                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.AurionNative.resumeAuthorizedModelSetup();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
                 }
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val uri = request?.url ?: return true
