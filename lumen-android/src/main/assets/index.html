@@ -74,7 +74,7 @@ const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_se
 let data=loadData(),config=loadConfig(),connected=false,apiCaps=null;
 function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}catch{return{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}}
 function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
-function loadConfig(){try{return JSON.parse(localStorage.getItem(CFG))||{url:"https://lumen-ai-core.vercel.app",token:""}}catch{return{url:"",token:""}}}
+function loadConfig(){try{return JSON.parse(localStorage.getItem(CFG))||{url:"https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app",token:""}}catch{return{url:"https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app",token:""}}}
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
 function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
 function stamp(){return new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}
@@ -100,12 +100,21 @@ function deleteTask(id){data.tasks=data.tasks.filter(x=>x.id!==id);saveData()}
 function saveKnowledge(){const title=$("knowTitle").value.trim(),content=$("knowContent").value.trim();if(!title||!content)return;data.knowledge.push({id:newId(),title,content,source:$("knowSource").value.trim(),at:stamp()});activity("Conhecimento arquivado",title);$("knowTitle").value=$("knowContent").value=$("knowSource").value="";saveData()}
 function deleteKnowledge(id){data.knowledge=data.knowledge.filter(x=>x.id!==id);saveData()}
 function localCommand(msg){
-let m=msg.match(/^(?:criar|adicionar|nova)\s+tarefa\s*[:\-]\s*(.+)$/i);
+const q=msg.trim(),low=q.toLocaleLowerCase("pt-BR");
+let m=q.match(/^(?:criar|adicionar|nova)\s+tarefa\s*[:\-]\s*(.+)$/i);
 if(m){data.tasks.push({id:newId(),title:m[1].trim(),details:"Criada pela conversa local",done:false,at:stamp()});activity("Tarefa criada pela conversa",m[1]);saveData();return "Tarefa guardada neste aparelho: "+m[1].trim()}
-m=msg.match(/^(?:guardar|salvar)\s+(?:memória|nota)\s*[:\-]\s*(.+)$/i);
+m=q.match(/^(?:guardar|salvar)\s+(?:memória|nota)\s*[:\-]\s*(.+)$/i);
 if(m){data.memories.push({id:newId(),content:m[1].trim(),category:"nota",at:stamp()});activity("Nota guardada pela conversa",m[1]);saveData();return "Anotação salva na memória local."}
-if(/^(?:listar|mostrar)\s+tarefas$/i.test(msg)){const open=data.tasks.filter(x=>!x.done);return open.length?"Tarefas abertas:\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\n"):"Você não tem tarefas abertas."}
-if(/^(?:listar|mostrar)\s+memórias$/i.test(msg)){return data.memories.length?"Memórias:\n"+data.memories.map((x,i)=>(i+1)+". ["+x.category+"] "+x.content).join("\n"):"Ainda não há memórias salvas."}
+if(/^(?:ajuda|ajuda lumen|comandos|o que você faz\??)$/i.test(q))return "COMANDOS DISPONÍVEIS NO MODO LOCAL\n\n• criar tarefa: revisar o projeto\n• guardar nota: ideia importante\n• listar tarefas\n• listar memórias\n• buscar: palavra-chave\n• concluir tarefa: número ou parte do título\n• resumo\n• planejar: objetivo\n\nMemórias, tarefas e arquivos ficam neste aparelho. Conversa aberta com IA e pesquisa em tempo real exigem o modelo conectado no servidor.";
+if(/^(?:resumo|resumo geral|painel)$/i.test(q))return "RESUMO DO LÚMEN\n\nMemórias: "+data.memories.length+"\nConhecimentos: "+data.knowledge.length+"\nTarefas abertas: "+data.tasks.filter(x=>!x.done).length+"\nTarefas concluídas: "+data.tasks.filter(x=>x.done).length+"\nMensagens guardadas: "+data.messages.filter(x=>x.role==="user").length+"\n\nOs dados locais permanecem neste aparelho.";
+m=q.match(/^(?:buscar|pesquisar|procurar)\s*[:\-]\s*(.+)$/i);
+if(m){const term=m[1].toLocaleLowerCase("pt-BR"),found=[...data.memories.map(x=>({kind:"Memória",title:x.category,body:x.content})),...data.knowledge.map(x=>({kind:"Conhecimento",title:x.title,body:x.content+" "+(x.source||"")})),...data.tasks.map(x=>({kind:"Tarefa",title:x.title,body:x.details}))].filter(x=>(x.title+" "+x.body).toLocaleLowerCase("pt-BR").includes(term));return found.length?"ENCONTREI "+found.length+" REGISTRO(S):\n\n"+found.slice(0,20).map((x,i)=>(i+1)+". "+x.kind+": "+x.title+"\n"+x.body.slice(0,240)).join("\n\n"):"Não encontrei esse termo nas memórias, conhecimentos ou tarefas locais."}
+m=q.match(/^(?:concluir|finalizar)\s+tarefa\s*[:\-]\s*(.+)$/i);
+if(m){const key=m[1].toLocaleLowerCase("pt-BR"),t=data.tasks.find(x=>!x.done&&(String(x.id)===key||x.title.toLocaleLowerCase("pt-BR").includes(key)));if(!t)return "Não encontrei uma tarefa aberta com esse número ou título.";t.done=true;activity("Tarefa concluída pela conversa",t.title);saveData();return "Tarefa concluída: "+t.title}
+m=q.match(/^(?:planejar|plano)\s*[:\-]\s*(.+)$/i);
+if(m){const goal=m[1].trim();const plan="PLANO INICIAL LOCAL\nObjetivo: "+goal+"\n\n1. Definir o resultado concreto e como medir a conclusão.\n2. Reunir os recursos, informações e limitações.\n3. Executar a menor primeira etapa verificável.\n4. Conferir o resultado e corrigir falhas.\n5. Registrar o que funcionou e definir o próximo passo.\n\nEste é um roteiro-base gerado sem modelo de IA; conecte o núcleo para análise contextual mais profunda.";data.knowledge.push({id:newId(),title:"Plano: "+goal,content:plan,source:"Planejamento local",at:stamp()});activity("Plano criado",goal);saveData();return plan+"\n\nO plano foi arquivado na base de conhecimento."}
+if(/^(?:listar|mostrar)\s+tarefas$/i.test(q)){const open=data.tasks.filter(x=>!x.done);return open.length?"TAREFAS ABERTAS:\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\n"):"Você não tem tarefas abertas."}
+if(/^(?:listar|mostrar)\s+memórias$/i.test(q)){return data.memories.length?"MEMÓRIAS:\n"+data.memories.map((x,i)=>(i+1)+". ["+x.category+"] "+x.content).join("\n"):"Ainda não há memórias salvas."}
 return null;
 }
 async function api(path,opts={}){const base=config.url.replace(/\/+$/,"");const headers={"Content-Type":"application/json",...(config.token?{"Authorization":"Bearer "+config.token}:{}) ,...(opts.headers||{})};const r=await fetch(base+path,{...opts,headers});const body=await r.json().catch(()=>({detail:"Resposta inválida do servidor"}));if(!r.ok)throw Error(body.detail||"Falha na comunicação com o servidor ("+r.status+")");return body}
@@ -123,7 +132,8 @@ function renderCapabilities(){const c=apiCaps;if(!c){$("capabilityList").innerHT
 async function sendMessage(){
 const field=$("message"),msg=field.value.trim();if(!msg)return;field.value="";data.messages.push({role:"user",content:msg,at:stamp()});renderMessages();
 const command=localCommand(msg);if(command){data.messages.push({role:"assistant",content:command,at:stamp()});saveData();renderMessages();return}
-if(!connected){const answer="Ainda estou no modo local. Posso organizar tarefas e guardar notas, mas respostas abertas exigem conectar o núcleo de IA nas configurações. Exemplos de comandos locais:\n• criar tarefa: revisar projeto\n• guardar nota: ideia importante\n• listar tarefas\n• listar memórias";data.messages.push({role:"assistant",content:answer,at:stamp()});saveData();renderMessages();return}
+if(!connected){const answer="O servidor LÚMEN está preparado, mas esta conversa ainda não tem uma sessão autenticada. Abra Configurar, informe o token privado e conecte. Para recursos locais, digite “ajuda”. Não vou inventar uma resposta de IA.";data.messages.push({role:"assistant",content:answer,at:stamp()});saveData();renderMessages();return}
+if(apiCaps&&apiCaps.chat&&!apiCaps.chat.configured){const answer="O servidor está conectado, mas ainda não há uma chave de modelo de IA configurada nele. Memória e organização local continuam disponíveis. A chave deve ser adicionada com segurança nas variáveis do servidor, nunca neste aplicativo.";data.messages.push({role:"assistant",content:answer,at:stamp()});saveData();renderMessages();return}
 const pending={role:"assistant",content:"Consultando o núcleo…",at:stamp()};data.messages.push(pending);renderMessages();
 try{const r=await api("/api/chat",{method:"POST",body:JSON.stringify({message:msg})});pending.content=r.answer||"O núcleo não retornou texto.";pending.at=stamp()}catch(e){pending.content="Não consegui obter resposta do núcleo: "+e.message;pending.at=stamp()}saveData();renderMessages()
 }
@@ -133,5 +143,6 @@ function handleImport(e){const f=e.target.files[0];if(!f)return;const reader=new
 $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
 if(config.url&&config.token){$("serverUrl").value=config.url;$("accessToken").value=config.token;fetch(config.url+"/api/health").then(r=>r.json()).then(async h=>{if(h.status==="online"){try{await api("/api/overview");setConnection(true);apiCaps=await api("/api/capabilities").catch(()=>null);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · IA configurada":"Núcleo conectado · IA aguarda configuração";$("lastCheck").textContent="VERIFICADO";renderCapabilities()}catch{setConnection(false)}}}).catch(()=>setConnection(false))}
 renderAll();renderCapabilities();
+if(config.url&&!config.token){fetch(config.url.replace(/\/+$/,"")+"/api/health").then(r=>r.json()).then(h=>{if(h.status==="online"){$("connectionPill").textContent="● servidor online";$("homeStatus").textContent=h.model_key_configured?"Servidor LÚMEN online. Informe seu token privado em Configurar para sincronizar os dados.":"Servidor LÚMEN online. O modelo de IA ainda aguarda configuração no servidor; o modo local já está disponível.";$("homeStatus").className="statusbox warn";$("lastCheck").textContent="SERVIDOR VERIFICADO";}}).catch(()=>{});}
 if("serviceWorker"in navigator&&location.protocol==="https:")navigator.serviceWorker.register("/sw.js").catch(()=>{});
 </script></body></html>
