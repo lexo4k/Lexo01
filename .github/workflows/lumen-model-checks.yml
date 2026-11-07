@@ -30,7 +30,12 @@ jobs:
         working-directory: lumen-model
         run: |
           python train.py --data corpus --out artifacts/lumen-1-smoke.pt --steps 50 --batch 2 --context 64 --width 64 --layers 2 --heads 4
-      - name: Evaluate trained checkpoint
+      - name: Verify checkpoint resume
+        working-directory: lumen-model
+        run: |
+          python train.py --data corpus --out artifacts/lumen-1-smoke.pt --steps 55 --batch 2 --context 64 --width 64 --layers 2 --heads 4 --resume
+          python -c "import torch; c=torch.load('artifacts/lumen-1-smoke.pt', map_location='cpu', weights_only=False); assert c['step'] == 55, c.get('step'); print('resume_ok step=', c['step'])"
+      - name: Evaluate on independent held-out text
         working-directory: lumen-model
         run: python evaluate.py artifacts/lumen-1-smoke.pt --data evaluation/heldout-pt-br.txt
       - name: Verify text generation
