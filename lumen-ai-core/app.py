@@ -204,7 +204,7 @@ def app_icon():
 def capabilities():
     ready = model_is_configured()
     return {"chat": {"implemented": True, "configured": ready},
-            "web_research": {"implemented": True, "configured": ready},
+            "web_research": {"implemented": True, "configured": bool(os.getenv("OPENAI_API_KEY", "").strip())},
             "memory": {"implemented": True, "configured": True},
             "voice_input": {"implemented": True, "configured": True, "depends_on": "browser"},
             "voice_output": {"implemented": True, "configured": True, "depends_on": "browser"},
@@ -223,7 +223,7 @@ def health():
             "model_configured": model_is_configured(),
             "model_connection_status": "configured_not_verified" if model_is_configured() else "missing_credentials",
             "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
-            "web_research_key_configured": model_is_configured(),
+            "web_research_key_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
             "primary_experience": "chat", "storage_backend": "postgresql" if DATABASE_URL else "sqlite"}
 
 @app.get("/api/overview", dependencies=[Depends(require_access)])
@@ -334,11 +334,11 @@ def conversations(limit: int = 100):
 @app.post("/api/research", dependencies=[Depends(require_access)])
 async def research_web(item: ResearchIn):
     """Pesquisa na web usando a ferramenta web_search do provedor e devolve fontes."""
-    config = model_config()
-    api_key, base = config["api_key"], config["base_url"]
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     model = os.getenv("LUMEN_RESEARCH_MODEL", "gpt-4.1")
     if not api_key:
-        raise HTTPException(503, "Pesquisa web indisponível: configure as credenciais do provedor no servidor.")
+        raise HTTPException(503, "Pesquisa web indisponível: esta função exige credencial OpenAI com suporte a Responses e web_search.")
     payload = {
         "model": model,
         "tools": [{"type": "web_search"}],
