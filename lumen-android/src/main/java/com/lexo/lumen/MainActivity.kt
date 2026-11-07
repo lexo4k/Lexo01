@@ -265,6 +265,10 @@ class MainActivity : Activity() {
                         if (parent.usableSpace < profile.minBytes + 100_000_000L) throw IllegalStateException("Espaço livre insuficiente. Libere espaço antes de baixar o modelo.")
                         val temp = File(parent, target.name + ".part")
                         if (!temp.exists() && target.exists()) target.renameTo(temp)
+                        if (temp.exists() && temp.length() >= profile.minBytes && !target.exists()) {
+                            if (!temp.renameTo(target)) throw IllegalStateException("O modelo completo foi salvo, mas não foi possível finalizar o arquivo.")
+                            return@withContext
+                        }
                         var existing = temp.length()
                         val connection = (URL(profile.url).openConnection() as HttpURLConnection).apply {
                             connectTimeout = 30000
