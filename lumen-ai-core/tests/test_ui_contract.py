@@ -23,6 +23,8 @@ class UiContractTests(unittest.TestCase):
             'id="tasks"',
             'id="knowledge"',
             'id="settings"',
+            '<section id="chat" class="screen active">',
+            'Olá. Sou o LÚMEN.',
             'function localCommand(msg)',
             'buscar|pesquisar|procurar',
             'planejar|plano',
