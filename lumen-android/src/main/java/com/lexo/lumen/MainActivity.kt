@@ -202,7 +202,7 @@ class MainActivity : Activity() {
             if (capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true) {
                 downloadModel()
             } else {
-                notifyModel("waiting_network", "O AURION está pronta para preparar a IA local. O modelo ocupa cerca de 450 MB; o download começará automaticamente quando houver Wi-Fi, para não consumir seus dados móveis.")
+                notifyModel("waiting_network", "O AURION está pronto para preparar a IA local. O modelo ocupa cerca de 450 MB; o download começará automaticamente quando houver Wi-Fi, para não consumir seus dados móveis.")
             }
         }
 
