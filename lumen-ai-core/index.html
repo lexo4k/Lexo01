@@ -37,7 +37,16 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 .attach-image-preview{max-width:120px;max-height:90px;object-fit:cover;border-radius:10px;border:1px solid #31516a;margin:5px 0}.image-result{display:block;width:100%;max-height:420px;object-fit:contain;background:#07111f;border:1px solid var(--line);border-radius:14px;margin-top:12px}
 .image-lab{border:1px solid #2b526b;background:linear-gradient(145deg,#10283b,#0b1929);border-radius:20px;padding:16px}
 .image-lab textarea{width:100%;min-height:110px;background:#091726;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;resize:vertical}
-.image-lab .hint{font-size:11px;color:var(--muted);line-height:1.5;margin:8px 0}.divider{height:1px;background:var(--line);margin:15px 0}.tag{font-size:10px;padding:5px 8px;border:1px solid var(--line);border-radius:20px;color:var(--muted)}
+.image-lab .hint{font-size:11px;color:var(--muted);line-height:1.5;margin:8px 0}
+.video-lab{border:1px solid #2b526b;background:linear-gradient(145deg,#10283b,#0b1929);border-radius:20px;padding:16px;margin:12px 0}
+.video-lab textarea{width:100%;min-height:90px;background:#091726;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;resize:vertical}
+.video-sources{display:grid;gap:8px;margin-top:12px}
+.video-source{padding:10px;border:1px solid var(--line);border-radius:10px;background:#0b1a2a;font-size:12px}
+.video-source a{color:var(--cyan);overflow-wrap:anywhere}
+.video-shot{padding:12px;border:1px solid #29475d;border-radius:12px;margin:8px 0;background:#0b1a2a}
+.video-shot b{color:var(--cyan);font-size:12px}
+.video-prompt{white-space:pre-wrap;overflow-wrap:anywhere;background:#081421;border:1px solid var(--line);padding:12px;border-radius:10px;font-size:12px;line-height:1.5}
+.divider{height:1px;background:var(--line);margin:15px 0}.tag{font-size:10px;padding:5px 8px;border:1px solid var(--line);border-radius:20px;color:var(--muted)}
 @media(min-width:620px){main{padding:24px}.hero{padding:30px}.hero h2{font-size:31px}.quick{grid-template-columns:repeat(4,1fr)}.chatbox{min-height:650px}.messages{max-height:540px}.composer{bottom:0}}
 
 /* AURION visual identity: animated core and cinematic command deck */
@@ -95,6 +104,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <div class="composer"><div class="mode-label" id="modeLabel">MODO CONVERSA</div><div class="compose-wrap"><textarea id="message" placeholder="Converse com o AURION..." rows="2"></textarea><div class="attach-preview" id="attachPreview"></div><img id="attachedImagePreview" class="attach-image-preview hidden" alt="Prévia da imagem anexada"><div class="compose-actions"><small>Enter para enviar · Shift + Enter para nova linha</small><button class="send" onclick="sendMessage()" aria-label="Enviar">➤</button></div></div><div class="toolrow"><button id="chatMode" class="selected" onclick="setMode('chat')">✧ Conversar</button><button id="researchMode" onclick="setMode('research')">⌕ Pesquisar</button><button id="thinkMode" onclick="setMode('think')">◎ Planejar</button><button onclick="startVoiceInput()">🎙 Voz</button><button onclick="$('imageFile').click()">▧ Imagem</button><button onclick="speakLastAnswer()">🔊 Ouvir</button><button id="autoSpeakButton" onclick="toggleAutoSpeak()">🔊 Voz automática: ligada</button><button onclick="requestLocationForResearch()">📍 Localização</button><input id="imageFile" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" onchange="selectImage(event)"></div></div>
 </div></section>
 <section id="images" class="screen"><div class="eyebrow">LABORATÓRIO VISUAL</div><h2>Criação de imagens</h2><p class="muted">Descreva a imagem. O AURION enviará o pedido ao serviço visual configurado no servidor e mostrará o resultado quando a geração terminar.</p><div class="image-lab"><label for="imagePrompt">O que devemos criar?</label><textarea id="imagePrompt" placeholder="Ex.: Uma cidade futurista à noite, arquitetura orgânica, luzes azul-ciano, vista cinematográfica..."></textarea><p class="hint">A geração exige uma chave de imagem configurada com segurança no servidor. A chave nunca fica salva no APK.</p><button class="btn primary" id="generateImageButton" onclick="generateAurionImage()">✦ Gerar imagem</button><div id="imageLabStatus" class="statusbox warn" style="margin-top:12px">Aguardando uma descrição.</div><img id="generatedImage" class="image-result hidden" alt="Imagem criada pelo AURION"><button class="btn hidden" id="downloadGeneratedImage" onclick="downloadGeneratedImage()">Salvar imagem</button></div><div class="panel"><h3>Visão computacional</h3><p class="muted">Para analisar uma foto, abra a conversa, toque em Imagem e envie uma pergunta. A análise depende de um modelo remoto com suporte a imagens. O modelo local compacto atual ainda não enxerga imagens.</p><button class="btn" onclick="show('chat')">Abrir análise de imagem</button></div></section>
+<section id="video" class="screen"><div class="eyebrow">LABORATÓRIO AUDIOVISUAL</div><h2>Aprender e testar vídeos com IA</h2><p class="muted">O AURION pesquisa princípios públicos de criação de vídeo, registra as fontes na memória e aplica o que encontrou em um roteiro de teste.</p><div class="video-lab"><h3>1. Estudar como os vídeos são feitos</h3><label for="videoStudyTopic">Tema do estudo</label><textarea id="videoStudyTopic">Como criar vídeos com IA: roteiro, enquadramento, movimento de câmera, iluminação e continuidade entre cenas</textarea><button class="btn primary" id="studyVideoButton" onclick="studyVideoAI()">◉ Estudar e guardar conhecimento</button><div id="videoStudyStatus" class="statusbox warn" style="margin-top:12px">Nenhum estudo executado nesta sessão.</div><div id="videoPrinciples"></div><div id="videoSources" class="video-sources"></div></div><div class="video-lab"><h3>2. Aplicar o que foi estudado</h3><label for="videoTestIdea">Descreva o vídeo de teste</label><textarea id="videoTestIdea" placeholder="Ex.: Um pequeno robô explorando uma floresta bioluminescente ao amanhecer"></textarea><button class="btn primary" id="createVideoTestButton" onclick="createVideoTest()">✦ Criar roteiro de teste</button><div id="videoTestStatus" class="statusbox warn" style="margin-top:12px">Faça o estudo primeiro para habilitar o teste.</div><div id="videoTestResult"></div><p class="hint">O teste gera um storyboard e um prompt de vídeo aplicando o conhecimento arquivado. Não gera um MP4: para isso é necessário conectar um provedor de vídeo compatível. A API de vídeo Sora antiga foi descontinuada e não será apresentada como funcional.</p></div></section>
 <section id="memory" class="screen"><div class="eyebrow">MEMÓRIA PESSOAL</div><h2>O que vale guardar?</h2><p class="muted">Os registros ficam guardados neste aparelho. Exporte seus dados nas configurações para manter uma cópia de segurança.</p>
 <div class="panel"><div class="field"><label>Nova memória</label><textarea id="memoryInput" rows="3" placeholder="Escreva uma ideia, preferência ou informação importante..."></textarea></div><div class="field"><label>Categoria</label><input id="memoryCategory" placeholder="Ex.: projetos, preferências, ideias"></div><button class="btn primary" onclick="saveMemory()">Guardar memória</button></div><div class="section-title"><h3>Memórias guardadas</h3><span id="memoryLabel">0 REGISTROS</span></div><div id="memoryList" class="list"></div>
 </section>
@@ -113,7 +123,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <div class="panel"><h3>Dados neste aparelho</h3><p class="muted">Você pode exportar suas memórias, tarefas e registros locais em um arquivo JSON.</p><button class="btn" onclick="exportData()">Exportar meus dados</button><button class="btn" onclick="importData()">Importar arquivo</button><input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)"></div>
 </section>
 </main>
-<nav class="bottom"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="images" onclick="show('images')"><span>▧</span>Imagens</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
+<nav class="bottom"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="images" onclick="show('images')"><span>▧</span>Imagens</button><button data-screen="video" onclick="show('video')"><span>▶</span>Vídeos IA</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
 </div>
 <script>
 const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
@@ -267,6 +277,42 @@ function setCoreActivity(state,title,detail){
   eventsEl.prepend(item);while(eventsEl.children.length>5)eventsEl.lastChild.remove();
  }
 }
+
+async function studyVideoAI(){
+ const topic=$("videoStudyTopic").value.trim();if(topic.length<3){$("videoStudyStatus").textContent="Informe um tema para estudar.";return}
+ const button=$("studyVideoButton"),status=$("videoStudyStatus");button.disabled=true;button.textContent="Pesquisando fontes…";status.className="statusbox";status.textContent="Pesquisando fontes públicas, verificando resultados e arquivando princípios.";
+ setCoreActivity("ESTUDANDO VÍDEOS IA","Pesquisando fontes públicas e preparando uma memória recuperável.");
+ try{
+  const result=await api("/api/video/study",{method:"POST",body:JSON.stringify({topic})});
+  status.className="statusbox good";status.textContent="Estudo concluído. "+result.sources.length+" fontes consultadas. Conhecimento salvo na memória do servidor. "+result.note;
+  const principles=$("videoPrinciples");principles.replaceChildren();const h=document.createElement("h4");h.textContent="O que foi aprendido na pesquisa";principles.appendChild(h);
+  result.principles.forEach((item,i)=>{const row=document.createElement("div");row.className="video-shot";row.textContent=(i+1)+". "+item;principles.appendChild(row)});
+  const sources=$("videoSources");sources.replaceChildren();const sh=document.createElement("h4");sh.textContent="Fontes consultadas";sources.appendChild(sh);
+  result.sources.forEach(source=>{const row=document.createElement("div");row.className="video-source";const a=document.createElement("a");a.href=source.url;a.target="_blank";a.rel="noopener noreferrer";a.textContent=source.title||source.url;const detail=document.createElement("p");detail.textContent=source.snippet||"";row.append(a,detail);sources.appendChild(row)});
+  $("videoTestStatus").textContent="Estudo registrado. Agora descreva uma ideia e crie o teste.";
+  setCoreActivity("ESTUDO CONCLUÍDO","Fontes consultadas e princípios arquivados. Tipo de aprendizado: pesquisa e memória, não alteração dos pesos do modelo.");
+  activity("Estudo de vídeos com IA",topic.slice(0,140));saveData();renderAll();
+ }catch(e){status.className="statusbox warn";status.textContent="Não foi possível concluir o estudo: "+e.message;setCoreActivity("ERRO NO ESTUDO",e.message)}
+ finally{button.disabled=false;button.textContent="◉ Estudar e guardar conhecimento"}
+}
+async function createVideoTest(){
+ const idea=$("videoTestIdea").value.trim();if(idea.length<3){$("videoTestStatus").textContent="Descreva uma ideia para o vídeo de teste.";return}
+ const button=$("createVideoTestButton"),status=$("videoTestStatus"),out=$("videoTestResult");button.disabled=true;button.textContent="Aplicando conhecimento…";status.className="statusbox";status.textContent="Recuperando o estudo e montando as tomadas do storyboard.";
+ setCoreActivity("CRIANDO TESTE AUDIOVISUAL","Aplicando princípios arquivados para criar um storyboard verificável.");
+ try{
+  const result=await api("/api/video/test",{method:"POST",body:JSON.stringify({idea})});
+  status.className="statusbox good";status.textContent="Teste criado a partir do conhecimento arquivado. Roteiro demonstrativo, sem renderização de MP4.";
+  out.replaceChildren();const h=document.createElement("h4");h.textContent="Storyboard criado pelo AURION";out.appendChild(h);
+  result.shots.forEach(shot=>{const card=document.createElement("div");card.className="video-shot";const title=document.createElement("b");title.textContent="TOMADA "+shot.shot+" · "+shot.duration;const body=document.createElement("p");body.textContent=shot.framing+"\\nAção: "+shot.action+"\\nCâmera: "+shot.camera+"\\nLuz: "+shot.light;card.append(title,body);out.appendChild(card)});
+  const label=document.createElement("h4");label.textContent="Prompt audiovisual produzido";out.appendChild(label);const prompt=document.createElement("div");prompt.className="video-prompt";prompt.textContent=result.video_prompt;out.appendChild(prompt);
+  const copy=document.createElement("button");copy.className="btn";copy.textContent="Copiar prompt";copy.onclick=()=>GenUICopyVideoPrompt(result.video_prompt);out.appendChild(copy);
+  const note=document.createElement("p");note.className="hint";note.textContent=result.note;out.appendChild(note);
+  setCoreActivity("TESTE CRIADO","Storyboard de três tomadas e prompt gerados usando a memória de estudo. Nenhum vídeo foi renderizado.");
+  activity("Teste de vídeo planejado",idea.slice(0,140));saveData();renderAll();
+ }catch(e){status.className="statusbox warn";status.textContent="O teste não foi concluído: "+e.message;setCoreActivity("ERRO NO TESTE",e.message)}
+ finally{button.disabled=false;button.textContent="✦ Criar roteiro de teste"}
+}
+function GenUICopyVideoPrompt(value){try{navigator.clipboard.writeText(value);$("videoTestStatus").textContent="Prompt copiado."}catch{$("videoTestStatus").textContent="Não foi possível copiar automaticamente."}}
 async function generateAurionImage(){
  const prompt=$("imagePrompt").value.trim();if(prompt.length<3){$("imageLabStatus").textContent="Escreva uma descrição com pelo menos 3 caracteres.";return}
  const button=$("generateImageButton"),status=$("imageLabStatus"),image=$("generatedImage");
