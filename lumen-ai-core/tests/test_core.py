@@ -31,6 +31,9 @@ class CoreTests(unittest.TestCase):
         self.assertIn("continuidade", payload["principles"][3].lower())
 
     def test_video_test_requires_study_and_returns_storyboard_not_fake_video(self):
+        from app import db
+        with db() as con:
+            con.execute("DELETE FROM knowledge WHERE title='Vídeo IA: princípios de criação'")
         response = self.client.post("/api/video/test", headers=self.headers, json={
             "idea": "Um robô explorando uma floresta luminosa"
         })
