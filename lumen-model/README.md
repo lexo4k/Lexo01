@@ -29,6 +29,10 @@ GPU CUDA acelera bastante; em CPU, mantenha configurações pequenas.
 python lumen-model/infer.py --model lumen-model/artifacts/lumen-1.pt --prompt "LÚMEN:"
 ```
 
+## Avaliação independente
+
+O arquivo `evaluation/heldout-pt-br.txt` é mantido separado de `corpus/` e não entra no treinamento. Execute `python lumen-model/evaluate.py lumen-model/artifacts/lumen-1.pt --data lumen-model/evaluation/heldout-pt-br.txt` para obter perda média e perplexidade em texto reservado. Essas métricas medem previsão nesse conjunto pequeno, não inteligência geral nem superioridade sobre outros modelos.
+
 ## Limites importantes
 Este é o primeiro modelo-base experimental, não um assistente geral comparável a
 modelos comerciais. Um Transformer pequeno treinado com pouco texto aprende padrões
