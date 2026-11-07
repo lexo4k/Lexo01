@@ -1,36 +1,69 @@
-"""Avaliação reproduzível e básica do checkpoint LÚMEN-1."""
-import json, math, sys, torch
+"""Avaliação determinística em texto separado do corpus de treinamento."""
+import argparse
+import json
+import math
 from pathlib import Path
+
+import torch
 from model import LumenGPT, encode
 
+
 def main():
-    ckpt_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("artifacts/lumen-1.pt")
-    ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-    cfg = ckpt["config"]
-    model = LumenGPT(**cfg)
-    model.load_state_dict(ckpt["state_dict"])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("checkpoint", nargs="?", default="artifacts/lumen-1.pt")
+    parser.add_argument("--data", default="evaluation/heldout-pt-br.txt")
+    args = parser.parse_args()
+
+    checkpoint_path = Path(args.checkpoint)
+    data_path = Path(args.data)
+    if not checkpoint_path.is_file():
+        raise SystemExit(f"Checkpoint não encontrado: {checkpoint_path}")
+    if not data_path.is_file():
+        raise SystemExit(f"Arquivo de avaliação separado não encontrado: {data_path}")
+
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    config = checkpoint["config"]
+    model = LumenGPT(**config)
+    model.load_state_dict(checkpoint["state_dict"])
     model.eval()
-    corpus = Path("corpus").rglob("*.txt")
-    samples = []
-    for file in corpus:
-        samples.append(file.read_text(encoding="utf-8"))
-    if not samples:
-        raise SystemExit("No evaluation text found")
-    data = torch.tensor(encode("\n".join(samples)), dtype=torch.long)
-    context = min(cfg["context"], max(8, len(data)-1))
-    x = data[:context].unsqueeze(0)
-    y = data[1:context+1].unsqueeze(0)
+
+    tokens = torch.tensor(encode(data_path.read_text(encoding="utf-8")), dtype=torch.long)
+    context = int(config["context"])
+    if len(tokens) < 2:
+        raise SystemExit("Texto de avaliação vazio ou curto demais.")
+
+    # Cada alvo é avaliado uma vez, sempre com contexto causal limitado.
+    total_loss = 0.0
+    total_tokens = 0
     with torch.no_grad():
-        logits, loss = model(x, y)
-    if not torch.isfinite(loss):
-        raise SystemExit("Non-finite loss")
-    result = {
-        "checkpoint": str(ckpt_path),
+        for start in range(0, len(tokens) - 1, context):
+            x = tokens[max(0, start - context + 1):start + context]
+            if len(x) < 2:
+                continue
+            y = tokens[max(1, start - context + 2):start + context + 1]
+            x = x[:-1].unsqueeze(0)
+            y = y[:x.shape[1]].unsqueeze(0)
+            if x.shape[1] == 0:
+                continue
+            _, loss = model(x, y)
+            count = y.numel()
+            total_loss += float(loss) * count
+            total_tokens += count
+
+    if total_tokens == 0 or not math.isfinite(total_loss):
+        raise SystemExit("Avaliação inválida: nenhuma previsão finita foi calculada.")
+
+    mean_loss = total_loss / total_tokens
+    print(json.dumps({
+        "checkpoint": str(checkpoint_path),
+        "evaluation_file": str(data_path),
         "parameters": sum(p.numel() for p in model.parameters()),
-        "evaluation_loss_on_seed_text": round(float(loss), 5),
-        "logits_shape": list(logits.shape),
-        "warning": "Seed-text loss is a smoke metric, not a benchmark of general intelligence."
-    }
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+        "heldout_token_count": total_tokens,
+        "heldout_mean_loss": round(mean_loss, 6),
+        "heldout_perplexity": round(math.exp(min(mean_loss, 50)), 6),
+        "warning": "Métrica de previsão neste pequeno conjunto separado; não mede inteligência geral nem compara modelos."
+    }, ensure_ascii=False, indent=2))
+
+
 if __name__ == "__main__":
     main()
