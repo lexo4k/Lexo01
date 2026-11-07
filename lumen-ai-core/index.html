@@ -704,19 +704,27 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  window.AurionNative.sendLocalMessage(msg,history);return;
 }
 if(activeMode==="research"){
- const pending={role:"assistant",content:"Pesquisando na web…",at:stamp()};data.messages.push(pending);saveData();renderMessages();
+ const pending={role:"assistant",content:"Pesquisando na web e preparando a resposta…",at:stamp()};data.messages.push(pending);saveData();renderMessages();
  try{
   const payload={query:msg};
   if(useLocationForNextResearch&&data.lastLocation){payload.latitude=data.lastLocation.latitude;payload.longitude=data.lastLocation.longitude;}
   useLocationForNextResearch=false;
-  const r=await api("/api/research/public",{method:"POST",body:JSON.stringify(payload)});
-  pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url+(x.snippet?"\n"+x.snippet:"")).join("\n\n"):"\n\nO mecanismo não retornou links de fontes.")+(r.attribution?"\n\n"+r.attribution+" · "+r.attribution_url:"");
+  const research=await api("/api/research/public",{method:"POST",body:JSON.stringify(payload)});
+  const sources=Array.isArray(research.sources)?research.sources:[];
+  const sourceText=sources.slice(0,8).map((x,i)=>(i+1)+". "+String(x.title||"Fonte").slice(0,220)+"\n"+String(x.url||"")+"\n"+String(x.snippet||"").slice(0,700)).join("\n\n");
+  const sourceLinks=sources.length?"\n\nFONTES CONSULTADAS:\n"+sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url).join("\n\n"):"";
+  const canSynthesize=Boolean(window.AurionNative&&(["ready","downloaded"].includes(localModelState())||(typeof window.AurionNative.canRunLocalModel==="function"&&window.AurionNative.canRunLocalModel())));
+  if(canSynthesize&&sourceText){
+   pending.content="Encontrei "+sources.length+" fontes. Estou cruzando os trechos com o modelo local…";
+   pending.pendingLocal=true;pending.at=stamp();saveData();renderMessages();
+   const synthesisPrompt="Responda à pergunta usando SOMENTE as evidências abaixo. Sintetize em português brasileiro, separe fatos de inferências, informe quando as fontes não bastarem e não invente detalhes. Inclua ao final as URLs das fontes relevantes.\nPERGUNTA: "+msg+"\n\nRESULTADOS DA PESQUISA PÚBLICA:\n"+sourceText+"\n\nNão diga que verificou o conteúdo integral das páginas; foram recebidos títulos e trechos de busca.";
+   window.AurionNative.sendLocalMessage(synthesisPrompt,"MODO ONLINE HÍBRIDO: a busca foi feita agora na internet. Use os títulos, trechos e URLs recebidos como evidências limitadas. Não afirme que abriu páginas completas.");
+   setCoreActivity("PESQUISA + IA LOCAL","Busca online concluída; o modelo local está sintetizando os resultados.");
+   return;
+  }
+  pending.content=(research.answer||"Pesquisa concluída.")+sourceLinks+(research.attribution?"\n\n"+research.attribution+" · "+research.attribution_url:"");
+  if(!sources.length)pending.content+="\n\nNenhuma fonte foi retornada. Tente reformular a pesquisa.";
  }catch(e){useLocationForNextResearch=false;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
- if(r&&Array.isArray(r.tools_used)&&r.tools_used.length){
-  const toolLabels={web_research:"pesquisa na web",search_memory:"busca na memória",save_memory:"registro de memória",create_task:"criação de tarefa",save_knowledge:"arquivo de conhecimento",complete_task:"conclusão de tarefa",list_tasks:"consulta de tarefas",get_overview:"consulta do painel"};
-  const used=[...new Set(r.tools_used)].map(name=>toolLabels[name]||name);
-  pending.content+="\\n\\nAções realizadas: "+used.join(", ")+".";
- }
  pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();setCoreActivity(pending.content.startsWith("Não consegui")?"ERRO":"CONCLUÍDO",pending.content.slice(0,220));if(autoSpeakEnabled)speakText(pending.content);return;
 }
 if(imageData&&!connected){const answer="A imagem foi selecionada, mas a análise visual exige um servidor conectado com modelo compatível. Ative a conexão nas Configurações. Nenhum conteúdo da imagem foi analisado.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();setCoreActivity("AGUARDANDO CONEXÃO",answer);return;}
