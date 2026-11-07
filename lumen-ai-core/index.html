@@ -507,8 +507,8 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const relevantMemories=wormholeRetrieve(data.memories,msg,16,1800);
  const relevantKnowledge=wormholeRetrieve(data.knowledge,msg,12,2200);
  const memoryContext=[
-  "MEMÓRIAS RECUPERADAS PELO WORMHOLE LOCAL (originais preservados):\\n"+relevantMemories.map(x=>"- "+x.content).join("\\n"),
-  "CONHECIMENTO RECUPERADO PELO WORMHOLE LOCAL:\\n"+relevantKnowledge.map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\\n"),
+  "MEMÓRIAS RELEVANTES: (recuperadas pelo Wormhole local; originais preservados)\\n"+relevantMemories.map(x=>"- "+x.content).join("\\n"),
+  "BASE DE CONHECIMENTO: (itens relevantes recuperados pelo Wormhole local)\\n"+relevantKnowledge.map(x=>"- "+x.title+": "+x.content.slice(0,500)).join("\\n"),
   "TAREFAS EM ABERTO:\\n"+data.tasks.filter(x=>!x.done).slice(-12).reverse().map(x=>"- "+x.title).join("\\n")
  ].join("\\n\\n");
  const history=(memoryContext+"\n\nCONVERSA RECENTE:\n"+dialogue).slice(-4500);
