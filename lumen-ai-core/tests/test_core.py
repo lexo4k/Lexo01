@@ -66,6 +66,16 @@ class CoreTests(unittest.TestCase):
         result = execute_agent_tool("search_memory", {"query": "interface em português"})
         self.assertTrue(any("interface em português" in item["content"] for item in result["memories"]))
 
+    def test_agent_can_archive_knowledge_and_complete_task(self):
+        task = execute_agent_tool("create_task", {"title": "Testar agente"})
+        archived = execute_agent_tool("save_knowledge", {"title": "Nota técnica", "content": "Conteúdo de teste"})
+        completed = execute_agent_tool("complete_task", {"task_id": task["id"]})
+        overview = execute_agent_tool("get_overview", {})
+        self.assertTrue(archived["saved"])
+        self.assertTrue(completed["ok"])
+        self.assertGreaterEqual(overview["knowledge"], 1)
+        self.assertGreaterEqual(overview["completed_tasks"], 1)
+
     def test_agent_tool_rejects_unknown_tool(self):
         result = execute_agent_tool("run_shell", {})
         self.assertFalse(result["ok"])
