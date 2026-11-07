@@ -17,7 +17,8 @@ from pydantic import BaseModel, Field, field_validator
 from cognition import think as cognitive_cycle
 
 ROOT = Path(__file__).parent
-DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(ROOT / "data" / "lumen.db")))
+DEFAULT_DB_PATH = Path("/tmp/lumen.db") if os.getenv("VERCEL") else ROOT / "data" / "lumen.db"
+DB_PATH = Path(os.getenv("LUMEN_DB_PATH", str(DEFAULT_DB_PATH)))
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
