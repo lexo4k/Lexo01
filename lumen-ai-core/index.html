@@ -95,6 +95,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <div id="settingsStatus" class="statusbox warn">Nenhum servidor conectado. Seus dados locais continuam disponíveis.</div>
 <div class="panel"><h3>Conexão remota opcional</h3><div class="field"><label>Endereço HTTPS do servidor</label><input id="serverUrl" inputmode="url" placeholder="https://seu-servico.exemplo.com"></div><div class="field"><label>Token privado de acesso</label><input id="accessToken" type="password" autocomplete="off" placeholder="Token configurado no servidor"></div><button class="btn primary" onclick="connectServer()">Testar e conectar</button><button class="btn" onclick="disconnectServer()" style="margin-left:6px">Desconectar</button><p class="muted">O endereço e o token ficam armazenados apenas no armazenamento privado do aplicativo/navegador. Nunca coloque a chave do provedor de IA aqui. Ela pertence somente ao servidor.</p></div>
 <div class="panel"><h3>Recursos e disponibilidade</h3><div id="capabilityList" class="list"><div class="item"><b>Interface local</b><p>Disponível neste aparelho.</p></div><div class="item"><b>Modelo de IA e pesquisa</b><p>Exigem servidor publicado e chave de provedor configurada.</p></div><div class="item"><b>Memória sincronizada</b><p>Exige conexão e banco persistente no servidor.</p></div></div></div>
+<div class="panel"><h3>Memória de correções</h3><p class="muted">A NEXORA guarda erros, causas e soluções. Só experiências com evidência de testes são priorizadas como verificadas.</p><div id="correctionMemoryList" class="list"><div class="item">Conecte ao núcleo para consultar a memória técnica.</div></div><details style="margin-top:12px"><summary>Registrar uma experiência técnica</summary><div style="display:grid;gap:8px;margin-top:10px"><input id="correctionSignature" placeholder="Erro ou mensagem identificadora" style="width:100%;padding:11px;border-radius:10px"><textarea id="correctionCause" placeholder="Causa-raiz identificada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><textarea id="correctionResolution" placeholder="Correção aplicada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><input id="correctionEvidence" placeholder="Evidência do teste (opcional)" style="width:100%;padding:11px;border-radius:10px"><label style="display:flex;gap:8px;align-items:center"><input id="correctionTestsPassed" type="checkbox"> Testes passaram com essa correção</label><button class="btn primary" onclick="saveCorrectionMemory()">Salvar experiência</button></div></details></div>
 <div class="panel"><h3>Dados neste aparelho</h3><p class="muted">Você pode exportar suas memórias, tarefas e registros locais em um arquivo JSON.</p><button class="btn" onclick="exportData()">Exportar meus dados</button><button class="btn" onclick="importData()">Importar arquivo</button><input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)"></div>
 </section>
 </main>
@@ -107,7 +108,7 @@ function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:
 function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
 function loadConfig(){const defaultUrl="https://nexora-ai-core.onrender.com";try{const saved=JSON.parse(localStorage.getItem(CFG));if(!saved)return{url:defaultUrl,token:""};if(!saved.url||saved.url==="https://lumen-ai-core.vercel.app"||saved.url==="https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app")return{url:defaultUrl,token:""};return{url:saved.url,token:saved.token||""}}catch{return{url:defaultUrl,token:""}}}
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
-function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities();refreshLocalModel()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
+function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities();loadCorrectionMemory();refreshLocalModel()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
 function demo(prompt){show("chat");$("message").value=prompt;sendMessage()}
 function localModelState(){
  try{return window.NexoraNative?window.NexoraNative.modelState():"unavailable"}catch{return "unavailable"}
@@ -261,7 +262,7 @@ const url=$("serverUrl").value.trim().replace(/\/+$/,""),token=$("accessToken").
 if(!/^https:\/\/[^/]+$/i.test(url)){setSettingsStatus("Informe um endereço HTTPS válido, sem caminho adicional.",false);return}
 if(!token){setSettingsStatus("Informe o token privado configurado no servidor.",false);return}
 const btn=document.querySelector("#settings .btn.primary");btn.disabled=true;btn.textContent="Testando conexão...";
-try{const h=await fetch(url+"/api/health").then(r=>{if(!r.ok)throw Error("Servidor respondeu HTTP "+r.status);return r.json()});if(h.status!=="online")throw Error("O servidor não informou estado online.");const prev=config;config={url,token};try{await api("/api/overview")}catch(e){config=prev;throw e}saveConfig();connected=true;apiCaps=await api("/api/capabilities").catch(()=>null);setConnection(true);setSettingsStatus("Conexão e token validados. A IA e a retenção permanente ainda dependem das configurações do servidor.",true);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · chave de IA configurada":"Núcleo conectado · IA aguarda chave no servidor";$("lastCheck").textContent="VERIFICADO AGORA";activity("Núcleo conectado",url);saveData();renderCapabilities();await syncWorkspace()}catch(e){connected=false;setConnection(false);setSettingsStatus("Não foi possível conectar: "+e.message,false)}finally{btn.disabled=false;btn.textContent="Testar e conectar"}
+try{const h=await fetch(url+"/api/health").then(r=>{if(!r.ok)throw Error("Servidor respondeu HTTP "+r.status);return r.json()});if(h.status!=="online")throw Error("O servidor não informou estado online.");const prev=config;config={url,token};try{await api("/api/overview")}catch(e){config=prev;throw e}saveConfig();connected=true;apiCaps=await api("/api/capabilities").catch(()=>null);setConnection(true);setSettingsStatus("Conexão e token validados. A IA e a retenção permanente ainda dependem das configurações do servidor.",true);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · chave de IA configurada":"Núcleo conectado · IA aguarda chave no servidor";$("lastCheck").textContent="VERIFICADO AGORA";activity("Núcleo conectado",url);saveData();renderCapabilities();await loadCorrectionMemory();await syncWorkspace()}catch(e){connected=false;setConnection(false);setSettingsStatus("Não foi possível conectar: "+e.message,false)}finally{btn.disabled=false;btn.textContent="Testar e conectar"}
 }
 async function syncWorkspace(){
 if(!connected||syncingWorkspace)return;
@@ -285,6 +286,25 @@ localStorage.setItem(KEY,JSON.stringify(data));renderAll();
 $("chatState").textContent=apiCaps&&apiCaps.persistent_storage&&apiCaps.persistent_storage.configured?"Núcleo conectado · memória persistente":"Núcleo conectado · nuvem temporária";
 }catch(e){$("chatState").textContent="Núcleo conectado · falha ao sincronizar memória";activity("Falha na sincronização",e.message);localStorage.setItem(KEY,JSON.stringify(data));renderAll();}
 finally{syncingWorkspace=false;}
+}
+async function loadCorrectionMemory(){
+ const box=$("correctionMemoryList");if(!box)return;
+ if(!connected){box.innerHTML='<div class="item">Conecte ao núcleo para consultar a memória técnica.</div>';return}
+ try{
+  const rows=await api("/api/corrections");
+  box.innerHTML=rows.length?rows.map(x=>'<div class="item"><b>'+escapeHtml(x.error_type)+' · '+escapeHtml(x.validation_status)+'</b><p><b>Erro:</b> '+escapeHtml(x.error_signature)+'</p><p><b>Causa:</b> '+escapeHtml(x.root_cause)+'</p><p><b>Correção:</b> '+escapeHtml(x.resolution)+'</p><small>'+escapeHtml(x.test_evidence||"Sem evidência registrada")+'</small></div>').join(""):'<div class="empty">Nenhuma experiência técnica registrada ainda.</div>';
+ }catch(e){box.innerHTML='<div class="item">Não foi possível carregar a memória: '+escapeHtml(e.message)+'</div>'}
+}
+async function saveCorrectionMemory(){
+ const error_signature=$("correctionSignature").value.trim(),root_cause=$("correctionCause").value.trim(),resolution=$("correctionResolution").value.trim();
+ if(error_signature.length<4||root_cause.length<4||resolution.length<4){setSettingsStatus("Preencha erro, causa-raiz e correção.",false);return}
+ try{
+  const result=await api("/api/corrections",{method:"POST",body:JSON.stringify({error_signature,error_type:"manual",root_cause,resolution,test_evidence:$("correctionEvidence").value.trim(),tests_passed:$("correctionTestsPassed").checked})});
+  $("correctionSignature").value=$("correctionCause").value=$("correctionResolution").value=$("correctionEvidence").value="";
+  $("correctionTestsPassed").checked=false;
+  setSettingsStatus(result.validation_status==="verified"?"Experiência salva como verificada com evidência informada.":"Experiência salva como pendente de validação.",true);
+  await loadCorrectionMemory();
+ }catch(e){setSettingsStatus("Falha ao salvar experiência: "+e.message,false)}
 }
 function setSettingsStatus(msg,ok){$("settingsStatus").textContent=msg;$("settingsStatus").className="statusbox "+(ok?"good":"warn")}
 function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está aberto em modo local. Memórias e tarefas podem ser guardadas neste aparelho. Para respostas de IA e pesquisa na internet, conecte o servidor nas configurações.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
