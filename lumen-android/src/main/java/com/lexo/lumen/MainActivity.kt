@@ -6,6 +6,7 @@ import android.app.ActivityManager
 import android.content.pm.PackageManager
 import android.content.ContentValues
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.os.Environment
 import android.content.Intent
 import android.graphics.Color
@@ -238,6 +239,18 @@ class MainActivity : Activity() {
 
 
     inner class AurionBridge {
+        @JavascriptInterface fun chooseDownloadedModel() {
+            runOnUiThread {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/octet-stream", "application/x-gguf"))
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivityForResult(intent, MODEL_FILE_REQUEST)
+            }
+        }
+
         @JavascriptInterface fun modelOptions(): String = JSONObject().apply {
             put("selected", selectedModelId)
             put("models", org.json.JSONArray().apply {
@@ -549,8 +562,9 @@ class MainActivity : Activity() {
                                 runOnUiThread {
                                     android.app.AlertDialog.Builder(this@MainActivity)
                                         .setTitle("Modelo não encontrado")
-                                        .setMessage("Não encontrei um arquivo GGUF compatível nos Downloads. Você pode autorizar o download do modelo recomendado. Se já baixou um modelo em outra pasta, abra Configurar e selecione-o pelo gerenciador de arquivos.")
+                                        .setMessage("Não encontrei um arquivo GGUF compatível nos Downloads. Se você já baixou um modelo, escolha o arquivo agora. Se não tiver, poderá autorizar o download recomendado.")
                                         .setNegativeButton("Depois", null)
+                                        .setNeutralButton("Escolher arquivo") { _, _ -> chooseDownloadedModel() }
                                         .setPositiveButton("Autorizar download") { _, _ ->
                                             prefs.edit().putBoolean("model_download_authorized", true).apply()
                                             downloadModel()
@@ -863,10 +877,64 @@ class MainActivity : Activity() {
     @Deprecated("Deprecated in Android API, retained for broad device compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == MODEL_FILE_REQUEST) {
+            val uri = if (resultCode == RESULT_OK) data?.data else null
+            if (uri != null) importChosenModel(uri)
+            return
+        }
         if (requestCode == FILE_REQUEST) {
             val result = if (resultCode == RESULT_OK && data?.data != null) arrayOf(data.data!!) else null
             fileCallback?.onReceiveValue(result)
             fileCallback = null
+        }
+    }
+
+    private fun importChosenModel(uri: Uri) {
+        localScope.launch {
+            modelBusy = true
+            try {
+                val displayName = withContext(Dispatchers.IO) {
+                    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                        if (c.moveToFirst()) c.getString(0) else null
+                    } ?: "modelo.gguf"
+                }
+                if (!displayName.lowercase(Locale.ROOT).endsWith(".gguf")) {
+                    throw IllegalArgumentException("Escolha um arquivo .gguf compatível com llama.cpp.")
+                }
+                val temp = File(filesDir, "models/imported-model.gguf.part")
+                withContext(Dispatchers.IO) {
+                    temp.parentFile?.mkdirs()
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(temp).use { output ->
+                            input.copyTo(output, 64 * 1024)
+                            output.fd.sync()
+                        }
+                    } ?: throw IllegalStateException("Não foi possível ler o arquivo selecionado.")
+                }
+                val size = temp.length()
+                val memory = ActivityManager.MemoryInfo()
+                (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
+                val safeLimit = minOf(2_500_000_000L, (memory.totalMem * 0.30).toLong())
+                if (size < 450_000_000L) throw IllegalArgumentException("O arquivo é pequeno demais para ser um modelo GGUF completo.")
+                if (size > safeLimit) throw IllegalArgumentException("Este modelo ocupa mais memória do que o limite seguro estimado para o aparelho. Escolha um arquivo menor.")
+                selectedModelId = when {
+                    size >= 1_850_000_000L -> "qwen-3b"
+                    size >= 1_050_000_000L -> "qwen-1.5b"
+                    else -> "qwen-0.5b"
+                }
+                getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", selectedModelId).apply()
+                val target = modelFile
+                withContext(Dispatchers.IO) {
+                    target.parentFile?.mkdirs()
+                    if (target.exists()) target.delete()
+                    if (!temp.renameTo(target)) throw IllegalStateException("Não foi possível guardar o modelo selecionado.")
+                }
+                notifyModel("loading", "Modelo " + displayName + " importado. Carregando o núcleo local…")
+                loadLocalModel()
+            } catch (e: Exception) {
+                modelBusy = false
+                notifyModel("error", "Não consegui importar o modelo: " + (e.message ?: "erro desconhecido"))
+            }
         }
     }
 
@@ -909,5 +977,5 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
-    companion object { private const val FILE_REQUEST = 7104; private const val AUDIO_PERMISSION_REQUEST = 7105; private const val LOCATION_PERMISSION_REQUEST = 7106 }
+    companion object { private const val FILE_REQUEST = 7104; private const val AUDIO_PERMISSION_REQUEST = 7105; private const val LOCATION_PERMISSION_REQUEST = 7106; private const val MODEL_FILE_REQUEST = 7107 }
 }
