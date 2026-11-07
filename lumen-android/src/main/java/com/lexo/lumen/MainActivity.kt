@@ -67,8 +67,8 @@ class MainActivity : Activity() {
     private var locationTimeout: Runnable? = null
     private data class LocalModelProfile(val id: String, val name: String, val url: String, val fileName: String, val minBytes: Long, val contextSize: Int, val maxTokens: Int, val note: String)
     private val modelProfiles = mapOf(
-        "qwen-0.5b" to LocalModelProfile("qwen-0.5b", "Qwen 0.5B · econômico", "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf", "nexora-qwen-0.5b-q4km.gguf", 450_000_000L, 1536, 128, "Mais leve e rápido. Ideal para aparelhos com pouca memória."),
-        "qwen-1.5b" to LocalModelProfile("qwen-1.5b", "Qwen 1.5B · recomendado", "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf", "nexora-qwen-1.5b-q4km.gguf", 1_000_000_000L, 3072, 192, "Equilíbrio entre capacidade e uso de memória. Modelo padrão recomendado para começar."),
+        "qwen-0.5b" to LocalModelProfile("qwen-0.5b", "Qwen 0.5B · econômico", "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf", "nexora-qwen-0.5b-q4km.gguf", 491_400_032L, 1536, 128, "Mais leve e rápido. Ideal para aparelhos com pouca memória."),
+        "qwen-1.5b" to LocalModelProfile("qwen-1.5b", "Qwen 1.5B · recomendado", "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf", "nexora-qwen-1.5b-q4km.gguf", 1_117_320_736L, 3072, 192, "Equilíbrio entre capacidade e uso de memória. Modelo padrão recomendado para começar."),
         "qwen-3b" to LocalModelProfile("qwen-3b", "Qwen 3B · experimental", "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf", "aurion-qwen-3b-q4km.gguf", 1_900_000_000L, 2048, 160, "Modelo de 3 bilhões de parâmetros, arquivo de aproximadamente 2,1 GB. Experimental: pode ficar muito lento ou não carregar em celulares com pouca RAM. Escolha manualmente.")
     )
     @Volatile private var selectedModelId = "qwen-1.5b"
@@ -262,6 +262,7 @@ class MainActivity : Activity() {
                     withContext(Dispatchers.IO) {
                         val parent = target.parentFile ?: throw IllegalStateException("Pasta privada do modelo indisponível")
                         if (!parent.exists() && !parent.mkdirs()) throw IllegalStateException("Não foi possível criar a pasta do modelo")
+                        if (parent.usableSpace < profile.minBytes + 100_000_000L) throw IllegalStateException("Espaço livre insuficiente. Libere espaço antes de baixar o modelo.")
                         val temp = File(parent, target.name + ".part")
                         if (!temp.exists() && target.exists()) target.renameTo(temp)
                         var existing = temp.length()
