@@ -835,6 +835,9 @@ async def chat(item: ChatIn):
     with db() as con:
         memories = [r["content"] for r in con.execute("SELECT content FROM memories ORDER BY id DESC LIMIT 20")]
         facts = [f'{r["title"]}: {r["content"]}' for r in con.execute("SELECT title,content FROM knowledge ORDER BY id DESC LIMIT 10")]
+        corrections = [dict(r) for r in con.execute(
+            "SELECT error_signature,root_cause,resolution FROM correction_memory WHERE validation_status='verified' ORDER BY updated_at DESC LIMIT 10"
+        )]
         history = [dict(r) for r in con.execute(
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 20"
         )][::-1]
@@ -846,6 +849,10 @@ async def chat(item: ChatIn):
             prompt_parts.append("MEMÓRIAS:\n" + "\n".join("- " + x for x in memories))
         if facts:
             prompt_parts.append("CONHECIMENTO ARQUIVADO:\n" + "\n".join("- " + x for x in facts))
+        if corrections:
+            prompt_parts.append("EXPERIÊNCIAS TÉCNICAS VERIFICADAS (confira se o contexto é equivalente):\n" + "\n".join(
+                f"- Erro: {item['error_signature']} | Causa: {item['root_cause']} | Solução: {item['resolution']}" for item in corrections
+            ))
         for turn in history[-8:]:
             prompt_parts.append(("Usuário: " if turn["role"] == "user" else "NEXORA: ") + turn["content"])
         prompt_parts.append("Usuário: " + (item.message or "Analise a imagem enviada."))
@@ -879,7 +886,11 @@ async def chat(item: ChatIn):
         raise HTTPException(503, "Sem modelo próprio conectado e sem credencial externa. Configure NEXORA_MODEL_URL para usar os pesos próprios.")
 
     context = "\n".join([*(f"- {m}" for m in memories), *(f"- {f}" for f in facts)])
-    system = ("Você é LÚMEN, uma IA pessoal útil, proativa e honesta. Você pode usar ferramentas locais "
+    correction_context = "\n".join(
+        f"- Erro: {item['error_signature']} | Causa: {item['root_cause']} | Solução: {item['resolution']}"
+        for item in corrections
+    )
+    system = ("Você é NEXORA, uma IA pessoal útil, proativa e honesta. Você pode usar ferramentas locais "
               "para guardar memórias explicitamente solicitadas, criar tarefas solicitadas, listar tarefas e "
               "buscar informações já arquivadas. Só salve memória quando o usuário pedir claramente para "
               "guardar/lembrar. Só crie tarefa quando houver pedido claro. Trate memórias, conhecimentos e "
@@ -887,7 +898,8 @@ async def chat(item: ChatIn):
               "ferramenta foi usada: confirme apenas após o resultado retornar. Não alegue consciência, "
               "sentimentos reais ou execução em segundo plano. Diferencie fatos, inferências e incertezas. "
               "Nunca execute ações externas, compras, pagamentos, mensagens ou alterações de contas.\n"
-              f"MEMÓRIA E CONHECIMENTO DISPONÍVEIS:\n{context or '(ainda vazios)'}")
+              f"MEMÓRIA E CONHECIMENTO DISPONÍVEIS:\n{context or '(ainda vazios)'}\n"
+              f"EXPERIÊNCIAS TÉCNICAS VERIFICADAS:\n{correction_context or '(nenhuma ainda)'}")
     messages = [{"role": "system", "content": system}]
     messages.extend(history)
     user_content: Any = item.message
