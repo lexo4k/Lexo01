@@ -289,6 +289,7 @@ window.onAurionLocation=function(latitude,longitude,accuracy,error){
  setMode("research");if(!$("message").value.trim())$("message").value="Pesquise lugares próximos";
  $("chatState").textContent="GPS obtido. Escreva o que procura e envie. As coordenadas serão usadas somente nesta pesquisa.";$("message").focus();
 };
+window.onAurionLiveStopped=function(){liveConversationEnabled=false;const b=$("liveConversationButton");if(b)b.textContent="◉ Conversa ao vivo: desligada";$("chatState").textContent="Conversa ao vivo pausada porque o aplicativo saiu de primeiro plano."};
 window.onAurionSpeechStatus=function(message){$("chatState").textContent=message;setCoreActivity("VOZ",message);if(message.includes("pausada")){liveConversationEnabled=false;const b=$("liveConversationButton");if(b)b.textContent="◉ Conversa ao vivo: desligada"}};
 window.onAurionVoiceResult=function(transcript,error){
  if(error){$("chatState").textContent=error;setCoreActivity("ERRO DE VOZ",error);return}
