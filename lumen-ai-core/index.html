@@ -459,7 +459,7 @@ const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configur
 const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()==="ready"||localModelState()==="downloaded"));
 // No modo offline, execute ferramentas locais antes de consultar o modelo do aparelho.
 const command=(!modelReady&&msg)?localCommand(msg):null;
-if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
+if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();if(autoSpeakEnabled)speakText(command);return}
 if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
  data.messages.push(pending);saveData();renderMessages();
@@ -511,6 +511,7 @@ function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at
 function importData(){$("importFile").click()}
 function handleImport(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result),d=x.data||x;if(!Array.isArray(d.memories)||!Array.isArray(d.tasks))throw Error("Arquivo não reconhecido");data={memories:d.memories||[],tasks:d.tasks||[],knowledge:d.knowledge||[],messages:d.messages||[],activity:d.activity||[]};saveData();setSettingsStatus("Dados importados neste aparelho.",true)}catch(err){setSettingsStatus("Falha ao importar: "+err.message,false)}};reader.readAsText(f);e.target.value=""}
 $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
+const autoSpeakButton=$("autoSpeakButton");if(autoSpeakButton)autoSpeakButton.textContent=autoSpeakEnabled?"🔊 Voz automática: ligada":"🔇 Voz automática: desligada";
 if(config.url&&config.token){$("serverUrl").value=config.url;$("accessToken").value=config.token;fetch(config.url+"/api/health").then(r=>r.json()).then(async h=>{if(h.status==="online"){try{await api("/api/overview");setConnection(true);apiCaps=await api("/api/capabilities").catch(()=>null);$("chatState").textContent=h.model_key_configured?"Núcleo conectado · IA configurada":"Núcleo conectado · IA aguarda configuração";$("lastCheck").textContent="VERIFICADO";renderCapabilities();await syncWorkspace()}catch{setConnection(false)}}}).catch(()=>setConnection(false))}
 renderAll();renderCapabilities();refreshLocalModel();if(window.AurionNative){try{window.AurionNative.prepareLocalModel()}catch(e){}}
 if(config.url&&!config.token){fetch(config.url.replace(/\/+$/,"")+"/api/health").then(r=>r.json()).then(h=>{if(h.status==="online"){$("connectionPill").textContent="● servidor online";$("homeStatus").textContent=h.model_key_configured?"Servidor AURION online. Informe seu token privado em Configurar para sincronizar os dados.":"Servidor AURION online. O modelo de IA ainda aguarda configuração no servidor; o modo local já está disponível.";$("homeStatus").className="statusbox warn";$("lastCheck").textContent="SERVIDOR VERIFICADO";}}).catch(()=>{});}
