@@ -26,7 +26,18 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 .empty{border:1px dashed #2a4358;border-radius:14px;padding:20px;text-align:center;color:var(--muted);font-size:12px}
 .bottom{position:fixed;bottom:0;left:0;right:0;z-index:8;background:#081421f2;border-top:1px solid #233a50;backdrop-filter:blur(16px);padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;justify-content:center}.nav{width:min(760px,100%);display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.nav button{border:0;background:transparent;color:#8fa5b9;padding:7px 2px;border-radius:12px;font-size:10px}.nav button span{display:block;font-size:19px;margin-bottom:3px}.nav button.active{background:#15374a;color:#8deaf0}
 .statusbox{border-radius:14px;padding:12px;background:#102538;border:1px solid #29465c;font-size:12px;line-height:1.5}.statusbox.warn{border-color:#705b35;background:#2a2418;color:#f4d99f}.statusbox.good{border-color:#2c6656;background:#102a27;color:#a5e9ce}
-.hidden{display:none!important}.divider{height:1px;background:var(--line);margin:15px 0}.tag{font-size:10px;padding:5px 8px;border:1px solid var(--line);border-radius:20px;color:var(--muted)}
+.hidden{display:none!important}
+.core-activity{border:1px solid #28536a;background:linear-gradient(135deg,#102a3d,#0b1b2b);border-radius:15px;padding:12px;margin:0 0 12px}
+.core-activity-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.core-activity-head b{font-size:12px;letter-spacing:.08em}
+.core-state{font-size:10px;color:var(--cyan);border:1px solid #326579;padding:5px 8px;border-radius:20px}
+.core-detail{font-size:11px;color:#b5c9d8;margin:7px 0 0;line-height:1.45}
+.core-events{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.core-event{font-size:10px;color:#9eb7c8;background:#102033;border:1px solid #29475d;padding:5px 7px;border-radius:8px}
+.image-result{display:block;width:100%;max-height:420px;object-fit:contain;background:#07111f;border:1px solid var(--line);border-radius:14px;margin-top:12px}
+.image-lab{border:1px solid #2b526b;background:linear-gradient(145deg,#10283b,#0b1929);border-radius:20px;padding:16px}
+.image-lab textarea{width:100%;min-height:110px;background:#091726;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;resize:vertical}
+.image-lab .hint{font-size:11px;color:var(--muted);line-height:1.5;margin:8px 0}.divider{height:1px;background:var(--line);margin:15px 0}.tag{font-size:10px;padding:5px 8px;border:1px solid var(--line);border-radius:20px;color:var(--muted)}
 @media(min-width:620px){main{padding:24px}.hero{padding:30px}.hero h2{font-size:31px}.quick{grid-template-columns:repeat(4,1fr)}.chatbox{min-height:650px}.messages{max-height:540px}.composer{bottom:0}}
 
 /* AURION visual identity: animated core and cinematic command deck */
@@ -61,6 +72,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <button onclick="show('chat');setMode('chat')"><span class="glyph">✧</span><span><b>Inteligência conversacional</b><small>Dialogar e resolver problemas</small></span></button>
 <button onclick="show('chat');setMode('think')"><span class="glyph">◎</span><span><b>Raciocínio e planejamento</b><small>Analisar objetivos e etapas</small></span></button>
 <button onclick="show('chat');setMode('research')"><span class="glyph">⌕</span><span><b>Pesquisa pública</b><small>Buscar informações e fontes</small></span></button>
+<button onclick="show('images')"><span class="glyph">▧</span><span><b>Laboratório de imagens</b><small>Criar e analisar imagens</small></span></button>
 <button onclick="show('memory')"><span class="glyph">◈</span><span><b>Memória de longo prazo</b><small>Guardar contexto e conhecimento</small></span></button>
 <button onclick="show('knowledge')"><span class="glyph">▤</span><span><b>Base de conhecimento</b><small>Organizar referências</small></span></button>
 <button onclick="show('tasks')"><span class="glyph">✓</span><span><b>Execução acompanhada</b><small>Gerenciar tarefas e progresso</small></span></button>
@@ -78,9 +90,11 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 </section>
 <section id="chat" class="screen"><div class="chatbox">
 <div class="chat-head"><div class="mini-orb">A</div><div><b>AURION · Assistente</b><small id="chatState">Modo local · IA ainda não conectada</small></div><span class="tag" style="margin-left:auto">PRIVADO</span></div>
+<div class="core-activity" aria-live="polite"><div class="core-activity-head"><b>◉ CENTRO DE ATIVIDADE</b><span class="core-state" id="coreState">AGUARDANDO</span></div><p class="core-detail" id="coreDetail">O AURION mostrará aqui as etapas reais da operação, sem inventar execução.</p><div class="core-events" id="coreEvents"><span class="core-event">Sistema pronto para receber uma tarefa</span></div></div>
 <div id="messages" class="messages"><div class="msg ai">Olá. Este é o seu espaço AURION. Posso guardar tarefas e notas localmente neste aparelho. Para conversar com o modelo de IA, conecte o núcleo nas configurações. Não vou fingir que uma resposta automática é uma resposta de IA.</div></div>
 <div class="composer"><div class="mode-label" id="modeLabel">MODO CONVERSA</div><div class="compose-wrap"><textarea id="message" placeholder="Converse com o AURION..." rows="2"></textarea><div class="attach-preview" id="attachPreview"></div><div class="compose-actions"><small>Enter para enviar · Shift + Enter para nova linha</small><button class="send" onclick="sendMessage()" aria-label="Enviar">➤</button></div></div><div class="toolrow"><button id="chatMode" class="selected" onclick="setMode('chat')">✧ Conversar</button><button id="researchMode" onclick="setMode('research')">⌕ Pesquisar</button><button id="thinkMode" onclick="setMode('think')">◎ Planejar</button><button onclick="startVoiceInput()">🎙 Voz</button><button onclick="$('imageFile').click()">▧ Imagem</button><button onclick="speakLastAnswer()">🔊 Ouvir</button><button id="autoSpeakButton" onclick="toggleAutoSpeak()">🔊 Voz automática: ligada</button><button onclick="requestLocationForResearch()">📍 Localização</button><input id="imageFile" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" onchange="selectImage(event)"></div></div>
 </div></section>
+<section id="images" class="screen"><div class="eyebrow">LABORATÓRIO VISUAL</div><h2>Criação de imagens</h2><p class="muted">Descreva a imagem. O AURION enviará o pedido ao serviço visual configurado no servidor e mostrará o resultado quando a geração terminar.</p><div class="image-lab"><label for="imagePrompt">O que devemos criar?</label><textarea id="imagePrompt" placeholder="Ex.: Uma cidade futurista à noite, arquitetura orgânica, luzes azul-ciano, vista cinematográfica..."></textarea><p class="hint">A geração exige uma chave de imagem configurada com segurança no servidor. A chave nunca fica salva no APK.</p><button class="btn primary" id="generateImageButton" onclick="generateAurionImage()">✦ Gerar imagem</button><div id="imageLabStatus" class="statusbox warn" style="margin-top:12px">Aguardando uma descrição.</div><img id="generatedImage" class="image-result hidden" alt="Imagem criada pelo AURION"><button class="btn hidden" id="downloadGeneratedImage" onclick="downloadGeneratedImage()">Salvar imagem</button></div><div class="panel"><h3>Visão computacional</h3><p class="muted">Para analisar uma foto, abra a conversa, toque em Imagem e envie uma pergunta. A análise depende de um modelo remoto com suporte a imagens. O modelo local compacto atual ainda não enxerga imagens.</p><button class="btn" onclick="show('chat')">Abrir análise de imagem</button></div></section>
 <section id="memory" class="screen"><div class="eyebrow">MEMÓRIA PESSOAL</div><h2>O que vale guardar?</h2><p class="muted">Os registros ficam guardados neste aparelho. Exporte seus dados nas configurações para manter uma cópia de segurança.</p>
 <div class="panel"><div class="field"><label>Nova memória</label><textarea id="memoryInput" rows="3" placeholder="Escreva uma ideia, preferência ou informação importante..."></textarea></div><div class="field"><label>Categoria</label><input id="memoryCategory" placeholder="Ex.: projetos, preferências, ideias"></div><button class="btn primary" onclick="saveMemory()">Guardar memória</button></div><div class="section-title"><h3>Memórias guardadas</h3><span id="memoryLabel">0 REGISTROS</span></div><div id="memoryList" class="list"></div>
 </section>
@@ -99,7 +113,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <div class="panel"><h3>Dados neste aparelho</h3><p class="muted">Você pode exportar suas memórias, tarefas e registros locais em um arquivo JSON.</p><button class="btn" onclick="exportData()">Exportar meus dados</button><button class="btn" onclick="importData()">Importar arquivo</button><input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)"></div>
 </section>
 </main>
-<nav class="bottom"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
+<nav class="bottom"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="images" onclick="show('images')"><span>▧</span>Imagens</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
 </div>
 <script>
 const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
@@ -167,6 +181,7 @@ window.onAurionModelState=function(state,detail){
  else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
 };
 window.onAurionNativeAnswer=function(answer,failed){
+ setCoreActivity(failed?"ERRO":"CONCLUÍDO",failed?"O modelo local retornou um erro.":"Resposta produzida pelo modelo local neste aparelho.");
  const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
  if(pending){pending.content=answer;pending.at=stamp();delete pending.pendingLocal}
  lastAssistantText=answer;saveData();renderMessages();if(autoSpeakEnabled&&!failed)speakText(answer);
@@ -210,12 +225,13 @@ window.onAurionLocation=function(latitude,longitude,accuracy,error){
  setMode("research");if(!$("message").value.trim())$("message").value="Pesquise lugares próximos";
  $("chatState").textContent="GPS obtido. Escreva o que procura e envie. As coordenadas serão usadas somente nesta pesquisa.";$("message").focus();
 };
-window.onAurionSpeechStatus=function(message){$("chatState").textContent=message};
+window.onAurionSpeechStatus=function(message){$("chatState").textContent=message;setCoreActivity("VOZ",message)};
 window.onAurionVoiceResult=function(transcript,error){
- if(error){$("chatState").textContent=error;return}
+ if(error){$("chatState").textContent=error;setCoreActivity("ERRO DE VOZ",error);return}
  $("message").value=transcript;$("chatState").textContent="Fala convertida em texto. Enviando e guardando a transcrição…";sendMessage();
 };
 function startVoiceInput(){
+ setCoreActivity("OUVINDO","Solicitando reconhecimento de fala após ação no botão de microfone.");
  if(window.AurionNative&&typeof window.AurionNative.startVoiceRecognition==="function"){window.AurionNative.startVoiceRecognition();return}
  const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
  if(!Speech){$("chatState").textContent="Reconhecimento de voz não disponível neste navegador.";return}
@@ -235,12 +251,43 @@ function selectImage(event){
  const file=event.target.files&&event.target.files[0];if(!file)return;
  if(!["image/jpeg","image/png","image/webp"].includes(file.type)){$("attachPreview").textContent="Use uma imagem JPG, PNG ou WebP.";event.target.value="";return}
  if(file.size>5*1024*1024){$("attachPreview").textContent="A imagem precisa ter até 5 MB.";event.target.value="";return}
- const reader=new FileReader();reader.onload=()=>{pendingImageData=String(reader.result||"");$("attachPreview").textContent="Imagem pronta: "+file.name+" · envie uma mensagem para analisar.";};reader.onerror=()=>{$("attachPreview").textContent="Não foi possível carregar a imagem.";pendingImageData=null};reader.readAsDataURL(file);
+ const reader=new FileReader();reader.onload=()=>{pendingImageData=String(reader.result||"");$("attachPreview").textContent="Imagem pronta: "+file.name+" · envie uma mensagem para analisar.";setCoreActivity("IMAGEM ANEXADA","Imagem carregada localmente. A análise só ocorre se houver modelo remoto compatível.");};reader.onerror=()=>{$("attachPreview").textContent="Não foi possível carregar a imagem.";pendingImageData=null};reader.readAsDataURL(file);
 }
 function stamp(){return new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}
 function newId(){return window.crypto&&crypto.randomUUID?crypto.randomUUID():("lumen-"+Date.now()+"-"+Math.random().toString(36).slice(2))}
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function activity(title,detail=""){data.activity.unshift({title,detail,at:stamp()});data.activity=data.activity.slice(0,30)}
+function setCoreActivity(state,title,detail){
+ const stateEl=$("coreState"),detailEl=$("coreDetail"),eventsEl=$("coreEvents");
+ if(stateEl)stateEl.textContent=String(state||"ATIVO").toUpperCase();
+ if(detailEl)detailEl.textContent=detail||title||"";
+ if(eventsEl){
+  const now=new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const item=document.createElement("span");item.className="core-event";item.textContent=now+" · "+String(title||state||"Atividade").slice(0,70);
+  eventsEl.prepend(item);while(eventsEl.children.length>5)eventsEl.lastChild.remove();
+ }
+}
+async function generateAurionImage(){
+ const prompt=$("imagePrompt").value.trim();if(prompt.length<3){$("imageLabStatus").textContent="Escreva uma descrição com pelo menos 3 caracteres.";return}
+ const button=$("generateImageButton"),status=$("imageLabStatus"),image=$("generatedImage");
+ button.disabled=true;button.textContent="Gerando…";status.className="statusbox";status.textContent="Enviando descrição ao serviço visual. A geração pode levar alguns instantes.";
+ setCoreActivity("GERANDO IMAGEM","Preparando o pedido visual e aguardando o serviço de geração.");
+ try{
+  if(!connected)throw Error("Conecte o servidor AURION nas Configurações antes de gerar imagens.");
+  const result=await api("/api/images/generate",{method:"POST",body:JSON.stringify({prompt})});
+  if(!result.image_data_url)throw Error("O serviço não devolveu uma imagem.");
+  image.src=result.image_data_url;image.classList.remove("hidden");$("downloadGeneratedImage").classList.remove("hidden");
+  status.className="statusbox good";status.textContent="Imagem gerada. Modelo: "+(result.model||"serviço visual")+".";
+  setCoreActivity("CONCLUÍDO","Imagem recebida do serviço visual e exibida no aplicativo.");
+  activity("Imagem criada pelo AURION",prompt.slice(0,120));saveData();renderAll();
+ }catch(e){status.className="statusbox warn";status.textContent="Não foi possível gerar: "+e.message;setCoreActivity("ERRO",e.message);}
+ finally{button.disabled=false;button.textContent="✦ Gerar imagem";}
+}
+function downloadGeneratedImage(){
+ const image=$("generatedImage");if(!image||!image.src)return;
+ const a=document.createElement("a");a.href=image.src;a.download="aurion-imagem.png";document.body.appendChild(a);a.click();a.remove();
+}
+
 function renderAll(){
 $("memoryCount").textContent=data.memories.length;$("taskCount").textContent=data.tasks.filter(x=>!x.done).length;$("chatCount").textContent=data.messages.filter(x=>x.role==="user").length;
 $("memoryLabel").textContent=data.memories.length+" REGISTROS";$("taskLabel").textContent=data.tasks.filter(x=>!x.done).length+" ABERTAS";
@@ -504,6 +551,7 @@ pending.content=lines.join("\n");pending.at=stamp();lastAssistantText=pending.co
 }
 async function sendMessage(){
 const field=$("message"),msg=field.value.trim();if(!msg&&!pendingImageData)return;
+setCoreActivity("RECEBIDO","Pedido recebido. Identificando o recurso disponível.");
 field.value="";const imageData=pendingImageData;pendingImageData=null;$("attachPreview").textContent="";
 const displayText=msg||(imageData?"Analise a imagem anexada.":"");
 data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada]":""),at:stamp(),source:"text"});saveData();renderMessages();
@@ -558,9 +606,10 @@ if(activeMode==="research"){
  }catch(e){useLocationForNextResearch=false;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
  pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);return;
 }
+if(imageData&&!connected){const answer="A imagem foi selecionada, mas a análise visual exige um servidor conectado com modelo compatível. Ative a conexão nas Configurações. Nenhum conteúdo da imagem foi analisado.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();setCoreActivity("AGUARDANDO CONEXÃO",answer);return;}
 if(!connected){const answer="Nenhum servidor remoto está conectado. Para conversar sem configurar servidor, ative a IA local em Configurar. Pesquisa na internet e sincronização em nuvem continuam sendo recursos opcionais.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
 if(apiCaps&&activeMode==="chat"&&apiCaps.chat&&!apiCaps.chat.configured){const answer="O servidor está conectado, mas a chave do modelo ainda não foi configurada no servidor. A chave deve permanecer nas variáveis privadas da hospedagem, nunca no aplicativo.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
-const pending={role:"assistant",content:activeMode==="research"?"Pesquisando fontes na web…":activeMode==="think"?"Analisando objetivo e avaliando o plano…":"Consultando o modelo de IA…",at:stamp()};data.messages.push(pending);renderMessages();
+const pending={role:"assistant",content:activeMode==="research"?"Pesquisando fontes na web…":activeMode==="think"?"Analisando objetivo e avaliando o plano…":imageData?"Analisando a imagem com o modelo visual…":"Consultando o modelo de IA…",at:stamp()};data.messages.push(pending);renderMessages();setCoreActivity(imageData?"ANALISANDO IMAGEM":activeMode==="research"?"PESQUISANDO":activeMode==="think"?"PLANEJANDO":"CONSULTANDO IA",imageData?"Enviando a imagem ao modelo remoto compatível.":activeMode==="research"?"Consultando fontes públicas.":activeMode==="think"?"Gerando um plano estruturado.":"Aguardando resposta do modelo configurado.");
 try{
 let r;
 if(activeMode==="research"){
@@ -580,7 +629,7 @@ pending.content=r.answer||"O núcleo não retornou texto.";
 }
 pending.at=stamp();lastAssistantText=pending.content;
 }catch(e){pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;}
-saveData();renderMessages();if(autoSpeakEnabled)speakText(pending.content);
+saveData();renderMessages();setCoreActivity(pending.content.startsWith("Falha")?"ERRO":"CONCLUÍDO",pending.content.slice(0,220));if(autoSpeakEnabled)speakText(pending.content);
 }
 function exportData(){const blob=new Blob([JSON.stringify({version:2,exported_at:new Date().toISOString(),data},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aurion-dados-pessoais.json";a.click();URL.revokeObjectURL(a.href)}
 function importData(){$("importFile").click()}
