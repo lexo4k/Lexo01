@@ -59,7 +59,7 @@ class MainActivity : Activity() {
         window.navigationBarColor = Color.rgb(7, 17, 31)
         selectedModelId = getSharedPreferences("nexora_local", MODE_PRIVATE).getString("model_id", "qwen-0.5b")?.takeIf { modelProfiles.containsKey(it) } ?: "qwen-0.5b"
         buildUi()
-        web.addJavascriptInterface(NexoraBridge(), "NexoraNative")
+        web.addJavascriptInterface(LumenBridge(), "LumenNative")
         web.loadUrl("file:///android_asset/index.html")
     }
 
@@ -74,7 +74,7 @@ class MainActivity : Activity() {
             setPadding(14, 5, 14, 5)
         }
         val title = TextView(this).apply {
-            text = "NEXORA AI"
+            text = "LÚMEN AI"
             textSize = 17f
             setTextColor(Color.WHITE)
             letterSpacing = .12f
@@ -153,7 +153,7 @@ class MainActivity : Activity() {
     }
 
 
-    inner class NexoraBridge {
+    inner class LumenBridge {
         @JavascriptInterface fun modelOptions(): String = JSONObject().apply {
             put("selected", selectedModelId)
             put("models", org.json.JSONArray().apply {
@@ -202,7 +202,7 @@ class MainActivity : Activity() {
             if (capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true) {
                 downloadModel()
             } else {
-                notifyModel("waiting_network", "A NEXORA está pronta para preparar a IA local. O modelo ocupa cerca de 450 MB; o download começará automaticamente quando houver Wi-Fi, para não consumir seus dados móveis.")
+                notifyModel("waiting_network", "A LÚMEN está pronta para preparar a IA local. O modelo ocupa cerca de 450 MB; o download começará automaticamente quando houver Wi-Fi, para não consumir seus dados móveis.")
             }
         }
 
@@ -224,7 +224,7 @@ class MainActivity : Activity() {
                             connectTimeout = 30000
                             readTimeout = 60000
                             instanceFollowRedirects = true
-                            setRequestProperty("User-Agent", "NEXORA-AI-Android")
+                            setRequestProperty("User-Agent", "LUMEN-AI-Android")
                         }
                         try {
                             connection.connect()
@@ -275,7 +275,7 @@ class MainActivity : Activity() {
                     try {
                         val active = localModel ?: loadLocalModel()
                         val system = """
-                            Você é NEXORA, assistente de IA pessoal que funciona no próprio aparelho.
+                            Você é LÚMEN, assistente de IA pessoal que funciona no próprio aparelho.
                             REGRAS OBRIGATÓRIAS:
                             1. Responda à pergunta mais recente, não a uma pergunta antiga.
                             2. Use português brasileiro, salvo se a pessoa pedir outro idioma.
@@ -328,12 +328,12 @@ class MainActivity : Activity() {
     }
 
     private fun notifyModel(state: String, detail: String) {
-        val script = "window.onNexoraModelState && window.onNexoraModelState(${JSONObject.quote(state)},${JSONObject.quote(detail)})"
+        val script = "window.onLumenModelState && window.onLumenModelState(${JSONObject.quote(state)},${JSONObject.quote(detail)})"
         if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
     }
 
     private fun notifyAnswer(answer: String, failed: Boolean) {
-        val script = "window.onNexoraNativeAnswer && window.onNexoraNativeAnswer(${JSONObject.quote(answer)},$failed)"
+        val script = "window.onLumenNativeAnswer && window.onLumenNativeAnswer(${JSONObject.quote(answer)},$failed)"
         if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
     }
 
