@@ -6,11 +6,12 @@ import secrets
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import time
 from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
@@ -254,6 +255,8 @@ class ThinkIn(BaseModel):
 
 class ResearchIn(BaseModel):
     query: str = Field(min_length=2, max_length=2000)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 class CorrectionIn(BaseModel):
     error_signature: str = Field(min_length=4, max_length=500)
@@ -575,20 +578,34 @@ def conversations(limit: int = 100):
         ).fetchall()
         return [dict(row) for row in reversed(rows)]
 
-@app.post("/api/research/public", dependencies=[Depends(require_access)])
-async def research_public(item: ResearchIn):
-    """Pesquisa aberta sem chave de IA; entrega resultados e URLs, sem inventar síntese."""
+_public_research_windows: dict[str, list[float]] = {}
+
+@app.post("/api/research/public")
+async def research_public(item: ResearchIn, request: Request):
+    """Pesquisa pública sem chave de IA; limitada por IP e opcionalmente centrada no GPS informado."""
+    client_ip = request.client.host if request.client else "unknown"
+    current = time.monotonic()
+    recent = [stamp for stamp in _public_research_windows.get(client_ip, []) if current - stamp < 60]
+    if len(recent) >= 8:
+        raise HTTPException(429, "Limite temporário de pesquisa atingido. Aguarde um minuto e tente novamente.")
+    recent.append(current)
+    _public_research_windows[client_ip] = recent
+    if (item.latitude is None) != (item.longitude is None):
+        raise HTTPException(422, "Informe latitude e longitude juntas para pesquisa por localização.")
+    search_query = item.query
+    if item.latitude is not None and item.longitude is not None:
+        search_query += " near {:.5f}, {:.5f}".format(item.latitude, item.longitude)
     try:
-        sources = await search_web(item.query, limit=8)
+        sources = await search_web(search_query, limit=8)
     except Exception as exc:
         raise HTTPException(503, "Pesquisa pública temporariamente indisponível. Tente novamente mais tarde.") from exc
     with db() as con:
         stamp = now()
-        source_text = "\n".join(f'{x["title"]}: {x["url"]}\n{x["snippet"]}' for x in sources)
-        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('user',?,?)", (item.query, stamp))
-        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES('assistant',?,?)", ("Resultados da pesquisa pública:\n" + source_text, stamp))
-        con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Pesquisa pública concluída", item.query[:180], stamp))
-    return {"query": item.query, "answer": "Encontrei páginas relacionadas. Os títulos e trechos são fornecidos pelo mecanismo de busca e precisam ser conferidos nas fontes.", "sources": sources, "engine": "DuckDuckGo HTML", "web_search_used": True, "synthesis_by_own_model": False}
+        source_text = "\n".join("{}: {}\n{}".format(x.get("title", ""), x.get("url", ""), x.get("snippet", "")) for x in sources)
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES(?,?,?)", ("user", search_query, stamp))
+        con.execute("INSERT INTO conversation_messages(role,content,created_at) VALUES(?,?,?)", ("assistant", "Resultados da pesquisa pública:\n" + source_text, stamp))
+        con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)", ("Pesquisa pública concluída", search_query[:180], stamp))
+    return {"query": item.query, "search_query": search_query, "answer": "Encontrei páginas relacionadas. Os títulos e trechos são resultados de busca, não confirmação de funcionamento ou disponibilidade dos locais.", "sources": sources, "engine": "DuckDuckGo HTML", "web_search_used": True, "location_used": item.latitude is not None, "synthesis_by_own_model": False}
 
 @app.post("/api/research", dependencies=[Depends(require_access)])
 async def research_web(item: ResearchIn):
