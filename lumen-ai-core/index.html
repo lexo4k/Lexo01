@@ -188,6 +188,7 @@ window.onAurionVoiceResult=function(transcript,error){
  $("message").value=transcript;$("chatState").textContent="Fala convertida em texto. Enviando e guardando a transcrição…";sendMessage();
 };
 function startVoiceInput(){
+ if(window.AurionNative&&typeof window.AurionNative.startVoiceRecognition==="function"){window.AurionNative.startVoiceRecognition();return}
  const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
  if(!Speech){$("chatState").textContent="Reconhecimento de voz não disponível neste navegador.";return}
  const recognition=new Speech();recognition.lang="pt-BR";recognition.interimResults=false;recognition.maxAlternatives=1;
@@ -198,10 +199,9 @@ function startVoiceInput(){
  recognition.start();
 }
 function speakLastAnswer(){
- if(!("speechSynthesis" in window)||typeof SpeechSynthesisUtterance==="undefined"){$("chatState").textContent="Leitura em voz alta não disponível neste navegador.";return}
  const text=lastAssistantText||data.messages.filter(x=>x.role==="assistant").slice(-1)[0]?.content;
  if(!text){$("chatState").textContent="Ainda não há resposta para ler.";return}
- window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang="pt-BR";window.speechSynthesis.speak(utterance);
+ speakText(text);
 }
 function selectImage(event){
  const file=event.target.files&&event.target.files[0];if(!file)return;
