@@ -443,6 +443,22 @@ class MainActivity : Activity() {
             }
         }
 
+        @JavascriptInterface fun resumeAuthorizedModelSetup() {
+            runOnUiThread {
+                if (modelState() == "missing") {
+                    val authorized = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
+                        .getBoolean("model_download_authorized", false)
+                    if (authorized) {
+                        downloadModel()
+                    } else {
+                        notifyModel("missing", "O modelo local ainda não foi instalado. A autorização inicial só será solicitada quando você escolher ativar o núcleo; depois disso, o app retoma a preparação automaticamente.")
+                    }
+                } else {
+                    prepareLocalModel()
+                }
+            }
+        }
+
         @JavascriptInterface fun confirmModelDownload() {
             runOnUiThread {
                 if (modelState() != "missing") {
