@@ -95,7 +95,7 @@ class MainActivity : Activity() {
                     ?.filter { it.locale.language == "pt" }
                     ?.sortedWith(compareBy<android.speech.tts.Voice>(
                         { if (it.locale.country == "BR") 0 else 1 },
-                        { if (it.features.any { feature -> feature.equals("gender=male", ignoreCase = true) }) 0 else 1 },
+                        { if (it.features.any { feature -> feature.equals("gender=male", ignoreCase = true) } || it.name.contains("male", true) || it.name.contains("mascul", true) || it.name.contains("homem", true)) 0 else 1 },
                         { if (it.isNetworkConnectionRequired) 1 else 0 },
                         { -it.quality },
                         { it.latency }
@@ -103,8 +103,8 @@ class MainActivity : Activity() {
                     ?.firstOrNull()
                 if (preferredVoice != null) textToSpeech?.voice = preferredVoice
                 // Perfil de locução: calmo, firme e ligeiramente grave, sem imitar uma voz protegida.
-                textToSpeech?.setSpeechRate(0.88f)
-                textToSpeech?.setPitch(0.78f)
+                textToSpeech?.setSpeechRate(0.86f)
+                textToSpeech?.setPitch(0.72f)
                 ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA &&
                     languageStatus != TextToSpeech.LANG_NOT_SUPPORTED
                 textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -465,6 +465,31 @@ class MainActivity : Activity() {
                 } else {
                     prepareLocalModel()
                 }
+            }
+        }
+
+        @JavascriptInterface fun autoPrepareModelOnStartup() {
+            runOnUiThread {
+                if (modelState() != "missing") {
+                    prepareLocalModel()
+                    return@runOnUiThread
+                }
+                val prefs = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
+                if (prefs.getBoolean("model_download_authorized", false)) {
+                    downloadModel()
+                    return@runOnUiThread
+                }
+                if (prefs.getBoolean("model_setup_prompted", false)) return@runOnUiThread
+                prefs.edit().putBoolean("model_setup_prompted", true).apply()
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Preparar o AURION")
+                    .setMessage("Para responder sem depender da internet, o AURION precisa baixar uma vez o modelo local (aproximadamente 1,1 GB). Autorize agora para ele preparar o núcleo automaticamente. O download usa Wi-Fi e verifica o espaço disponível.")
+                    .setNegativeButton("Depois", null)
+                    .setPositiveButton("Autorizar uma vez") { _, _ ->
+                        prefs.edit().putBoolean("model_download_authorized", true).apply()
+                        downloadModel()
+                    }
+                    .show()
             }
         }
 
