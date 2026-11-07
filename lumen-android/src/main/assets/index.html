@@ -650,6 +650,11 @@ if(activeMode==="research"){
   const r=await api("/api/research/public",{method:"POST",body:JSON.stringify(payload)});
   pending.content=(r.answer||"Pesquisa concluída.")+(r.sources&&r.sources.length?"\n\nFONTES:\n"+r.sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url+(x.snippet?"\n"+x.snippet:"")).join("\n\n"):"\n\nO mecanismo não retornou links de fontes.")+(r.attribution?"\n\n"+r.attribution+" · "+r.attribution_url:"");
  }catch(e){useLocationForNextResearch=false;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
+ if(r&&Array.isArray(r.tools_used)&&r.tools_used.length){
+  const toolLabels={web_research:"pesquisa na web",search_memory:"busca na memória",save_memory:"registro de memória",create_task:"criação de tarefa",save_knowledge:"arquivo de conhecimento",complete_task:"conclusão de tarefa",list_tasks:"consulta de tarefas",get_overview:"consulta do painel"};
+  const used=[...new Set(r.tools_used)].map(name=>toolLabels[name]||name);
+  pending.content+="\\n\\nAções realizadas: "+used.join(", ")+".";
+ }
  pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();setCoreActivity(pending.content.startsWith("Não consegui")?"ERRO":"CONCLUÍDO",pending.content.slice(0,220));if(autoSpeakEnabled)speakText(pending.content);return;
 }
 if(imageData&&!connected){const answer="A imagem foi selecionada, mas a análise visual exige um servidor conectado com modelo compatível. Ative a conexão nas Configurações. Nenhum conteúdo da imagem foi analisado.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();setCoreActivity("AGUARDANDO CONEXÃO",answer);return;}
