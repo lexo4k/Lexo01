@@ -42,13 +42,33 @@ jobs:
       - name: Build NEXORA AI only
         run: gradle --no-daemon :lumen:assembleDebug
 
-      - name: Verify local inference runtime is packaged
+      - name: Verify APK contents
         run: |
-          APK="lumen-android/build/outputs/apk/debug/lumen-android-debug.apk"
-          test -f "$APK"
-          unzip -l "$APK" | grep -q "libllama_jni.so"
-          unzip -p "$APK" assets/index.html | grep -q "Baixar e ativar IA local"
-          unzip -p "$APK" assets/index.html | grep -q "sendLocalMessage"
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+
+          apk = Path("lumen-android/build/outputs/apk/debug/lumen-android-debug.apk")
+          if not apk.is_file():
+              raise SystemExit(f"APK não encontrado: {apk}")
+
+          with ZipFile(apk) as z:
+              names = z.namelist()
+              native = [n for n in names if n.endswith("/libllama_jni.so")]
+              if not native:
+                  raise SystemExit("Runtime nativo llama.cpp não encontrado no APK")
+              html_paths = [n for n in names if n.endswith("assets/index.html")]
+              if not html_paths:
+                  raise SystemExit("Interface assets/index.html não encontrada no APK")
+              html = z.read(html_paths[0]).decode("utf-8", errors="replace")
+              for marker in ("Baixar e ativar IA local", "sendLocalMessage", "downloadLocalModel"):
+                  if marker not in html:
+                      raise SystemExit(f"Recurso ausente no HTML empacotado: {marker}")
+              print("APK verificado:", apk.stat().st_size, "bytes")
+              print("Runtime nativo:", ", ".join(native))
+              print("Interface:", html_paths[0])
+              print("Ponte Android/JavaScript e botão de download encontrados.")
+          PY
 
       - name: Upload NEXORA AI APK
         uses: actions/upload-artifact@v4
