@@ -78,7 +78,7 @@ function loadConfig(){try{return JSON.parse(localStorage.getItem(CFG))||{url:"",
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
 function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
 function stamp(){return new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}
-function newId(){return window.crypto&&crypto.randomUUID?newId():("lumen-"+Date.now()+"-"+Math.random().toString(36).slice(2))}
+function newId(){return window.crypto&&crypto.randomUUID?crypto.randomUUID():("lumen-"+Date.now()+"-"+Math.random().toString(36).slice(2))}
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function activity(title,detail=""){data.activity.unshift({title,detail,at:stamp()});data.activity=data.activity.slice(0,30)}
 function renderAll(){
