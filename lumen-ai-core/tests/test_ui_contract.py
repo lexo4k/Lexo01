@@ -24,7 +24,7 @@ class UiContractTests(unittest.TestCase):
             'id="knowledge"',
             'id="settings"',
             '<section id="home" class="screen active">',
-            'Olá. Sou o LÚMEN.',
+            'Olá. Sou o NEXORA.',
             'function localCommand(msg)',
             'function loadConfig()',
             'saved.url==="https://lumen-ai-core.vercel.app"',
