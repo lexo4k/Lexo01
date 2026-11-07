@@ -127,7 +127,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 </main>
 <nav class="bottom"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="images" onclick="show('images')"><span>▧</span>Imagens</button><button data-screen="video" onclick="show('video')"><span>▶</span>Vídeos IA</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
 </div>
-<!-- AURION: pesquisa online com síntese no modelo do aparelho -->
+<!-- AURION: modo online com busca pública e síntese pelo modelo local -->
 <script>
 const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_server_config_v2";
 let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",liveConversationEnabled=false,pendingImageData=null,lastAssistantText="",syncingWorkspace=false,autoSpeakEnabled=localStorage.getItem("aurion_auto_speak_v1")!=="false",useLocationForNextResearch=false;
