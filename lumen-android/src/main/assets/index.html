@@ -143,7 +143,7 @@ $("recentList").innerHTML=data.activity.length?data.activity.slice(0,4).map(x=>'
 renderMessages();
 }
 function renderList(id,items,fn){$(id).innerHTML=items.length?items.slice().reverse().map(x=>'<div class="item">'+fn(x)+'</div>').join(""):'<div class="empty">Nada por aqui ainda.</div>'}
-function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o LÚMEN. Posso organizar suas tarefas, guardar memórias, pesquisar seus registros e montar planos iniciais mesmo sem internet. Para conversa inteligente aberta e pesquisa web, o servidor precisa de uma chave de IA configurada. Digite “ajuda” para ver os comandos disponíveis.</div>';return}el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
+function renderMessages(){const el=$("messages");if(!data.messages.length){el.innerHTML='<div class="msg ai">Olá. Sou o LÚMEN. Posso conversar com o modelo conectado, organizar tarefas, guardar memórias, pesquisar seus registros e montar planos. Quando o modelo não estiver disponível, uso os recursos locais e aviso claramente.</div>';return}el.innerHTML=data.messages.slice(-100).map(x=>'<div class="msg '+(x.role==="user"?"user":"ai")+'">'+escapeHtml(x.content)+'<small>'+escapeHtml(x.at||"")+'</small></div>').join("");el.scrollTop=el.scrollHeight}
 function saveMemory(){const content=$("memoryInput").value.trim();if(!content)return;data.memories.push({id:newId(),content,category:$("memoryCategory").value.trim()||"geral",at:stamp()});activity("Memória guardada",content.slice(0,80));$("memoryInput").value="";$("memoryCategory").value="";saveData();if(connected)syncWorkspace()}
 async function deleteMemory(id){const item=data.memories.find(x=>x.id===id);if(connected&&item&&item.cloudId){try{await api("/api/memories/"+item.cloudId,{method:"DELETE"})}catch(e){activity("Falha ao excluir memória na nuvem",e.message);saveData();return}}data.memories=data.memories.filter(x=>x.id!==id);saveData()}
 function saveTask(){const title=$("taskInput").value.trim();if(!title)return;data.tasks.push({id:newId(),title,details:$("taskDetails").value.trim(),done:false,at:stamp()});activity("Tarefa criada",title);$("taskInput").value="";$("taskDetails").value="";saveData();if(connected)syncWorkspace()}
@@ -152,21 +152,62 @@ async function deleteTask(id){const item=data.tasks.find(x=>x.id===id);if(connec
 function saveKnowledge(){const title=$("knowTitle").value.trim(),content=$("knowContent").value.trim();if(!title||!content)return;data.knowledge.push({id:newId(),title,content,source:$("knowSource").value.trim(),at:stamp()});activity("Conhecimento arquivado",title);$("knowTitle").value=$("knowContent").value=$("knowSource").value="";saveData();if(connected)syncWorkspace()}
 async function deleteKnowledge(id){const item=data.knowledge.find(x=>x.id===id);if(connected&&item&&item.cloudId){try{await api("/api/knowledge/"+item.cloudId,{method:"DELETE"})}catch(e){activity("Falha ao excluir conhecimento na nuvem",e.message);saveData();return}}data.knowledge=data.knowledge.filter(x=>x.id!==id);saveData()}
 function localCommand(msg){
-const q=msg.trim();
-let m=q.match(/^(?:criar|adicionar|nova)\s+tarefa\s*[:\-]\s*(.+)$/i);
-if(m){data.tasks.push({id:newId(),title:m[1].trim(),details:"Criada pela conversa local",done:false,at:stamp()});activity("Tarefa criada pela conversa",m[1]);saveData();return "Tarefa guardada neste aparelho: "+m[1].trim()}
-m=q.match(/^(?:guardar|salvar)\s+(?:memória|nota)\s*[:\-]\s*(.+)$/i);
-if(m){data.memories.push({id:newId(),content:m[1].trim(),category:"nota",at:stamp()});activity("Nota guardada pela conversa",m[1]);saveData();return "Anotação salva na memória local."}
-if(/^(?:ajuda|ajuda lumen|comandos|o que você faz\??)$/i.test(q))return "COMANDOS DISPONÍVEIS NO MODO LOCAL\n\n• criar tarefa: revisar o projeto\n• guardar nota: ideia importante\n• listar tarefas\n• listar memórias\n• buscar: palavra-chave\n• concluir tarefa: parte do título\n• resumo\n• planejar: objetivo\n\nMemórias, tarefas e arquivos ficam neste aparelho. Conversa aberta com IA e pesquisa em tempo real exigem o modelo conectado no servidor.";
-if(/^(?:resumo|resumo geral|painel)$/i.test(q))return "RESUMO DO LÚMEN\n\nMemórias: "+data.memories.length+"\nConhecimentos: "+data.knowledge.length+"\nTarefas abertas: "+data.tasks.filter(x=>!x.done).length+"\nTarefas concluídas: "+data.tasks.filter(x=>x.done).length+"\nMensagens guardadas: "+data.messages.filter(x=>x.role==="user").length+"\n\nOs dados locais permanecem neste aparelho.";
-m=q.match(/^(?:buscar|pesquisar|procurar)\s*[:\-]\s*(.+)$/i);
-if(m){const term=m[1].toLocaleLowerCase("pt-BR"),found=[...data.memories.map(x=>({kind:"Memória",title:x.category,body:x.content})),...data.knowledge.map(x=>({kind:"Conhecimento",title:x.title,body:x.content+" "+(x.source||"")})),...data.tasks.map(x=>({kind:"Tarefa",title:x.title,body:x.details}))].filter(x=>(x.title+" "+x.body).toLocaleLowerCase("pt-BR").includes(term));return found.length?"ENCONTREI "+found.length+" REGISTRO(S):\n\n"+found.slice(0,20).map((x,i)=>(i+1)+". "+x.kind+": "+x.title+"\n"+x.body.slice(0,240)).join("\n\n"):"Não encontrei esse termo nas memórias, conhecimentos ou tarefas locais."}
-m=q.match(/^(?:concluir|finalizar)\s+tarefa\s*[:\-]\s*(.+)$/i);
-if(m){const key=m[1].toLocaleLowerCase("pt-BR"),t=data.tasks.find(x=>!x.done&&x.title.toLocaleLowerCase("pt-BR").includes(key));if(!t)return "Não encontrei uma tarefa aberta com esse título.";t.done=true;activity("Tarefa concluída pela conversa",t.title);saveData();return "Tarefa concluída: "+t.title}
-m=q.match(/^(?:planejar|plano)\s*[:\-]\s*(.+)$/i);
-if(m){const goal=m[1].trim();const plan="PLANO INICIAL LOCAL\nObjetivo: "+goal+"\n\n1. Definir o resultado concreto e como medir a conclusão.\n2. Reunir os recursos, informações e limitações.\n3. Executar a menor primeira etapa verificável.\n4. Conferir o resultado e corrigir falhas.\n5. Registrar o que funcionou e definir o próximo passo.\n\nEste é um roteiro-base gerado sem modelo de IA; conecte o núcleo para análise contextual mais profunda.";data.knowledge.push({id:newId(),title:"Plano: "+goal,content:plan,source:"Planejamento local",at:stamp()});activity("Plano criado",goal);saveData();return plan+"\n\nO plano foi arquivado na base de conhecimento."}
-if(/^(?:listar|mostrar)\s+tarefas$/i.test(q)){const open=data.tasks.filter(x=>!x.done);return open.length?"TAREFAS ABERTAS:\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\n"):"Você não tem tarefas abertas."}
-if(/^(?:listar|mostrar)\s+memórias$/i.test(q)){return data.memories.length?"MEMÓRIAS:\n"+data.memories.map((x,i)=>(i+1)+". ["+x.category+"] "+x.content).join("\n"):"Ainda não há memórias salvas."}
+const original=msg.trim();
+const q=original.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLocaleLowerCase("pt-BR").replace(/[!?.,]+$/,"").trim();
+const addTask=(title)=>{
+  const clean=title.trim().replace(/^[:\\-\\s]+/,"");
+  if(!clean)return null;
+  data.tasks.push({id:newId(),title:clean,details:"Criada pela conversa local",done:false,at:stamp()});
+  activity("Tarefa criada pela conversa",clean);saveData();
+  return "Tarefa criada neste aparelho: "+clean;
+};
+const saveMemory=(content)=>{
+  const clean=content.trim().replace(/^[:\\-\\s]+/,"");
+  if(!clean)return null;
+  data.memories.push({id:newId(),content:clean,category:"nota",at:stamp()});
+  activity("Memoria guardada pela conversa",clean.slice(0,100));saveData();
+  return "Memoria guardada neste aparelho: "+clean;
+};
+let m=q.match(/^(?:por favor\\s+)?(?:crie|criar|adicione|adicionar|registre|registrar|coloque|colocar|anote|anotar)\\s+(?:uma?\\s+)?tarefa(?:\\s+(?:para|de|sobre))?\\s*[:\\-]?\\s+(.+)$/);
+if(!m)m=q.match(/^(?:nova tarefa)\\s*[:\\-]?\\s*(.+)$/);
+if(m)return addTask(m[1]);
+m=q.match(/^(?:guarde|guardar|salve|salvar|lembre|lembrar)(?:\\s+(?:na|em)\\s+memoria)?(?:\\s+que)?\\s*[:\\-]?\\s+(.+)$/);
+if(m)return saveMemory(m[1]);
+m=q.match(/^(?:arquive|arquivar|salve|salvar|registre|registrar)\\s+(?:este\\s+|essa\\s+|esta\\s+)?(?:conhecimento|nota|informacao)\\s*[:\\-]?\\s*(.+)$/);
+if(m){
+  const content=m[1].trim();
+  if(!content)return "Diga qual informacao devo arquivar.";
+  data.knowledge.push({id:newId(),title:content.slice(0,90),content,source:"Conversa local",at:stamp()});
+  activity("Conhecimento arquivado",content.slice(0,100));saveData();
+  return "Informacao arquivada na base de conhecimento local.";
+}
+if(/^(?:ajuda|ajuda lumen|comandos|o que voce faz|como usar)$/i.test(q))
+return "POSSO FAZER LOCALMENTE\\n\\n• Crie uma tarefa para revisar o projeto\\n• Lembre que prefiro respostas diretas\\n• Guarde na memoria: ideia importante\\n• Liste minhas tarefas\\n• Mostre minhas memorias\\n• Procure na memoria por palavra-chave\\n• Conclua a tarefa revisar o projeto\\n• Resuma meus registros\\n• Planeje: objetivo\\n\\nQuando o modelo de IA estiver conectado, suas mensagens seguem para ele em vez de ficarem presas a estes atalhos.";
+if(/^(?:resumo|resumo geral|painel|resuma meus registros|mostre meu resumo)$/i.test(q))
+return "RESUMO DO LUMEN\\n\\nMemorias: "+data.memories.length+"\\nConhecimentos: "+data.knowledge.length+"\\nTarefas abertas: "+data.tasks.filter(x=>!x.done).length+"\\nTarefas concluidas: "+data.tasks.filter(x=>x.done).length+"\\nMensagens guardadas: "+data.messages.filter(x=>x.role==="user").length+"\\n\\nOs dados locais permanecem neste aparelho.";
+if(/^(?:listar|mostre|mostrar|quais sao minhas|quais sao as)\\s+(?:minhas?\\s+)?tarefas$/i.test(q)){
+  const open=data.tasks.filter(x=>!x.done);
+  return open.length?"TAREFAS ABERTAS:\\n"+open.map((x,i)=>(i+1)+". "+x.title).join("\\n"):"Voce nao tem tarefas abertas.";
+}
+if(/^(?:listar|mostre|mostrar|minhas)\\s+memorias$/i.test(q))
+return data.memories.length?"MEMORIAS:\\n"+data.memories.map((x,i)=>(i+1)+". ["+x.category+"] "+x.content).join("\\n"):"Ainda nao ha memorias salvas.";
+m=q.match(/^(?:buscar|busque|procure|procurar|pesquisar|pesquise)\\s+(?:na\\s+)?(?:minha\\s+)?(?:memoria|memorias|conhecimento|registros)?\\s*(?:por|sobre|[:\\-])\\s*(.+)$/);
+if(m){
+  const term=m[1].trim(),found=[...data.memories.map(x=>({kind:"Memoria",title:x.category,body:x.content})),...data.knowledge.map(x=>({kind:"Conhecimento",title:x.title,body:x.content+" "+(x.source||"")})),...data.tasks.map(x=>({kind:"Tarefa",title:x.title,body:x.details}))].filter(x=>(x.title+" "+x.body).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLocaleLowerCase("pt-BR").includes(term));
+  return found.length?"ENCONTREI "+found.length+" REGISTRO(S):\\n\\n"+found.slice(0,20).map((x,i)=>(i+1)+". "+x.kind+": "+x.title+"\\n"+x.body.slice(0,240)).join("\\n\\n"):"Nao encontrei esse termo nos registros locais.";
+}
+m=q.match(/^(?:conclua|concluir|finalize|finalizar|marque como concluida)\\s+(?:a\\s+)?tarefa\\s*[:\\-]?\\s*(.+)$/);
+if(m){
+  const key=m[1].trim(),t=data.tasks.find(x=>!x.done&&x.title.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLocaleLowerCase("pt-BR").includes(key));
+  if(!t)return "Nao encontrei uma tarefa aberta com esse titulo.";
+  t.done=true;activity("Tarefa concluida pela conversa",t.title);saveData();return "Tarefa concluida: "+t.title;
+}
+m=q.match(/^(?:planeje|planejar|plano)\\s*[:\\-]?\\s*(.+)$/);
+if(m){
+  const goal=m[1].trim(),plan="PLANO INICIAL LOCAL\\nObjetivo: "+goal+"\\n\\n1. Definir o resultado concreto e como medir a conclusao.\\n2. Reunir recursos, informacoes e limitacoes.\\n3. Executar a menor primeira etapa verificavel.\\n4. Conferir o resultado e corrigir falhas.\\n5. Registrar o que funcionou e definir o proximo passo.\\n\\nEste roteiro foi criado localmente, sem fingir que houve consulta a um modelo remoto.";
+  data.knowledge.push({id:newId(),title:"Plano: "+goal,content:plan,source:"Planejamento local",at:stamp()});activity("Plano criado",goal);saveData();
+  return plan+"\\n\\nO plano foi arquivado na base de conhecimento.";
+}
 return null;
 }
 async function api(path,opts={}){const base=config.url.replace(/\/+$/,"");const headers={"Content-Type":"application/json",...(config.token?{"Authorization":"Bearer "+config.token}:{}) ,...(opts.headers||{})};const r=await fetch(base+path,{...opts,headers});const body=await r.json().catch(()=>({detail:"Resposta inválida do servidor"}));if(!r.ok)throw Error(body.detail||"Falha na comunicação com o servidor ("+r.status+")");return body}
@@ -218,7 +259,9 @@ const field=$("message"),msg=field.value.trim();if(!msg&&!pendingImageData)retur
 field.value="";const imageData=pendingImageData;pendingImageData=null;$("attachPreview").textContent="";
 const displayText=msg||(imageData?"Analise a imagem anexada.":"");
 data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada]":""),at:stamp()});renderMessages();
-const command=msg?localCommand(msg):null;
+// Só usa o agente local quando o modelo remoto não está realmente disponível.
+const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
+const command=(!modelReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();return}
 if(!connected){const answer="O servidor ainda não está autenticado neste aparelho. Abra Configurar e conecte o token privado. Os recursos locais continuam disponíveis, mas não vou simular uma resposta de IA.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
 if(apiCaps&&activeMode==="chat"&&apiCaps.chat&&!apiCaps.chat.configured){const answer="O servidor está conectado, mas a chave do modelo ainda não foi configurada no servidor. A chave deve permanecer nas variáveis privadas da hospedagem, nunca no aplicativo.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();return}
