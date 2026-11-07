@@ -219,15 +219,37 @@ def capabilities():
             "persistent_storage": {"implemented": True, "configured": bool(DATABASE_URL), "durability": "managed_postgresql" if DATABASE_URL else "depends_on_server_disk"}}
 
 @app.get("/api/health")
-def health():
-    return {"app": "LÚMEN AI CORE", "status": "online", "version": app.version,
-            "model_connected": False,
-            "model_key_configured": model_is_configured(),
-            "model_configured": model_is_configured(),
-            "model_connection_status": "configured_not_verified" if model_is_configured() else "missing_credentials",
-            "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
-            "web_research_key_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
-            "primary_experience": "chat", "storage_backend": "postgresql" if DATABASE_URL else "sqlite"}
+async def health():
+    own_url = os.getenv("NEXORA_MODEL_URL", "").strip().rstrip("/")
+    if own_url and not own_url.startswith(("http://", "https://")):
+        own_url = "https://" + own_url
+    own_ready = False
+    own_status = "not_configured"
+    if own_url:
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                response = await client.get(own_url + "/health")
+                response.raise_for_status()
+                model_health = response.json()
+                own_ready = model_health.get("status") == "ready" and model_health.get("own_weights") is True
+                own_status = "ready" if own_ready else "checkpoint_missing_or_invalid"
+        except Exception:
+            own_status = "unreachable"
+    provider_configured = model_is_configured()
+    return {
+        "app": "NEXORA AI",
+        "status": "online",
+        "version": app.version,
+        "model_connected": own_ready,
+        "own_model_configured": bool(own_url),
+        "own_model_status": own_status,
+        "external_provider_configured": provider_configured,
+        "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
+        "public_web_research_available": True,
+        "storage_backend": "postgresql" if DATABASE_URL else ("sqlite_persistent_disk" if str(DB_PATH).startswith("/var/data/") else "sqlite_ephemeral"),
+        "database_path_configured": str(DB_PATH),
+        "primary_experience": "own_model" if own_ready else "own_model_pending"
+    }
 
 @app.get("/api/overview", dependencies=[Depends(require_access)])
 def overview():
