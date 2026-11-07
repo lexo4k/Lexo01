@@ -106,7 +106,7 @@ const $=id=>document.getElementById(id),KEY="lumen_device_data_v2",CFG="lumen_se
 let data=loadData(),config=loadConfig(),connected=false,apiCaps=null,activeMode="chat",pendingImageData=null,lastAssistantText="",syncingWorkspace=false,autoSpeakEnabled=localStorage.getItem("aurion_auto_speak_v1")!=="false",useLocationForNextResearch=false;
 function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}catch{return{memories:[],tasks:[],knowledge:[],messages:[],activity:[]}}}
 function wormholeTerms(value){
- return String(value||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().match(/[a-z0-9]+/g)||[];
+ return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().match(/[a-z0-9]+/g)||[];
 }
 function wormholeRetrieve(records,query,limit,maxChars){
  const terms=[...new Set(wormholeTerms(query).filter(x=>x.length>1))];
@@ -114,7 +114,7 @@ function wormholeRetrieve(records,query,limit,maxChars){
  const seen=new Set(),ranked=[];
  records.forEach((record,index)=>{
   const content=String(record.content||"");
-  const key=content.trim().replace(/\\s+/g," ").toLowerCase();
+  const key=content.trim().replace(/\s+/g," ").toLowerCase();
   if(!content.trim()||seen.has(key))return;
   seen.add(key);
   const words=new Set(wormholeTerms((record.title||"")+" "+content));
@@ -257,7 +257,7 @@ function renderMessages(){
  const start=Math.max(0,data.messages.length-100);
  el.innerHTML=data.messages.slice(start).map((x,j)=>{
   const i=start+j;
-  const safe=escapeHtml(x.content).replace(/(https:\/\/[^\\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  const safe=escapeHtml(x.content).replace(/(https:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
   const feedback=x.role==="assistant"&&!x.pendingLocal?'<div class="feedback">Esta resposta ajudou? <button class="btn" onclick="rateExperience('+i+',5)">👍 Sim</button> <button class="btn" onclick="rateExperience('+i+',2)">👎 Não</button></div>':"";
   return '<div class="msg '+(x.role==="user"?"user":"ai")+'">'+safe+'<small>'+escapeHtml(x.at||"")+'</small>'+feedback+'</div>';
  }).join("");
