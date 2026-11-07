@@ -238,7 +238,32 @@ const saveMemory=(content)=>{
   activity("Memoria guardada pela conversa",clean.slice(0,100));saveData();
   return "Memoria guardada neste aparelho: "+clean;
 };
-// Executor local de tarefas compostas: transforma um pedido simples em várias ações verificáveis.
+// Agente local por etapas: decompõe um objetivo e registra ações locais verificáveis, sem fingir acesso externo.
+ m=q.match(/^(?:planeje e prepare a execucao de|prepare um plano para|estruture a execucao de)\s+(.+)$/);
+ if(m){
+   const goal=m[1].trim();
+   if(!goal)return "Diga qual objetivo devo preparar.";
+   const steps=[
+     "Definir o resultado esperado e como verificar a conclusão",
+     "Reunir informações, arquivos e recursos já disponíveis no aparelho",
+     "Executar a primeira etapa que possa ser feita com as ferramentas locais",
+     "Conferir o resultado e registrar erros ou pendências",
+     "Atualizar o plano com o próximo passo verificável"
+   ];
+   const created=steps.map((step,i)=>{const title=(i+1)+". "+step+" · "+goal;data.tasks.push({id:newId(),title,details:"Etapa de plano local AURION. Não executa ações externas automaticamente.",done:false,at:stamp()});return title;});
+   data.knowledge.push({id:newId(),title:"Plano de execução local: "+goal,content:created.join("\n"),source:"Agente local AURION",at:stamp()});
+   activity("Agente local preparou plano",goal);saveData();
+   return "PLANO PREPARADO NO APARELHO\nObjetivo: "+goal+"\n\n"+created.join("\n")+"\n\nAs etapas foram registradas e estão prontas para acompanhamento. Só considero uma etapa concluída depois de uma ação local verificável.";
+ }
+ m=q.match(/^(?:execute|executar|faca|fazer|realize|realizar)\s+localmente\s*[:\-]?\s*(.+)$/);
+ if(m){
+   const items=m[1].split(/\s*(?:,|;)\s*/).map(x=>x.trim()).filter(Boolean).slice(0,8);
+   if(!items.length)return "Diga quais ações locais devo registrar.";
+   for(const title of items)data.tasks.push({id:newId(),title,details:"Ação solicitada para acompanhamento pelo executor local AURION",done:false,at:stamp()});
+   activity("Agente local registrou ações",items.length+" ação(ões)");saveData();
+   return "AÇÕES REGISTRADAS LOCALMENTE\n"+items.map((x,i)=>(i+1)+". "+x).join("\n")+"\n\nCriei "+items.length+" tarefa(s) no aparelho. Isso não executa ações fora do AURION nem acessa a internet.";
+ }
+ // Executor local de tarefas compostas: transforma um pedido simples em várias ações verificáveis.
 m=q.match(/^(?:organize|organizar|prepare|preparar|crie|criar|monte|montar)\s+(?:minhas?\s+)?tarefas\s+(?:para|de|sobre|com)\s+(.+)$/);
 if(m){
   const items=m[1].split(/\s*(?:,|;|\be\b)\s*/).map(x=>x.trim()).filter(Boolean).slice(0,8);
@@ -272,7 +297,7 @@ if(m){
   return "Informacao arquivada na base de conhecimento local.";
 }
 if(/^(?:ajuda|ajuda nexora|comandos|o que voce faz|como usar)$/i.test(q))
-return "POSSO FAZER LOCALMENTE\n\n• Crie uma tarefa para revisar o projeto\n• Lembre que prefiro respostas diretas\n• Guarde na memoria: ideia importante\n• Liste minhas tarefas\n• Mostre minhas memorias\n• Procure na memoria por palavra-chave\n• Conclua a tarefa revisar o projeto\n• Resuma meus registros\n• Planeje: objetivo\n\nQuando o modelo de IA estiver conectado, suas mensagens seguem para ele em vez de ficarem presas a estes atalhos.";
+return "POSSO FAZER LOCALMENTE\n\n• Crie uma tarefa para revisar o projeto\n• Lembre que prefiro respostas diretas\n• Guarde na memoria: ideia importante\n• Liste minhas tarefas\n• Mostre minhas memorias\n• Procure na memoria por palavra-chave\n• Conclua a tarefa revisar o projeto\n• Resuma meus registros\n• Planeje: objetivo\n• Planeje e prepare a execução de um projeto\n• Execute localmente: revisar tarefas, organizar anotações\n\nO agente local organiza dados e tarefas do AURION sem rede. Ele não acessa sites nem controla outros aplicativos sem conexão ou integração específica.";
 if(/^(?:resumo|resumo geral|painel|resuma meus registros|mostre meu resumo)$/i.test(q))
 return "RESUMO DA AURION\n\nMemorias: "+data.memories.length+"\nConhecimentos: "+data.knowledge.length+"\nTarefas abertas: "+data.tasks.filter(x=>!x.done).length+"\nTarefas concluidas: "+data.tasks.filter(x=>x.done).length+"\nMensagens guardadas: "+data.messages.filter(x=>x.role==="user").length+"\n\nOs dados locais permanecem neste aparelho.";
 if(/^(?:listar|mostre|mostrar|quais sao minhas|quais sao as)\s+(?:minhas?\s+)?tarefas$/i.test(q)){
