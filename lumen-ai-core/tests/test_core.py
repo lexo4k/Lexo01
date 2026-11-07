@@ -264,7 +264,17 @@ class CoreTests(unittest.TestCase):
         self.assertIn("web_research", response.json())
         self.assertTrue(response.json()["agent_tools"]["implemented"])
         self.assertIn("save_knowledge", response.json()["agent_tools"]["available_tools"])
+        self.assertIn("web_research", response.json()["agent_tools"]["available_tools"])
+        self.assertIn("get_capabilities", response.json()["agent_tools"]["available_tools"])
         self.assertFalse(response.json()["ads"]["implemented"])
+
+    def test_agent_capabilities_tool_reports_features_without_secrets(self):
+        result = execute_agent_tool("get_capabilities", {})
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["web_research"])
+        self.assertTrue(result["persistent_memory"])
+        self.assertNotIn("api_key", result)
+
 
     def test_image_mime_is_validated(self):
         response = self.client.post("/api/chat", headers=self.headers,
