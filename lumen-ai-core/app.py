@@ -352,6 +352,7 @@ async def health():
         "own_model_configured": bool(own_url),
         "own_model_status": own_status,
         "external_provider_configured": provider_configured,
+        "model_key_configured": provider_configured,
         "provider_gateway_models": sum(len(p["models"]) for p in provider_registry().values()),
         "correction_memory": "enabled",
         "access_configured": bool(os.getenv("LUMEN_ACCESS_TOKEN")),
