@@ -161,6 +161,32 @@ function setMode(mode){
  $("thinkMode").classList.toggle("selected",mode==="think");
  $("modeLabel").textContent=mode==="research"?"PESQUISA NA WEB":mode==="think"?"PLANEJAMENTO COGNITIVO":"MODO CONVERSA";
 }
+function toggleAutoSpeak(){
+ autoSpeakEnabled=!autoSpeakEnabled;localStorage.setItem("aurion_auto_speak_v1",String(autoSpeakEnabled));
+ const b=$("autoSpeakButton");if(b)b.textContent=autoSpeakEnabled?"🔊 Voz automática: ligada":"🔇 Voz automática: desligada";
+ $("chatState").textContent=autoSpeakEnabled?"As próximas respostas serão lidas em voz alta.":"Leitura automática desativada.";
+}
+function speakText(text){
+ const clean=String(text||"").trim();if(!clean)return;
+ if(window.AurionNative&&typeof window.AurionNative.speakText==="function"){window.AurionNative.speakText(clean);return}
+ if("speechSynthesis"in window&&typeof SpeechSynthesisUtterance!=="undefined"){window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(clean);utterance.lang="pt-BR";window.speechSynthesis.speak(utterance)}
+}
+function requestLocationForResearch(){
+ if(!window.AurionNative||typeof window.AurionNative.requestCurrentLocation!=="function"){$("chatState").textContent="A localização GPS está disponível no APK Android.";return}
+ $("chatState").textContent="Solicitando localização precisa para pesquisar lugares próximos…";window.AurionNative.requestCurrentLocation();
+}
+window.onAurionLocation=function(latitude,longitude,accuracy,error){
+ if(error){$("chatState").textContent=error;return}
+ data.lastLocation={latitude:Number(latitude),longitude:Number(longitude),accuracy:Number(accuracy),at:stamp()};
+ useLocationForNextResearch=true;activity("Localização GPS obtida para pesquisa",Number(latitude).toFixed(5)+", "+Number(longitude).toFixed(5));saveData();
+ setMode("research");if(!$("message").value.trim())$("message").value="Pesquise lugares próximos";
+ $("chatState").textContent="GPS obtido. Escreva o que procura e envie. As coordenadas serão usadas somente nesta pesquisa.";$("message").focus();
+};
+window.onAurionSpeechStatus=function(message){$("chatState").textContent=message};
+window.onAurionVoiceResult=function(transcript,error){
+ if(error){$("chatState").textContent=error;return}
+ $("message").value=transcript;$("chatState").textContent="Fala convertida em texto. Enviando e guardando a transcrição…";sendMessage();
+};
 function startVoiceInput(){
  const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
  if(!Speech){$("chatState").textContent="Reconhecimento de voz não disponível neste navegador.";return}
