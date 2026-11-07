@@ -104,10 +104,11 @@ def select_relevant(
 
 def storage_metrics(texts: Iterable[str]) -> dict[str, Any]:
     """Mede tamanho original e tamanho comprimido, sem descartar a fonte."""
-    joined = "\n".join(texts)
+    items = list(texts)
+    joined = "\n".join(items)
     packed = compress_text(joined)
     return {
-        "records": len(list(texts)) if not isinstance(texts, list) else len(texts),
+        "records": len(items),
         "original_bytes": packed["original_bytes"],
         "compressed_bytes": packed["compressed_bytes"],
         "ratio": packed["ratio"],
