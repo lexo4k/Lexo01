@@ -62,6 +62,14 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("Pendentes primeiro", html)
         self.assertIn("tarefas concluidas", html)
 
+    def test_offline_agent_prepares_multistep_plans_and_local_actions(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("planeje e prepare a execucao de", html)
+        self.assertIn("Agente local preparou plano", html)
+        self.assertIn("execute|executar|faca|fazer|realize|realizar", html)
+        self.assertIn("Não executa ações externas automaticamente", html)
+        self.assertIn("não acessa sites", html)
+
     def test_on_device_model_has_priority_and_receives_local_context(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn("const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()===" + '"ready"' + "||localModelState()===" + '"downloaded"' + "))", html)
