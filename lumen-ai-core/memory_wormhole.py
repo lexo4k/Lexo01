@@ -78,7 +78,7 @@ def select_relevant(
         content = str(record.get("content") or "")
         title = str(record.get("title") or "")
         combined = title + " " + content
-        key = fingerprint(combined)
+        key = fingerprint(content)
         if not content.strip() or key in seen:
             continue
         seen.add(key)
