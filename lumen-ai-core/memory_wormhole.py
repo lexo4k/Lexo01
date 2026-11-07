@@ -45,9 +45,14 @@ def decompress_text(payload: dict[str, Any]) -> str:
     if not isinstance(encoded, str) or len(encoded) > 20_000_000:
         raise ValueError("Pacote de memória inválido ou grande demais.")
     try:
-        raw = zlib.decompress(base64.b64decode(encoded, validate=True), bufsize=64 * 1024)
-        if len(raw) > 50_000_000:
+        packed = base64.b64decode(encoded, validate=True)
+        decoder = zlib.decompressobj()
+        raw = decoder.decompress(packed, 50_000_001)
+        if len(raw) > 50_000_000 or decoder.unconsumed_tail:
             raise ValueError("Memória descompactada excede o limite.")
+        raw += decoder.flush()
+        if len(raw) > 50_000_000 or not decoder.eof:
+            raise ValueError("Pacote de memória incompleto ou grande demais.")
         return raw.decode("utf-8")
     except (ValueError, zlib.error, UnicodeDecodeError) as exc:
         raise ValueError("Não foi possível restaurar a memória.") from exc
@@ -85,7 +90,7 @@ def select_relevant(
         density = overlap / max(1, len(terms))
         score = coverage * 0.75 + density * 0.25
         ranked.append((score, index, record))
-    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    ranked.sort(key=lambda item: (-item[0], item[1]))
     selected: list[dict[str, Any]] = []
     used = 0
     for score, _, record in ranked:
