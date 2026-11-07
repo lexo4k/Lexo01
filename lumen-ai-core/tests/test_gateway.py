@@ -89,5 +89,34 @@ class NEXORAGatewayTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 501)
 
 
+    def test_main_chat_uses_default_provider_from_catalog(self):
+        env = {
+            "AURION_PROVIDERS": (
+                '{"alpha":{"base_url":"https://provider.example/v1",'
+                '"api_key_env":"TEST_PROVIDER_KEY","models":["model-a"]}}'
+            ),
+            "TEST_PROVIDER_KEY": "test-secret",
+            "AURION_DEFAULT_PROVIDER": "alpha",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            config = app.model_config()
+            self.assertEqual(config["base_url"], "https://provider.example/v1")
+            self.assertEqual(config["model"], "model-a")
+            self.assertEqual(config["api_key"], "test-secret")
+            self.assertTrue(app.model_is_configured())
+
+    def test_main_chat_detects_provider_key_from_custom_env_name(self):
+        env = {
+            "AURION_PROVIDERS": (
+                '{"custom":{"base_url":"https://provider.example/v1",'
+                '"api_key_env":"MY_PRIVATE_KEY","models":["model-z"]}}'
+            ),
+            "MY_PRIVATE_KEY": "secret-value",
+            "AURION_DEFAULT_PROVIDER": "custom",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            self.assertTrue(app.model_is_configured())
+
+
 if __name__ == "__main__":
     unittest.main()
