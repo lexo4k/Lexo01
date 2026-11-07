@@ -656,7 +656,7 @@ data.messages.push({role:"user",content:displayText+(imageData?" [imagem anexada
 if(!imageData&&/^(?:nexora[, ]+)?ativar mente completa[.! ]*$/i.test(msg)){activateFullMind(true);return;}
 // Prioridade local: a conversa principal usa o modelo no aparelho, sem API comercial.
 const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
-const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()==="ready"||localModelState()==="downloaded"));
+const nativeLocalReady=Boolean(window.AurionNative&&(localModelState()==="ready"||localModelState()==="downloaded"||(typeof window.AurionNative.canRunLocalModel==="function"&&window.AurionNative.canRunLocalModel())));
 // No modo offline, execute ferramentas locais antes de consultar o modelo do aparelho.
 const command=(!modelReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();setCoreActivity("CONCLUÍDO","Comando local atendido pelo recurso disponível no aparelho.");if(autoSpeakEnabled)speakText(command);return}
@@ -736,7 +736,7 @@ if(r.verification){pending.content+="\\nVerificação das ferramentas: "+(r.veri
 pending.at=stamp();lastAssistantText=pending.content;
 }catch(e){
  const localState=localModelState();
- const canFallback=!imageData&&activeMode==="chat"&&window.AurionNative&&["ready","downloaded"].includes(localState);
+ const canFallback=!imageData&&activeMode==="chat"&&window.AurionNative&&(["ready","downloaded"].includes(localState)||(typeof window.AurionNative.canRunLocalModel==="function"&&window.AurionNative.canRunLocalModel()));
  if(canFallback){
   pending.content="O núcleo remoto falhou. Estou continuando com o modelo local deste aparelho…";
   pending.pendingLocal=true;
