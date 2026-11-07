@@ -312,7 +312,7 @@ async def capabilities():
     chat_ready = own_ready or external_ready
     persistent = bool(DATABASE_URL) or str(DB_PATH).startswith("/var/data/")
     return {
-        "chat": {"implemented": True, "configured": chat_ready, "engine": "nexora-own-model" if own_ready else ("external" if external_ready else "offline")},
+        "chat": {"implemented": True, "configured": chat_ready, "engine": "aurion-own-model" if own_ready else ("external" if external_ready else "offline")},
         "web_research": {"implemented": True, "configured": True, "engine": "public_search"},
         "memory": {"implemented": True, "configured": True},
         "correction_memory": {"implemented": True, "configured": True, "automatic_code_changes": False, "verified_solution_reuse": True},
@@ -348,7 +348,7 @@ async def health():
         "app": "AURION AI",
         "status": "online",
         "version": app.version,
-        "model_connected": own_ready,
+        "model_connected": own_ready or provider_configured,
         "own_model_configured": bool(own_url),
         "own_model_status": own_status,
         "external_provider_configured": provider_configured,
@@ -359,7 +359,7 @@ async def health():
         "public_web_research_available": True,
         "storage_backend": "postgresql" if DATABASE_URL else ("sqlite_persistent_disk" if str(DB_PATH).startswith("/var/data/") else "sqlite_ephemeral"),
         "database_path_configured": str(DB_PATH),
-        "primary_experience": "own_model" if own_ready else "own_model_pending"
+        "primary_experience": "own_model" if own_ready else ("external_provider" if provider_configured else "offline_local")
     }
 
 @app.get("/api/overview", dependencies=[Depends(require_access)])
