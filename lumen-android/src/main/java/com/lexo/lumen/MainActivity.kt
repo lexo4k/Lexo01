@@ -83,13 +83,15 @@ class MainActivity : Activity() {
         textToSpeech = TextToSpeech(applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 val languageStatus = textToSpeech?.setLanguage(Locale("pt", "BR")) ?: TextToSpeech.LANG_MISSING_DATA
-                val offlineVoice = textToSpeech?.voices
-                    ?.filter { it.locale.language == "pt" && !it.isNetworkConnectionRequired }
-                    ?.maxByOrNull { if (it.locale.country == "BR") 1 else 0 }
-                if (offlineVoice != null) textToSpeech?.voice = offlineVoice
+                val preferredVoice = textToSpeech?.voices
+                    ?.filter { it.locale.language == "pt" }
+                    ?.sortedBy { if (it.locale.country == "BR") 0 else 1 }
+                    ?.firstOrNull()
+                if (preferredVoice != null) textToSpeech?.voice = preferredVoice
                 ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA &&
-                    languageStatus != TextToSpeech.LANG_NOT_SUPPORTED && offlineVoice != null
-                notifySpeechStatus(if (ttsReady) "Voz em português offline pronta no aparelho." else "Instale uma voz pt-BR que funcione sem internet nas configurações de fala do Android.")
+                    languageStatus != TextToSpeech.LANG_NOT_SUPPORTED
+                val voiceMode = if (preferredVoice != null && !preferredVoice.isNetworkConnectionRequired) "offline" else "com serviço de voz do Android"
+                notifySpeechStatus(if (ttsReady) "Voz pt-BR pronta ($voiceMode)." else "O Android não disponibilizou voz em português. Instale uma voz pt-BR nas configurações de fala.")
             } else {
                 ttsReady = false
                 notifySpeechStatus("O mecanismo de voz do Android não está disponível.")
@@ -357,21 +359,25 @@ class MainActivity : Activity() {
         }
 
         fun startVoiceRecognitionNow() {
-            if (Build.VERSION.SDK_INT < 31 || !SpeechRecognizer.isOnDeviceRecognitionAvailable(this@MainActivity)) {
-                notifyVoiceResult("", "Reconhecimento de voz totalmente offline não está disponível neste aparelho. Verifique se o serviço e o pacote de português offline estão instalados.")
-                return
-            }
             try {
                 speechRecognizer?.cancel()
                 speechRecognizer?.destroy()
-                speechRecognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(this@MainActivity).apply {
+                val offlineAvailable = Build.VERSION.SDK_INT >= 31 &&
+                    SpeechRecognizer.isOnDeviceRecognitionAvailable(this@MainActivity)
+                speechRecognizer = if (offlineAvailable) {
+                    SpeechRecognizer.createOnDeviceSpeechRecognizer(this@MainActivity)
+                } else {
+                    SpeechRecognizer.createSpeechRecognizer(this@MainActivity)
+                }.apply {
                     setRecognitionListener(object : RecognitionListener {
-                        override fun onReadyForSpeech(params: Bundle?) { notifySpeechStatus("Microfone ativo. AURION está ouvindo somente esta solicitação.") }
+                        override fun onReadyForSpeech(params: Bundle?) {
+                            notifySpeechStatus(if (offlineAvailable) "Microfone ativo. Reconhecimento offline ligado." else "Microfone ativo. O serviço de reconhecimento do Android pode usar internet.")
+                        }
                         override fun onBeginningOfSpeech() {}
                         override fun onRmsChanged(rmsdB: Float) {}
                         override fun onBufferReceived(buffer: ByteArray?) {}
-                        override fun onEndOfSpeech() { notifySpeechStatus("Áudio recebido. Convertendo fala em texto no aparelho…") }
-                        override fun onError(error: Int) { notifyVoiceResult("", "Não foi possível reconhecer a fala offline (código " + error + ").") }
+                        override fun onEndOfSpeech() { notifySpeechStatus("Áudio recebido. Convertendo fala em texto…") }
+                        override fun onError(error: Int) { notifyVoiceResult("", "O reconhecimento de voz falhou (código " + error + "). Confira o serviço de voz e a conexão, se necessária.") }
                         override fun onResults(results: Bundle?) {
                             val transcript = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
                             if (transcript.isBlank()) notifyVoiceResult("", "Não consegui entender a fala. Tente novamente.")
@@ -385,13 +391,13 @@ class MainActivity : Activity() {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
-                    putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                    putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, offlineAvailable)
                     putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
                     putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                 }
                 speechRecognizer?.startListening(intent)
             } catch (e: Exception) {
-                notifyVoiceResult("", "Falha ao iniciar reconhecimento offline: " + (e.message ?: "serviço indisponível"))
+                notifyVoiceResult("", "Falha ao iniciar reconhecimento de voz: " + (e.message ?: "serviço indisponível"))
             }
         }
 
