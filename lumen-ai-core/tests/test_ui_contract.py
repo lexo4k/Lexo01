@@ -14,6 +14,28 @@ class UiContractTests(unittest.TestCase):
         android = (ROOT.parent / "lumen-android" / "src" / "main" / "assets" / "index.html").read_text(encoding="utf-8")
         self.assertEqual(web, android)
 
+    def test_android_model_is_loaded_on_start_and_download_is_wifi_only_and_resumable(self):
+        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn("window.AurionNative.prepareLocalModel()", activity)
+        self.assertIn("Download bloqueado para proteger seus dados móveis", activity)
+        self.assertIn('setRequestProperty("Range", "bytes="', activity)
+        start = activity.index("@JavascriptInterface fun prepareLocalModel()")
+        end = activity.index("@JavascriptInterface fun downloadModel()", start)
+        self.assertNotIn("downloadModel()", activity[start:end])
+
+    def test_native_offline_voice_gps_and_automatic_speech_are_wired(self):
+        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+        manifest = (ROOT.parent / "lumen-android" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("createOnDeviceSpeechRecognizer", activity)
+        self.assertIn("TextToSpeech", activity)
+        self.assertIn("requestCurrentLocation", activity)
+        self.assertIn("ACCESS_FINE_LOCATION", manifest)
+        self.assertIn("toggleAutoSpeak", html)
+        self.assertIn("onAurionVoiceResult", html)
+        self.assertIn("requestLocationForResearch", html)
+        self.assertIn("source:\"text\"", html)
+
     def test_offline_workspace_and_local_commands_are_present(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         for marker in (
