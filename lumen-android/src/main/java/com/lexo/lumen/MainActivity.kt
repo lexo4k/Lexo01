@@ -155,6 +155,10 @@ class MainActivity : Activity() {
 
         @JavascriptInterface fun downloadModel() {
             if (modelBusy || localModel != null) return
+            if (modelFile.exists() && modelFile.length() > 300_000_000L) {
+                localScope.launch { try { loadLocalModel() } catch (_: Exception) { } }
+                return
+            }
             modelBusy = true
             notifyModel("downloading", "Baixando o modelo local (aprox. 470 MiB). Mantenha o app aberto e use Wi-Fi.")
             localScope.launch {
