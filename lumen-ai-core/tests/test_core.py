@@ -14,6 +14,39 @@ class CoreTests(unittest.TestCase):
         self.client = TestClient(app)
         self.headers = {"Authorization": "Bearer test-token"}
 
+    def test_model_config_accepts_generic_provider_credentials(self):
+        from app import model_config
+        with mock.patch.dict(os.environ, {
+            "LUMEN_MODEL_API_KEY": "generic-test-key",
+            "LUMEN_MODEL_BASE_URL": "https://example.test/v1",
+            "LUMEN_MODEL_NAME": "test-chat-model",
+            "OPENAI_API_KEY": "",
+            "OPENAI_BASE_URL": "",
+            "OPENAI_MODEL": "",
+            "OPENROUTER_API_KEY": "",
+            "GROQ_API_KEY": "",
+            "TOGETHER_API_KEY": "",
+        }, clear=False):
+            config = model_config()
+        self.assertEqual(config["api_key"], "generic-test-key")
+        self.assertEqual(config["base_url"], "https://example.test/v1")
+        self.assertEqual(config["model"], "test-chat-model")
+
+    def test_model_config_auto_detects_openrouter(self):
+        from app import model_config
+        with mock.patch.dict(os.environ, {
+            "LUMEN_MODEL_API_KEY": "",
+            "LUMEN_MODEL_BASE_URL": "",
+            "OPENAI_API_KEY": "",
+            "OPENAI_BASE_URL": "",
+            "OPENROUTER_API_KEY": "router-test-key",
+            "GROQ_API_KEY": "",
+            "TOGETHER_API_KEY": "",
+        }, clear=False):
+            config = model_config()
+        self.assertEqual(config["api_key"], "router-test-key")
+        self.assertEqual(config["base_url"], "https://openrouter.ai/api/v1")
+
     def test_health_is_public(self):
         response = self.client.get("/api/health")
         self.assertEqual(response.status_code, 200)
