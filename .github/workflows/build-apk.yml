@@ -51,10 +51,10 @@ jobs:
         if: always()
         run: find . -type f -path "*/build/outputs/apk/*/*.apk" -print
 
-      - name: Upload LÚMEN AI APK
+      - name: Upload NEXORA AI APK
         uses: actions/upload-artifact@v4
         with:
-          name: Lumen-AI-debug
+          name: NEXORA-AI-debug
           path: lumen-android/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
