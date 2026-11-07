@@ -32,7 +32,7 @@ jobs:
           python train.py --data corpus --out artifacts/lumen-1-smoke.pt --steps 50 --batch 2 --context 64 --width 64 --layers 2 --heads 4
       - name: Evaluate trained checkpoint
         working-directory: lumen-model
-        run: python evaluate.py artifacts/lumen-1-smoke.pt
+        run: python evaluate.py artifacts/lumen-1-smoke.pt --data evaluation/heldout-pt-br.txt
       - name: Verify text generation
         working-directory: lumen-model
         run: python infer.py --model artifacts/lumen-1-smoke.pt --prompt "LÚMEN:" --tokens 24
