@@ -24,3 +24,7 @@ android {
         jvmTarget = "17"
     }
 }
+
+dependencies {
+    implementation("dev.ffmpegkit-maintained:llama-android:0.1.1")
+}
