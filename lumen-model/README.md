@@ -24,6 +24,16 @@ python lumen-model/train.py --data lumen-model/corpus --steps 2000 --context 256
 Para um primeiro teste pequeno, use `--steps 20 --width 64 --layers 2 --heads 2 --context 64 --batch 4`.
 GPU CUDA acelera bastante; em CPU, mantenha configurações pequenas.
 
+## Retomar treinamento
+
+O checkpoint guarda pesos, estado do otimizador, configuração e número de passos. Para continuar um treinamento interrompido, mantenha os mesmos parâmetros de arquitetura e execute:
+
+```bash
+python lumen-model/train.py --data lumen-model/corpus --steps 5000 --context 256 --width 256 --layers 6 --heads 8 --batch 16 --out lumen-model/artifacts/lumen-1.pt --resume
+```
+
+`--steps` representa o total de passos desejado, não passos adicionais. O treinamento registra validação determinística e salva checkpoints periodicamente. Use somente textos próprios ou com licença compatível.
+
 ## Testar geração
 ```bash
 python lumen-model/infer.py --model lumen-model/artifacts/lumen-1.pt --prompt "LÚMEN:"
