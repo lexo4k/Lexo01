@@ -99,11 +99,11 @@ Agora existe também o módulo Android próprio em `lumen-android/`. Ele abre a 
 ## Estado real da entrega
 
 - Código e interface PWA: presentes nesta branch.
-- Testes automatizados do núcleo: aprovados no GitHub Actions (run 42313671953).
+- Testes automatizados do núcleo: aprovados na execução mais recente anterior à última correção de interface (run 42317720108); a correção atual está aguardando nova execução.
 - Serviço público Render: ainda não criado/publicado por esta entrega.
 - IA e pesquisa web: implementadas, mas só ficam operacionais após configurar a chave do provedor no servidor.
 - Memória durável hospedada: depende de disco persistente ou banco gerenciado; o plano gratuito com disco efêmero não garante retenção.
-- APK próprio do LÚMEN: módulo Android criado; compilação e artefato `Lumen-AI-debug` dependem da conclusão bem-sucedida do workflow Android mais recente.
+- APK próprio do LÚMEN: módulo Android criado; última compilação Android confirmada: workflow `LÚMEN Android APK`, run 42317475383, concluído com sucesso. A última alteração foi somente na interface web, então não altera o binário Android.
 - Anúncios: não integrados; exigem conta de editor e aprovação em uma rede de anúncios.
 
 ## Estrutura
