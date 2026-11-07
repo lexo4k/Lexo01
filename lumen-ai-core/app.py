@@ -236,6 +236,7 @@ class ChatIn(BaseModel):
     image_data_url: str | None = Field(default=None, max_length=7_000_000)
 
 
+
 class GatewayChatIn(BaseModel):
     model: str = Field(min_length=1, max_length=240)
     messages: list[dict[str, Any]] = Field(min_length=1, max_length=100)
