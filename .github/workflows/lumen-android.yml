@@ -1,4 +1,4 @@
-name: LÚMEN Android APK
+name: AURION Android APK
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
   build-lumen:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout LÚMEN source
+      - name: Checkout AURION source
         uses: actions/checkout@v4
 
       - name: Set up Python for regression tests
@@ -29,10 +29,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install LÚMEN core dependencies
+      - name: Install AURION core dependencies
         run: python -m pip install -r lumen-ai-core/requirements.txt
 
-      - name: Verify LÚMEN core and Android interface contract
+      - name: Verify AURION core and Android interface contract
         run: PYTHONPATH=lumen-ai-core python -m unittest discover -s lumen-ai-core/tests -v
 
       - name: Set up JDK 17
@@ -52,14 +52,14 @@ jobs:
         with:
           gradle-version: "8.13"
 
-      - name: Build only the LÚMEN Android app
+      - name: Build only the AURION Android app
         working-directory: lumen-android
         run: gradle --no-daemon assembleDebug
 
-      - name: Upload LÚMEN APK
+      - name: Upload AURION APK
         uses: actions/upload-artifact@v4
         with:
-          name: Lumen-AI-debug
+          name: Aurion-AI-debug
           path: lumen-android/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
