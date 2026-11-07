@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from cognition import think as cognitive_cycle
 from cognition_local import plan_locally
+from memory_wormhole import select_relevant
 from public_research import search_web, search_nearby
 
 ROOT = Path(__file__).parent
@@ -704,17 +705,37 @@ async def think_endpoint(item: ThinkIn):
     config = model_config()
     api_key, base, model = config["api_key"], config["base_url"], config["model"]
     with db() as con:
-        memories = [r["content"] for r in con.execute(
-            "SELECT content FROM memories ORDER BY id DESC LIMIT 40"
+        memory_rows = [dict(r) for r in con.execute(
+            "SELECT id,content,category,created_at FROM memories ORDER BY id DESC LIMIT 300"
         )]
-        knowledge = [f'{r["title"]}: {r["content"]}' for r in con.execute(
-            "SELECT title,content FROM knowledge ORDER BY id DESC LIMIT 30"
+        knowledge_rows = [dict(r) for r in con.execute(
+            "SELECT id,title,content,source,created_at FROM knowledge ORDER BY id DESC LIMIT 300"
         )]
         history = [dict(r) for r in con.execute(
             "SELECT role,content FROM conversation_messages ORDER BY id DESC LIMIT 12"
         )][::-1]
+    # O Wormhole mantém os registros originais e só escolhe o contexto necessário.
+    selected_memories = select_relevant(memory_rows, item.goal, limit=16, max_chars=6000)
+    selected_knowledge = select_relevant(knowledge_rows, item.goal, limit=16, max_chars=8000)
+    if not selected_memories:
+        selected_memories = memory_rows[:5]
+    if not selected_knowledge:
+        selected_knowledge = knowledge_rows[:5]
+    memories = [r["content"] for r in selected_memories]
+    knowledge = [f'{r["title"]}: {r["content"]}' for r in selected_knowledge]
+    wormhole_report = {
+        "engine": "aurion-memory-wormhole-v1",
+        "source_memories": len(memory_rows),
+        "source_knowledge": len(knowledge_rows),
+        "retrieved_memories": len(selected_memories),
+        "retrieved_knowledge": len(selected_knowledge),
+        "context_characters": sum(map(len, memories + knowledge)),
+        "originals_preserved": True,
+        "compression": "relevance retrieval; no source records deleted",
+    }
     if not api_key:
         result = plan_locally(item.goal, memories=memories, knowledge=knowledge)
+        result["memory_wormhole"] = wormhole_report
         with db() as con:
             con.execute("INSERT INTO journal(event,detail,created_at) VALUES(?,?,?)",
                         ("Planejamento local concluído", item.goal[:180], now()))
@@ -725,6 +746,7 @@ async def think_endpoint(item: ThinkIn):
                 client=client, base=base, key=api_key, model=model, goal=item.goal,
                 memories=memories, knowledge=knowledge, recent_history=history
             )
+        result["memory_wormhole"] = wormhole_report
     except httpx.HTTPStatusError as exc:
         raise HTTPException(502, f"Provedor de IA respondeu com erro HTTP {exc.response.status_code}.") from exc
     except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
