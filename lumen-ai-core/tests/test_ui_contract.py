@@ -49,10 +49,13 @@ class UiContractTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 self.assertIn(marker, html)
 
-    def test_connected_model_takes_priority_over_offline_shortcuts(self):
+    def test_on_device_model_has_priority_and_receives_local_context(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured)", html)
-        self.assertIn("const command=(!modelReady&&msg)?localCommand(msg):null", html)
+        self.assertIn("const nativeLocalReady=Boolean(window.NexoraNative&&(localModelState()===" + '"ready"' + "||localModelState()===" + '"downloaded"' + "))", html)
+        self.assertIn("if(nativeLocalReady&&activeMode!==", html)
+        self.assertIn("MEMÓRIAS RELEVANTES:", html)
+        self.assertIn("BASE DE CONHECIMENTO:", html)
+        self.assertIn("TAREFAS EM ABERTO:", html)
 
     def test_cloud_knowledge_delete_endpoint_exists(self):
         backend = (ROOT / "app.py").read_text(encoding="utf-8")
