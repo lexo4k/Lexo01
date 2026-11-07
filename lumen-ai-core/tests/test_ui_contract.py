@@ -113,6 +113,14 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('api("/api/experiences"', html)
         self.assertIn("feedbackSaved", html)
 
+    def test_cognitive_planner_retrieves_relevant_feedback_and_verified_corrections(self):
+        backend = (ROOT / "app.py").read_text(encoding="utf-8")
+        self.assertIn("retrieved_feedback_lessons", backend)
+        self.assertIn("retrieved_verified_corrections", backend)
+        self.assertIn("FROM learning_experiences", backend)
+        self.assertIn("FROM correction_memory WHERE validation_status='verified'", backend)
+        self.assertIn("selected_learning + selected_corrections", backend)
+
     def test_offline_learning_ledger_persists_explicit_positive_and_negative_feedback(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn("experiences:Array.isArray(saved.experiences)?saved.experiences:[]", html)
