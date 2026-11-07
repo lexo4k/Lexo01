@@ -26,6 +26,8 @@ class UiContractTests(unittest.TestCase):
             '<section id="chat" class="screen active">',
             'Olá. Sou o LÚMEN.',
             'function localCommand(msg)',
+            'function loadConfig()',
+            'saved.url==="https://lumen-ai-core.vercel.app"',
             'buscar|pesquisar|procurar',
             'planejar|plano',
             'function exportData()',
