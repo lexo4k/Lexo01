@@ -42,7 +42,8 @@ def plan_locally(goal: str, memories: list[str] | None = None,
              for i, action in enumerate(selected[:6])]
     context_count = len(memories or []) + len(knowledge or [])
     return {
-        "understanding": clean[:500],\n        "symbolic_analysis": inspect_symbols(clean),
+        "understanding": clean[:500],
+        "symbolic_analysis": inspect_symbols(clean),
         "goal": clean[:1000],
         "assumptions": ["O pedido descreve o objetivo, mas pode não conter todos os requisitos."],
         "plan": steps,
