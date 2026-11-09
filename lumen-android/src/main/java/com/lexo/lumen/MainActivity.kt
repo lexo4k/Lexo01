@@ -968,7 +968,7 @@ class MainActivity : Activity() {
                 if (size > 6_000_000_000L) throw IllegalArgumentException("O arquivo excede o limite de importação desta versão (6 GB).")
                 selectedModelId = when {
                     size >= 1_900_000_000L -> "qwen-3b"
-                    size >= 1_050_000_000L -> "qwen-1.5b"
+                    size >= 1_117_320_736L -> "qwen-1.5b"
                     else -> "qwen-0.5b"
                 }
                 getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", selectedModelId).apply()
