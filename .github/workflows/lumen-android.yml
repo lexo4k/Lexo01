@@ -56,6 +56,17 @@ jobs:
         working-directory: lumen-android
         run: gradle --no-daemon assembleDebug
 
+      - name: Verify generated APK archive
+        working-directory: lumen-android
+        shell: bash
+        run: |
+          apk="$(find build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          test -s "$apk"
+          unzip -t "$apk"
+          unzip -l "$apk" | grep -q 'AndroidManifest.xml'
+          unzip -l "$apk" | grep -Eq 'classes[0-9]*\\.dex'
+
       - name: Upload AURION APK
         uses: actions/upload-artifact@v4
         with:
