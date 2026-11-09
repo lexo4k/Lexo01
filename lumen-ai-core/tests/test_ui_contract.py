@@ -14,6 +14,15 @@ class UiContractTests(unittest.TestCase):
         android = (ROOT.parent / "lumen-android" / "src" / "main" / "assets" / "index.html").read_text(encoding="utf-8")
         self.assertEqual(web, android)
 
+    def test_android_discovers_downloaded_models_and_starts_automatic_setup(self):
+        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('MediaStore.Files.getContentUri("external")', activity)
+        self.assertIn('endsWith(".gguf")', activity)
+        self.assertIn("memory.availMem", activity)
+        self.assertIn("aurionStartupCheck()", html)
+        self.assertIn("window.AurionNative.autoPrepareModelOnStartup()", html)
+
     def test_android_model_is_loaded_on_start_and_download_is_wifi_only_and_resumable(self):
         activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn("window.AurionNative.resumeAuthorizedModelSetup()", activity)
