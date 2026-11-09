@@ -81,7 +81,8 @@ app.get("/api/offers", async (req,res) => {
     const category = String(req.query.category || "").trim().slice(0,60);
     const result = await pool.query(
       `SELECT id, title, description, category, merchant, partner, price_cents, shipping_cents,
-              currency, condition, is_original, image_url, source_updated_at, updated_at
+              currency, condition, is_original, image_url, source_updated_at, updated_at,
+              catalog_product_id, gtin, brand, model, variant
        FROM offers
        WHERE active = TRUE AND (expires_at IS NULL OR expires_at > NOW())
          AND ($1 = '' OR title ILIKE '%' || $1 || '%' OR category ILIKE '%' || $1 || '%')
@@ -94,7 +95,8 @@ app.get("/api/offers", async (req,res) => {
       merchant:row.merchant,partner:row.partner,priceCents:Number(row.price_cents),
       shippingCents:row.shipping_cents === null ? null : Number(row.shipping_cents),
       currency:row.currency,condition:row.condition,isOriginal:row.is_original,
-      imageUrl:row.image_url,sourceUpdatedAt:row.source_updated_at,updatedAt:row.updated_at
+      imageUrl:row.image_url,sourceUpdatedAt:row.source_updated_at,updatedAt:row.updated_at,
+      catalogProductId:row.catalog_product_id,gtin:row.gtin,brand:row.brand,model:row.model,variant:row.variant
     })), catalogStatus:"connected" });
   } catch (error) {
     console.error("offers_query_failed", error.message);
