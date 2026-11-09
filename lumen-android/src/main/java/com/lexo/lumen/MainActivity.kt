@@ -81,7 +81,7 @@ class MainActivity : Activity() {
         "qwen-1.5b" to LocalModelProfile("qwen-1.5b", "Qwen 1.5B · recomendado", "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf", "nexora-qwen-1.5b-q4km.gguf", 1_117_320_736L, 3072, 192, "Equilíbrio entre capacidade e uso de memória. Modelo padrão recomendado para começar."),
         "qwen-3b" to LocalModelProfile("qwen-3b", "Qwen 3B · experimental", "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf", "aurion-qwen-3b-q4km.gguf", 1_900_000_000L, 2048, 160, "Modelo de 3 bilhões de parâmetros, arquivo de aproximadamente 2,1 GB. Experimental: pode ficar muito lento ou não carregar em celulares com pouca RAM. Escolha manualmente.")
     )
-    @Volatile private var selectedModelId = "qwen-1.5b"
+    @Volatile private var selectedModelId = "qwen-0.5b"
     @Volatile private var discoveredModelUri: Uri? = null
     @Volatile private var discoveredModelName: String = ""
     @Volatile private var discoveredModelSize: Long = 0L
@@ -92,7 +92,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.rgb(7, 17, 31)
         window.navigationBarColor = Color.rgb(7, 17, 31)
-        selectedModelId = getSharedPreferences("nexora_local", MODE_PRIVATE).getString("model_id", "qwen-1.5b")?.takeIf { modelProfiles.containsKey(it) } ?: "qwen-1.5b"
+        selectedModelId = getSharedPreferences("nexora_local", MODE_PRIVATE).getString("model_id", "qwen-0.5b")?.takeIf { modelProfiles.containsKey(it) } ?: "qwen-1.5b"
         textToSpeech = TextToSpeech(applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 val languageStatus = textToSpeech?.setLanguage(Locale("pt", "BR")) ?: TextToSpeech.LANG_MISSING_DATA
@@ -551,29 +551,12 @@ class MainActivity : Activity() {
                         loadLocalModel()
                     } else {
                         modelBusy = false
-                        val authorized = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
-                            .getBoolean("model_download_authorized", false)
-                        if (authorized) {
-                            downloadModel()
-                        } else {
-                            notifyModel("missing", "Procurei os Downloads e não encontrei um modelo GGUF dentro do limite de memória estimado. Vou oferecer a preparação inicial.")
-                            val prefs = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
-                            if (!prefs.getBoolean("model_setup_prompted", false)) {
-                                prefs.edit().putBoolean("model_setup_prompted", true).apply()
-                                runOnUiThread {
-                                    android.app.AlertDialog.Builder(this@MainActivity)
-                                        .setTitle("Modelo não encontrado")
-                                        .setMessage("Não encontrei um arquivo GGUF compatível nos Downloads. Se você já baixou um modelo, escolha o arquivo agora. Se não tiver, poderá autorizar o download recomendado.")
-                                        .setNegativeButton("Depois", null)
-                                        .setNeutralButton("Escolher arquivo") { _, _ -> chooseDownloadedModel() }
-                                        .setPositiveButton("Autorizar download") { _, _ ->
-                                            prefs.edit().putBoolean("model_download_authorized", true).apply()
-                                            downloadModel()
-                                        }
-                                        .show()
-                                }
-                            }
-                        }
+                        // A preparação inicial é automática. O downloadModel() só baixa em Wi-Fi
+                        // e valida espaço livre antes de gravar o modelo no armazenamento privado.
+                        val prefs = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
+                        prefs.edit().putBoolean("model_download_authorized", true).apply()
+                        notifyModel("missing", "Preparando automaticamente o modelo local compacto. O download só começa em Wi-Fi e exige espaço livre.")
+                        downloadModel()
                     }
                 } catch (e: Exception) {
                     modelBusy = false
@@ -592,20 +575,11 @@ class MainActivity : Activity() {
                     prepareLocalModel()
                     return@runOnUiThread
                 }
-                val prefs = getSharedPreferences("aurion_permissions", MODE_PRIVATE)
-                if (prefs.getBoolean("model_download_authorized", false)) {
-                    downloadModel()
-                    return@runOnUiThread
-                }
-                android.app.AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Preparar a inteligência local")
-                    .setMessage("O AURION precisa baixar uma vez o modelo de IA (aproximadamente 1,1 GB). Com sua autorização, ele tentará concluir o download automaticamente quando houver Wi-Fi e espaço livre. Essa autorização fica salva neste aparelho.")
-                    .setNegativeButton("Agora não", null)
-                    .setPositiveButton("Autorizar uma vez") { _, _ ->
-                        prefs.edit().putBoolean("model_download_authorized", true).apply()
-                        downloadModel()
-                    }
-                    .show()
+                // A preparação já foi solicitada pelo usuário ao instalar/abrir o app.
+                // O download continua protegido: somente Wi-Fi e espaço livre suficiente.
+                getSharedPreferences("aurion_permissions", MODE_PRIVATE)
+                    .edit().putBoolean("model_download_authorized", true).apply()
+                downloadModel()
             }
         }
 
