@@ -1,3 +1,16 @@
+-- Catálogo canônico: GTIN é a chave de identidade entre vendedores.
+CREATE TABLE IF NOT EXISTS catalog_products (
+  id BIGSERIAL PRIMARY KEY,
+  gtin VARCHAR(14) NOT NULL UNIQUE,
+  canonical_title TEXT,
+  brand TEXT,
+  model TEXT,
+  variant TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (gtin ~ '^([0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14})$')
+);
+
 CREATE TABLE IF NOT EXISTS offers (
   id BIGSERIAL PRIMARY KEY,
   external_id TEXT NOT NULL,
@@ -54,3 +67,12 @@ CREATE TABLE IF NOT EXISTS price_history (
   captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS price_history_offer_date_idx ON price_history (offer_id, captured_at DESC);
+
+-- Migração segura para bancos que já tinham a tabela offers.
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS catalog_product_id BIGINT REFERENCES catalog_products(id) ON DELETE SET NULL;
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS gtin VARCHAR(14);
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS brand TEXT;
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS model TEXT;
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS variant TEXT;
+CREATE INDEX IF NOT EXISTS offers_catalog_product_idx ON offers (catalog_product_id);
+CREATE INDEX IF NOT EXISTS offers_gtin_idx ON offers (gtin);
