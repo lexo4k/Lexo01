@@ -4,7 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import pg from "pg";
 import { timingSafeEqual } from "node:crypto";
-import { hostAllowed, isValidHttpUrl, safeStatus, validateOffer } from "./lib.js";
+import { hostAllowed, isValidHttpUrl, normalizeGtin, safeStatus, sameCanonicalProduct, validateOffer } from "./lib.js";
 
 const { Pool } = pg;
 const app = express();
@@ -131,20 +131,39 @@ app.get("/api/offers/compare", dbRequired, async (req,res) => {
   }
   try {
     const result = await pool.query(
-      `SELECT id,title,merchant,partner,price_cents,shipping_cents,currency,
-              condition,is_original,availability,product_url,image_url,source_updated_at,updated_at
-       FROM offers
-       WHERE id = ANY($1::bigint[]) AND active = TRUE
-         AND (expires_at IS NULL OR expires_at > NOW())`,
+      `SELECT o.id,o.title,o.merchant,o.partner,o.price_cents,o.shipping_cents,o.currency,
+              o.condition,o.is_original,o.availability,o.product_url,o.image_url,o.source_updated_at,o.updated_at,
+              o.catalog_product_id,o.gtin,o.brand,o.model,o.variant,
+              c.canonical_title,c.brand AS canonical_brand,c.model AS canonical_model,c.variant AS canonical_variant
+       FROM offers o
+       LEFT JOIN catalog_products c ON c.id = o.catalog_product_id
+       WHERE o.id = ANY($1::bigint[]) AND o.active = TRUE
+         AND (o.expires_at IS NULL OR o.expires_at > NOW())`,
       [ids]
     );
-    res.json({ offers:result.rows.map(row => ({
-      id:String(row.id),title:row.title,merchant:row.merchant,partner:row.partner,
-      priceCents:Number(row.price_cents),shippingCents:row.shipping_cents === null ? null : Number(row.shipping_cents),
-      currency:row.currency,condition:row.condition,isOriginal:row.is_original,
-      availability:row.availability,productUrl:row.product_url,imageUrl:row.image_url,
-      sourceUpdatedAt:row.source_updated_at,updatedAt:row.updated_at
-    })) });
+    if (result.rows.length !== new Set(ids).size) {
+      return res.status(404).json({ error:"Uma ou mais ofertas não existem, estão inativas ou expiraram.", code:"OFFERS_NOT_FOUND" });
+    }
+    if (!sameCanonicalProduct(result.rows)) {
+      return res.status(409).json({
+        error:"Comparação bloqueada: as ofertas não têm o mesmo GTIN/EAN confirmado. Selecione anúncios do mesmo produto exato.",
+        code:"PRODUCT_IDENTITY_MISMATCH"
+      });
+    }
+    const first = result.rows[0];
+    res.json({
+      product:{ gtin:first.gtin, title:first.canonical_title || first.title,
+        brand:first.canonical_brand || first.brand, model:first.canonical_model || first.model,
+        variant:first.canonical_variant || first.variant },
+      offers:result.rows.map(row => ({
+        id:String(row.id),title:row.title,merchant:row.merchant,partner:row.partner,
+        priceCents:Number(row.price_cents),shippingCents:row.shipping_cents === null ? null : Number(row.shipping_cents),
+        currency:row.currency,condition:row.condition,isOriginal:row.is_original,
+        availability:row.availability,productUrl:row.product_url,imageUrl:row.image_url,
+        gtin:row.gtin,brand:row.brand,model:row.model,variant:row.variant,
+        sourceUpdatedAt:row.source_updated_at,updatedAt:row.updated_at
+      }))
+    });
   } catch (error) {
     console.error("offer_compare_failed", error.message);
     res.status(500).json({ error:"Não foi possível comparar as ofertas." });
@@ -183,24 +202,43 @@ app.post("/api/admin/offers", adminOnly, dbRequired, async (req,res) => {
   try {
     await client.query("BEGIN");
     for (const item of items) {
+      const gtin = normalizeGtin(item.gtin);
+      let catalogProductId = null;
+      if (gtin) {
+        const canonical = await client.query(
+          `INSERT INTO catalog_products (gtin,canonical_title,brand,model,variant)
+           VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT (gtin) DO UPDATE SET
+             canonical_title=COALESCE(catalog_products.canonical_title,EXCLUDED.canonical_title),
+             brand=COALESCE(catalog_products.brand,EXCLUDED.brand),
+             model=COALESCE(catalog_products.model,EXCLUDED.model),
+             variant=COALESCE(catalog_products.variant,EXCLUDED.variant),
+             updated_at=NOW()
+           RETURNING id`,
+          [gtin,item.title.trim(),item.brand || null,item.model || null,item.variant || null]
+        );
+        catalogProductId = canonical.rows[0].id;
+      }
       const saved = await client.query(
         `INSERT INTO offers
-         (external_id, partner, merchant, title, description, category, product_url, affiliate_url,
-          price_cents, shipping_cents, currency, availability, condition, is_original, image_url,
-          expires_at, active, source_updated_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17,NOW())
-         ON CONFLICT (partner, external_id) DO UPDATE SET
+         (external_id,partner,merchant,title,description,category,product_url,affiliate_url,
+          price_cents,shipping_cents,currency,availability,condition,is_original,image_url,
+          expires_at,active,source_updated_at,catalog_product_id,gtin,brand,model,variant,updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17,$18,$19,$20,$21,$22,$23,NOW())
+         ON CONFLICT (partner,external_id) DO UPDATE SET
           merchant=EXCLUDED.merchant,title=EXCLUDED.title,description=EXCLUDED.description,
           category=EXCLUDED.category,product_url=EXCLUDED.product_url,affiliate_url=EXCLUDED.affiliate_url,
           price_cents=EXCLUDED.price_cents,shipping_cents=EXCLUDED.shipping_cents,currency=EXCLUDED.currency,
           availability=EXCLUDED.availability,condition=EXCLUDED.condition,is_original=EXCLUDED.is_original,
           image_url=EXCLUDED.image_url,expires_at=EXCLUDED.expires_at,active=TRUE,
-          source_updated_at=EXCLUDED.source_updated_at,updated_at=NOW()
+          source_updated_at=EXCLUDED.source_updated_at,catalog_product_id=EXCLUDED.catalog_product_id,
+          gtin=EXCLUDED.gtin,brand=EXCLUDED.brand,model=EXCLUDED.model,variant=EXCLUDED.variant,updated_at=NOW()
          RETURNING id,price_cents,shipping_cents,currency`,
         [String(item.externalId),item.partner,item.merchant,item.title.trim(),item.description || null,
          item.category,item.productUrl,item.affiliateUrl,item.priceCents,item.shippingCents ?? null,
          item.currency || "BRL",item.availability || "unknown",item.condition || "new",
-         item.isOriginal === true,item.imageUrl || null,item.expiresAt || null,item.sourceUpdatedAt || null]
+         item.isOriginal === true,item.imageUrl || null,item.expiresAt || null,item.sourceUpdatedAt || null,
+         catalogProductId,gtin,item.brand || null,item.model || null,item.variant || null]
       );
       const offer = saved.rows[0];
       await client.query(
