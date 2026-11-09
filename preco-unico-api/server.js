@@ -75,7 +75,7 @@ app.get("/api/status", async (_req,res) => {
 });
 
 app.get("/api/offers", async (req,res) => {
-  if (!pool) return res.json({ offers:[], catalogStatus:"not_connected", message:"Nenhuma oferta real foi conectada ainda." });
+  if (!pool) return res.json({ offers:[], catalogStatus:"not_connected", query:String(req.query.q || "").trim().slice(0,100), searched:false, message:"A busca está ativa, mas o catálogo de lojas ainda não foi conectado. Nenhum anúncio ou preço foi inventado." });
   try {
     const q = String(req.query.q || "").trim().slice(0,100);
     const category = String(req.query.category || "").trim().slice(0,60);
@@ -85,12 +85,12 @@ app.get("/api/offers", async (req,res) => {
               catalog_product_id, gtin, brand, model, variant
        FROM offers
        WHERE active = TRUE AND (expires_at IS NULL OR expires_at > NOW())
-         AND ($1 = '' OR title ILIKE '%' || $1 || '%' OR category ILIKE '%' || $1 || '%')
+         AND ($1 = '' OR title ILIKE '%' || $1 || '%' OR category ILIKE '%' || $1 || '%' OR merchant ILIKE '%' || $1 || '%' OR COALESCE(brand,'') ILIKE '%' || $1 || '%' OR COALESCE(model,'') ILIKE '%' || $1 || '%' OR COALESCE(variant,'') ILIKE '%' || $1 || '%' OR COALESCE(gtin,'') = $1)
          AND ($2 = '' OR category = $2)
        ORDER BY price_cents ASC LIMIT 100`,
       [q,category]
     );
-    res.json({ offers:result.rows.map(row => ({
+    res.json({ query:q, searched:true, total:result.rowCount, offers:result.rows.map(row => ({
       id:row.id,title:row.title,description:row.description,category:row.category,
       merchant:row.merchant,partner:row.partner,priceCents:Number(row.price_cents),
       shippingCents:row.shipping_cents === null ? null : Number(row.shipping_cents),
