@@ -207,6 +207,12 @@ function prepareBrain(){
 function localModelState(){
  try{return window.AurionNative?window.AurionNative.modelState():"unavailable"}catch{return "unavailable"}
 }
+function localModelCanRun(){
+ try{return Boolean(window.AurionNative&&window.AurionNative.canRunLocalModel&&window.AurionNative.canRunLocalModel())}catch{return false}
+}
+function localModelBlockDetail(){
+ try{return window.AurionNative&&window.AurionNative.localModelBlockReason?String(window.AurionNative.localModelBlockReason()):"O modelo não pode ser carregado com segurança neste momento."}catch(e){return "Falha ao consultar a memória do modelo: "+e.message}
+}
 function selectLocalModel(){
  if(!window.AurionNative)return;
  const id=$("localModelSelect").value;
@@ -669,10 +675,10 @@ if(!imageData&&/^(?:nexora[, ]+)?ativar mente completa[.! ]*$/i.test(msg)){activ
 // Prioridade local: a conversa principal usa o modelo no aparelho, sem API comercial.
 const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configured);
  const nativeState=localModelState();
- const nativeCanRun=Boolean(window.AurionNative&&typeof window.AurionNative.canRunLocalModel==="function"&&window.AurionNative.canRunLocalModel());
+ const nativeCanRun=localModelCanRun();
  const nativeLocalReady=Boolean(window.AurionNative&&(nativeState==="ready"||nativeCanRun));
  if(window.AurionNative&&nativeState==="blocked"){
-  const reason=typeof window.AurionNative.localModelBlockReason==="function"?window.AurionNative.localModelBlockReason():"A memória disponível não oferece margem segura para ativar este modelo.";
+  const reason=localModelBlockDetail();
   const answer="O modelo foi anexado e continua salvo, mas não é seguro carregá-lo neste aparelho agora. "+reason;
   data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();setCoreActivity("MODELO SALVO · ATIVAÇÃO BLOQUEADA",reason);return;
  }
@@ -710,7 +716,21 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  ].join("\\n\\n");
  // A janela Kotlin usa os últimos 1.800 caracteres: priorize as conversas primeiro e a memória consolidada no final.
  const history=("CONVERSA RECENTE:\n"+dialogue+"\n\n"+memoryContext).slice(-4500);
- window.AurionNative.sendLocalMessage(msg,history);return;
+ try{
+  window.AurionNative.sendLocalMessage(msg,history);
+  const startedAt=Date.now();
+  window.setTimeout(()=>{
+   const stillPending=data.messages.find(x=>x===pending&&x.pendingLocal);
+   if(stillPending&&Date.now()-startedAt>=300000){
+    stillPending.content="O núcleo local não respondeu após cinco minutos. O modelo pode ser incompatível, estar sem memória suficiente ou ter travado durante a inferência. O arquivo salvo foi preservado.";
+    delete stillPending.pendingLocal;stillPending.at=stamp();lastAssistantText=stillPending.content;saveData();renderMessages();
+    setCoreActivity("TEMPO ESGOTADO","A inferência local não concluiu. O AURION preservou o modelo e a conversa.");
+   }
+  },300000);
+ }catch(e){
+  pending.content="Não consegui iniciar o motor local: "+e.message;delete pending.pendingLocal;pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();setCoreActivity("ERRO AO INICIAR",e.message);
+ }
+ return;
 }
 if(activeMode==="research"){
  const pending={role:"assistant",content:"Pesquisando na web e preparando a resposta…",at:stamp()};data.messages.push(pending);saveData();renderMessages();
@@ -722,7 +742,7 @@ if(activeMode==="research"){
   const sources=Array.isArray(research.sources)?research.sources:[];
   const sourceText=sources.slice(0,8).map((x,i)=>(i+1)+". "+String(x.title||"Fonte").slice(0,220)+"\n"+String(x.url||"")+"\n"+String(x.snippet||"").slice(0,700)).join("\n\n");
   const sourceLinks=sources.length?"\n\nFONTES CONSULTADAS:\n"+sources.map((x,i)=>(i+1)+". "+x.title+"\n"+x.url).join("\n\n"):"";
-  const canSynthesize=Boolean(window.AurionNative&&(localModelState()==="ready"||(typeof window.AurionNative.canRunLocalModel==="function"&&window.AurionNative.canRunLocalModel())));
+  const canSynthesize=Boolean(window.AurionNative&&(localModelState()==="ready"||localModelCanRun()));
   if(canSynthesize&&sourceText){
    pending.content="Encontrei "+sources.length+" fontes. Estou cruzando os trechos com o modelo local…";
    pending.pendingLocal=true;pending.at=stamp();saveData();renderMessages();
@@ -763,7 +783,7 @@ if(r.verification){pending.content+="\\nVerificação das ferramentas: "+(r.veri
 pending.at=stamp();lastAssistantText=pending.content;
 }catch(e){
  const localState=localModelState();
- const canFallback=!imageData&&activeMode==="chat"&&window.AurionNative&&(localState==="ready"||(typeof window.AurionNative.canRunLocalModel==="function"&&window.AurionNative.canRunLocalModel()));
+ const canFallback=!imageData&&activeMode==="chat"&&window.AurionNative&&(localState==="ready"||localModelCanRun());
  if(canFallback){
   pending.content="O núcleo remoto falhou. Estou continuando com o modelo local deste aparelho…";
   pending.pendingLocal=true;
