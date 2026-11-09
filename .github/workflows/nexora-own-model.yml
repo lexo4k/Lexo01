@@ -5,7 +5,6 @@ on:
     branches: [lumen-ai-core]
     paths:
       - "lumen-model/**"
-      - ".github/workflows/nexora-own-model.yml"
   workflow_dispatch:
 
 permissions:
