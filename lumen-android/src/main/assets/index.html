@@ -71,6 +71,41 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 .btn.primary{background:linear-gradient(135deg,#237e8e,#16465e);box-shadow:0 5px 22px #36c9df24}
 .orb,.mini-orb{box-shadow:0 0 25px #54d8e755,inset 0 0 18px #54d8e733}
 @media(min-width:620px){.hero{min-height:410px;padding:30px}.core-visual{width:180px;height:180px}.core-visual .core{width:76px;height:76px;font-size:36px}}
+
+/* AURION 2.0: interface simplificada e mobile-first */
+:root{color-scheme:dark;--bg:#070d18;--panel:#101b2b;--panel2:#15263a;--line:#263b53;--text:#f2f7ff;--muted:#9aadc1;--cyan:#86e8f0;--mint:#9ce5c5}
+html,body{background:var(--bg);color:var(--text)}body{background:radial-gradient(ellipse at 50% -20%,#1a4059 0,transparent 44%),linear-gradient(180deg,#081321 0,#070d18 58%);padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+.app{max-width:820px}header{padding:12px 17px;background:#081321ef;border-bottom:1px solid #2a3d53}.brand{gap:12px}.orb{width:44px;height:44px;border-radius:15px;background:linear-gradient(145deg,#173e53,#0e2539);border:1px solid #73dce9;color:#c9fbff}
+.brand strong{font-size:15px;letter-spacing:.2em}.brand small{font-size:9px;letter-spacing:.18em}.iconbtn{width:43px;height:43px;border-radius:14px;background:#122238;border-color:#304962}.pill{font-size:10px;padding:7px 10px}
+main{padding:18px 16px 32px}.hero{min-height:0;padding:24px 20px 22px;border-radius:26px;border:1px solid #315a70;background:radial-gradient(ellipse at 50% 25%,#194c63 0,#102c42 42%,#0c1a2b 100%);box-shadow:0 18px 44px #0005}
+.hero:after{width:240px;height:240px;right:calc(50% - 120px);top:40px;border-color:#7beafa22;box-shadow:0 0 0 22px #62ddeb09,0 0 0 46px #62ddeb06}
+.hero .eyebrow{font-size:10px;letter-spacing:.23em}.hero h2{font-size:clamp(25px,6vw,34px);line-height:1.13;max-width:570px;margin:12px 0 10px}.hero p{font-size:13px;line-height:1.62;max-width:500px;color:#c5d5e1}
+.core-visual{width:142px;height:142px;margin:14px auto 6px}.core-visual .ring{border-color:#81e9f4a1}.core-visual .ring.r2{border-color:#b2f4ff65}.core-visual .core{width:62px;height:62px;font-size:29px}
+.hero-foot{width:100%;justify-content:center;gap:10px;margin-top:19px}.hero-foot .btn{min-height:48px;padding:13px 19px;flex:1;max-width:230px}
+.btn{min-height:44px;border-radius:14px;padding:11px 15px;font-size:13px;border:1px solid #324a63;background:#17283d;transition:transform .15s ease,border-color .15s ease}.btn:active,.send:active,.iconbtn:active{transform:scale(.98)}
+.btn.primary{background:linear-gradient(135deg,#2b8995,#1b536b);border-color:#58bbc8;color:#fff;box-shadow:0 8px 24px #1c91a226}.btn.ghost{background:#0d1a2a}
+.grid{gap:9px;margin:13px 0}.metric{padding:12px;border-radius:15px;background:#0e1a2a;border:1px solid #253d55;box-shadow:none}.metric span{font-size:10px}.metric b{font-size:22px;color:#b5f4f4}
+.section-title{margin:23px 2px 11px}.section-title h3{font-size:14px}.section-title span{font-size:9px;letter-spacing:.1em}
+.quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.quick button{min-height:76px;padding:12px;border-radius:16px;background:linear-gradient(145deg,#14273b,#0d1a2a);border:1px solid #2a4259;box-shadow:none}
+.quick .glyph{width:39px;height:39px;flex:0 0 39px;border-radius:13px;background:#1a4052;color:#9ceaf0;font-size:19px}.quick b{font-size:12px;line-height:1.3}.quick small{font-size:10px;line-height:1.35;display:block;margin-top:3px}
+.panel{padding:16px;border-radius:18px;background:linear-gradient(145deg,#122238,#0c1828);border:1px solid #293f56;box-shadow:none}.panel h3{font-size:14px}.muted{color:#a8b9ca;font-size:12px;line-height:1.58}
+.statusbox{border-radius:14px;padding:13px;background:#13273a;border:1px solid #34536d;font-size:12px;line-height:1.55}.statusbox.good{background:#102c29;border-color:#347565;color:#b3f0d6}.statusbox.warn{background:#2b251a;border-color:#77613a;color:#f2d9a4}
+.chatbox{min-height:calc(100dvh - 168px)}.chat-head{padding:10px 2px 13px;border-bottom:1px solid #23384e;margin-bottom:12px}.mini-orb{width:40px;height:40px;border-radius:14px;background:linear-gradient(145deg,#17465b,#10243a);font-size:17px}
+.chat-head b{font-size:14px}.chat-head small{font-size:10px}.messages{max-height:calc(100dvh - 355px);gap:12px;padding:8px 2px 15px}
+.msg{font-size:13px;line-height:1.58;padding:13px 15px;border-radius:18px;max-width:91%}.msg.ai{background:#14253a;border-color:#2c4661}.msg.user{background:linear-gradient(135deg,#1c5966,#19465b);border-color:#367d89}
+.composer{bottom:76px;background:linear-gradient(180deg,#070d1800,#070d18 18%);padding:12px 0 5px}.compose-wrap{border:1px solid #37546d;background:#101e30;border-radius:20px;padding:9px}.compose-wrap textarea{min-height:58px;padding:8px;font-size:14px}
+.send{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2d8e9b,#1c586d);font-size:19px;flex:0 0 44px}.toolrow{gap:7px;padding:8px 2px 2px}.toolrow button{min-height:36px;padding:8px 11px;border-radius:11px;background:#13253a;border-color:#2a435d;color:#c6d8e7;font-size:10px}.toolrow button.selected{background:#17475a;border-color:#65cbd6;color:#f1ffff}
+.field{margin:14px 0}.field label{font-size:12px}.field input,.field textarea,#settings select{min-height:46px;background:#0a1726;border:1px solid #314a63;border-radius:13px;padding:12px;color:var(--text)}
+.item{padding:14px;border-radius:15px;background:#122238;border:1px solid #2a4259;box-shadow:none}
+.bottom{background:#081321f5;border-color:#283d53;padding:7px 9px calc(7px + env(safe-area-inset-bottom))}.nav{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.nav button{min-width:0;min-height:52px;border-radius:13px;padding:6px 2px;font-size:10px;color:#9aadc0}.nav button span{font-size:19px;margin-bottom:2px}.nav button.active{background:#17394b;color:#a5f0f3}
+.core-activity{border-radius:16px;background:linear-gradient(135deg,#12283d,#0c1a2b);border-color:#2c4c66}.core-activity-head b{font-size:11px}.core-detail{font-size:11px}
+details{border:1px solid #2b435a;border-radius:15px;padding:13px 15px;background:#0d1a2a}details summary{cursor:pointer;color:#bdebf0;font-size:13px;font-weight:650}details[open] summary{margin-bottom:13px}
+#settings .panel{margin:13px 0}#settings .panel>.btn{margin:7px 7px 0 0}#settings .field select{width:100%;min-height:46px}
+#home .welcome-note{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px;justify-content:center}#home .welcome-note span{font-size:10px;color:#c2d6e4;border:1px solid #426176;background:#10283a;border-radius:20px;padding:6px 9px}
+#home .home-status-wrap{margin-top:15px}#home .home-actions{display:flex;gap:8px;flex-wrap:wrap}#home .home-actions .btn{flex:1}.advanced-details{margin:14px 0}
+@media(max-width:380px){header{padding:10px 12px}.brand strong{font-size:13px}.brand small{font-size:8px}.pill{font-size:9px;padding:6px 7px}.iconbtn{width:39px;height:39px}.hero{padding:21px 15px}.hero h2{font-size:25px}.quick button{gap:8px;padding:10px}.quick .glyph{width:34px;height:34px;flex-basis:34px}.nav button{font-size:9px}}
+@media(min-width:620px){main{padding:24px}.hero{padding:30px}.core-visual{width:170px;height:170px}.core-visual .core{width:74px;height:74px;font-size:34px}.quick{grid-template-columns:repeat(3,minmax(0,1fr))}.chatbox{min-height:680px}.messages{max-height:560px}.composer{bottom:0}}
+
 </style></head>
 <body><div class="app">
 <header><div class="brand"><div class="orb">A</div><div><strong>AURION AI</strong><small>NÚCLEO DE INTELIGÊNCIA</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
