@@ -42,3 +42,15 @@ CREATE TABLE IF NOT EXISTS commissions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (partner, external_event_id)
 );
+
+
+-- Histórico de preço por oferta, com preço e frete separados.
+CREATE TABLE IF NOT EXISTS price_history (
+  id BIGSERIAL PRIMARY KEY,
+  offer_id BIGINT NOT NULL REFERENCES offers(id) ON DELETE CASCADE,
+  price_cents BIGINT NOT NULL CHECK (price_cents >= 0),
+  shipping_cents BIGINT CHECK (shipping_cents IS NULL OR shipping_cents >= 0),
+  currency CHAR(3) NOT NULL DEFAULT 'BRL',
+  captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS price_history_offer_date_idx ON price_history (offer_id, captured_at DESC);
