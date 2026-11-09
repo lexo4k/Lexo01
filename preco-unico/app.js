@@ -4,6 +4,7 @@ let category = "Todos";
 let query = "";
 let saved = JSON.parse(localStorage.getItem("pu-saved") || "[]");
 let savedMode = false;
+let compareIds = [];
 let apiMessage = "Carregando ofertas reais…";
 const $ = (s) => document.querySelector(s);
 const money = (cents, currency = "BRL") => {
@@ -59,6 +60,7 @@ function render() {
     const received = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString("pt-BR") : null;
     const freshness = sourceUpdated ? "Fonte atualizada: " + sourceUpdated :
       received ? "Registro recebido: " + received + " (fonte sem data própria)" : "Data não informada";
+    const comparing = compareIds.includes(String(p.id));
     return `<article class="product-card">
       <div class="product-visual">
         <span class="tag ${p.isOriginal ? "" : "alt"}">${p.isOriginal ? "ORIGINAL INFORMADO" : "OFERTA DO PARCEIRO"}</span>
@@ -72,9 +74,13 @@ function render() {
         <div class="price-row"><div><div class="price">${money(p.priceCents, p.currency)}</div><div class="price-note">${shipping}</div></div></div>
         <div class="price-note">${escapeHtml(freshness)}</div>
         <button class="compare-btn" data-detail="${escapeHtml(p.id)}">Ver oferta e condições →</button>
+        <button class="compare-pick ${comparing ? "selected" : ""}" data-compare="${escapeHtml(p.id)}">${comparing ? "✓ Na comparação" : "＋ Comparar"}</button>
       </div>
     </article>`;
   }).join("");
+  $("#compareCount").textContent = compareIds.length;
+  $("#compareTray").hidden = compareIds.length === 0;
+  $("#compareNow").disabled = compareIds.length < 2;
   $("#emptyState").hidden = list.length > 0;
   $("#productGrid").hidden = list.length === 0;
   if (!list.length) {
@@ -107,6 +113,24 @@ function detail(id) {
     window.location.href = API_BASE + "/r/" + encodeURIComponent(p.id);
   });
 }
+async function compareSelected() {
+  if (compareIds.length < 2) return;
+  const target = $("#compareResults");
+  target.hidden = false;
+  target.innerHTML = "<p>Carregando comparação…</p>";
+  try {
+    const response = await fetch(API_BASE + "/api/offers/compare?ids=" + encodeURIComponent(compareIds.join(",")));
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Comparação indisponível.");
+    const rows = Array.isArray(data.offers) ? data.offers : [];
+    if (rows.length < 2) throw new Error("Não foi possível recuperar pelo menos duas ofertas ativas.");
+    target.innerHTML = rows.map(p => {
+      const freight = p.shippingCents == null ? "A consultar" : p.shippingCents === 0 ? "Grátis informado" : money(p.shippingCents,p.currency);
+      const total = p.shippingCents == null ? "Total não calculado" : money(p.priceCents+p.shippingCents,p.currency);
+      return `<article class="compare-result"><b>${escapeHtml(p.title)}</b><span>${escapeHtml(p.merchant)}</span><strong>${money(p.priceCents,p.currency)}</strong><span>Frete: ${escapeHtml(freight)}</span><strong>Total: ${escapeHtml(total)}</strong><span>Condição: ${escapeHtml(p.condition || "Não informada")}</span><span>Disponibilidade: ${escapeHtml(p.availability || "Não informada")}</span><a href="${API_BASE}/r/${encodeURIComponent(p.id)}" rel="noopener">Ver na loja →</a></article>`;
+    }).join("");
+  } catch (error) { target.textContent = error.message; }
+}
 async function loadOffers() {
   try {
     const response = await fetch(API_BASE + "/api/offers", { headers:{ "Accept":"application/json" } });
@@ -134,6 +158,8 @@ $("#categoryList").addEventListener("click", e => {
   render();
 });
 $("#sortSelect").addEventListener("change", render);
+$("#compareNow").addEventListener("click", compareSelected);
+$("#clearCompare").addEventListener("click", () => { compareIds = []; $("#compareResults").hidden = true; render(); });
 $("#originalOnly").addEventListener("change", () => { if ($("#originalOnly").checked) $("#budgetOnly").checked = false; render(); });
 $("#budgetOnly").addEventListener("change", () => { if ($("#budgetOnly").checked) $("#originalOnly").checked = false; render(); });
 $("#productGrid").addEventListener("click", e => {
@@ -142,6 +168,14 @@ $("#productGrid").addEventListener("click", e => {
     const id = String(save.dataset.save);
     saved = saved.includes(id) ? saved.filter(x => String(x) !== id) : [...saved, id];
     localStorage.setItem("pu-saved", JSON.stringify(saved));
+    render(); return;
+  }
+  const compare = e.target.closest("[data-compare]");
+  if (compare) {
+    const id = String(compare.dataset.compare);
+    if (compareIds.includes(id)) compareIds = compareIds.filter(x => x !== id);
+    else if (compareIds.length < 4) compareIds = [...compareIds, id];
+    else toast("Compare até 4 ofertas por vez.");
     render(); return;
   }
   const button = e.target.closest("[data-detail]");
