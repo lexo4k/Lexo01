@@ -313,14 +313,8 @@ class MainActivity : Activity() {
 
 
         private fun scanDownloadedModels(): DownloadedModel? {
-            val memory = ActivityManager.MemoryInfo()
-            (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
-            // Considera a memória atualmente disponível, não apenas a RAM física total.
-            // Mantém margem para Android, WebView, KV cache e buffers nativos.
-            val availableBudget = (memory.availMem * 0.65).toLong()
-            val safeLimit = minOf(2_500_000_000L, maxOf(650_000_000L, availableBudget))
-            // MediaStore.Files cobre Downloads e outras pastas públicas indexadas, inclusive
-            // arquivos baixados por navegadores diferentes do gerenciador padrão.
+            // A descoberta não deve esconder modelos grandes por um limite arbitrário de 2,5 GB.
+            // A compatibilidade com a RAM é verificada separadamente antes de copiar/carregar.
             val collection = MediaStore.Files.getContentUri("external")
             val columns = arrayOf(
                 android.provider.MediaStore.MediaColumns._ID,
@@ -343,7 +337,7 @@ class MainActivity : Activity() {
                         val name = cursor.getString(nameCol) ?: continue
                         val size = cursor.getLong(sizeCol)
                         if (!name.lowercase(Locale.ROOT).endsWith(".gguf")) continue
-                        if (size < 450_000_000L || size > safeLimit) continue
+                        if (size < 450_000_000L || size > 6_000_000_000L) continue
                         candidates.add(DownloadedModel(Uri.withAppendedPath(collection, cursor.getLong(idCol).toString()), name, size))
                     }
                 }
@@ -360,7 +354,7 @@ class MainActivity : Activity() {
                         while (cursor.moveToNext()) {
                             val name = cursor.getString(nameCol) ?: continue
                             val size = cursor.getLong(sizeCol)
-                            if (!name.lowercase(Locale.ROOT).endsWith(".gguf") || size < 450_000_000L || size > safeLimit) continue
+                            if (!name.lowercase(Locale.ROOT).endsWith(".gguf") || size < 450_000_000L || size > 6_000_000_000L) continue
                             candidates.add(DownloadedModel(Uri.withAppendedPath(downloads, cursor.getLong(idCol).toString()), name, size))
                         }
                     }
@@ -369,6 +363,22 @@ class MainActivity : Activity() {
                 }
             }
             return candidates.maxByOrNull { it.size }
+        }
+
+        private fun modelMemoryBlockReason(modelBytes: Long): String? {
+            val memory = ActivityManager.MemoryInfo()
+            (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
+            // GGUF pode exigir memória adicional para buffers, contexto e estruturas nativas.
+            // Usa RAM física com margem, em vez de um teto fixo que bloqueava qualquer arquivo >2,5 GB.
+            val estimatedRequired = (modelBytes * 1.35).toLong() + 450_000_000L
+            val usableBudget = (memory.totalMem * 0.82).toLong()
+            if (estimatedRequired > usableBudget) {
+                return "Modelo detectado (" + String.format(Locale.US, "%.2f", modelBytes / 1_000_000_000.0) +
+                    " GB), mas a estimativa de memória para executá-lo é " +
+                    String.format(Locale.US, "%.2f", estimatedRequired / 1_000_000_000.0) +
+                    " GB. A RAM física disponível para este app não oferece margem segura. O arquivo não foi apagado nem baixado novamente."
+            }
+            return null
         }
 
         private fun selectProfileForDownloadedSize(size: Long) {
@@ -383,6 +393,11 @@ class MainActivity : Activity() {
         private fun restoreDiscoveredModel(candidate: DownloadedModel) {
             val profile = selectedProfile()
             val target = modelFile
+            modelMemoryBlockReason(candidate.size)?.let { reason ->
+                modelBusy = false
+                notifyModel("error", reason)
+                throw IllegalStateException(reason)
+            }
             notifyModel("restoring", "Encontrei " + candidate.name + " em Downloads (" + String.format(Locale.US, "%.2f", candidate.size / 1_000_000_000.0) + " GB). Vou reutilizar o maior modelo compatível com a memória estimada, sem baixar novamente.")
             val temp = File(target.parentFile, target.name + ".restore")
             target.parentFile?.let { if (!it.exists() && !it.mkdirs()) throw IllegalStateException("Não foi possível criar a pasta do modelo.") }
@@ -575,6 +590,11 @@ class MainActivity : Activity() {
                 try {
                     val candidate = withContext(Dispatchers.IO) { scanDownloadedModels() }
                     if (candidate != null) {
+                        modelMemoryBlockReason(candidate.size)?.let { reason ->
+                            modelBusy = false
+                            notifyModel("error", reason)
+                            return@launch
+                        }
                         selectProfileForDownloadedSize(candidate.size)
                         discoveredModelUri = candidate.uri
                         discoveredModelName = candidate.name
@@ -811,6 +831,7 @@ class MainActivity : Activity() {
         if (!modelFile.exists() || modelFile.length() < selectedProfile().minBytes) {
             throw IllegalStateException("O modelo selecionado ainda não foi baixado. Abra Configurar e toque em Baixar e ativar IA local.")
         }
+        modelMemoryBlockReason(modelFile.length())?.let { throw IllegalStateException(it) }
         modelBusy = true
         notifyModel("loading", "Carregando o modelo no aparelho. Na primeira vez pode demorar um pouco.")
         try {
@@ -921,13 +942,10 @@ class MainActivity : Activity() {
                     } ?: throw IllegalStateException("Não foi possível ler o arquivo selecionado.")
                 }
                 val size = temp.length()
-                val memory = ActivityManager.MemoryInfo()
-                (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
-                val safeLimit = minOf(2_500_000_000L, (memory.totalMem * 0.30).toLong())
                 if (size < 450_000_000L) throw IllegalArgumentException("O arquivo é pequeno demais para ser um modelo GGUF completo.")
-                if (size > safeLimit) throw IllegalArgumentException("Este modelo ocupa mais memória do que o limite seguro estimado para o aparelho. Escolha um arquivo menor.")
+                modelMemoryBlockReason(size)?.let { throw IllegalArgumentException(it) }
                 selectedModelId = when {
-                    size >= 1_850_000_000L -> "qwen-3b"
+                    size >= 1_900_000_000L -> "qwen-3b"
                     size >= 1_050_000_000L -> "qwen-1.5b"
                     else -> "qwen-0.5b"
                 }
