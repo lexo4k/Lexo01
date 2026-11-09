@@ -31,6 +31,25 @@ export function hostAllowed(value, allowlist = []) {
   }
 }
 
+export function normalizeGtin(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const digits = String(value).replace(/[ -]/g, "");
+  if (!/^\\d{8}$|^\\d{12}$|^\\d{13}$|^\\d{14}$/.test(digits)) return null;
+  const body = digits.slice(0, -1);
+  let sum = 0;
+  for (let i = body.length - 1, weight = 3; i >= 0; i--, weight = weight === 3 ? 1 : 3) {
+    sum += Number(body[i]) * weight;
+  }
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return checkDigit === Number(digits.at(-1)) ? digits : null;
+}
+
+export function sameCanonicalProduct(offers) {
+  if (!Array.isArray(offers) || offers.length < 2) return false;
+  const ids = offers.map(item => item.catalog_product_id ?? item.catalogProductId);
+  return ids.every(id => id !== null && id !== undefined && String(id) === String(ids[0]));
+}
+
 export function validateOffer(input, allowlist = []) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { ok:false, error:"Oferta inválida." };
@@ -56,6 +75,15 @@ export function validateOffer(input, allowlist = []) {
   }
   if (!isValidHttpUrl(input.affiliateUrl) || !hostAllowed(input.affiliateUrl, allowlist)) {
     return { ok:false, error:"Link de afiliado não autorizado ou domínio fora da lista permitida." };
+  }
+  if (input.gtin !== undefined && input.gtin !== null && input.gtin !== "" && !normalizeGtin(input.gtin)) {
+    return { ok:false, error:"GTIN/EAN inválido. Informe um código de 8, 12, 13 ou 14 dígitos com dígito verificador correto." };
+  }
+  for (const key of ["brand", "model", "variant"]) {
+    if (input[key] !== undefined && input[key] !== null &&
+        (typeof input[key] !== "string" || input[key].length > 120)) {
+      return { ok:false, error:"Campo de identidade inválido: " + key };
+    }
   }
   if (input.description !== undefined && input.description !== null &&
       (typeof input.description !== "string" || input.description.length > 2000)) {
