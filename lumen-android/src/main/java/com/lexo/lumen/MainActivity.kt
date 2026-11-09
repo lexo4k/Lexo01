@@ -362,7 +362,8 @@ class MainActivity : Activity() {
                     android.util.Log.w("AurionModel", "Falha ao consultar MediaStore.Downloads", e)
                 }
             }
-            return candidates.maxByOrNull { it.size }
+            return candidates.filter { modelMemoryBlockReason(it.size) == null }.maxByOrNull { it.size }
+                ?: candidates.maxByOrNull { it.size }
         }
 
         private fun selectProfileForDownloadedSize(size: Long) {
@@ -821,7 +822,7 @@ class MainActivity : Activity() {
             return "Modelo detectado (" + String.format(Locale.US, "%.2f", modelBytes / 1_000_000_000.0) +
                 " GB), mas a estimativa de memória para executá-lo é " +
                 String.format(Locale.US, "%.2f", estimatedRequired / 1_000_000_000.0) +
-                " GB. A RAM física disponível para este app não oferece margem segura. O arquivo não foi apagado nem baixado novamente."
+                " GB. A RAM física do aparelho não oferece margem segura para o Android e o modelo juntos. O arquivo não foi apagado nem baixado novamente."
         }
         return null
     }
@@ -922,6 +923,7 @@ class MainActivity : Activity() {
     private fun importChosenModel(uri: Uri) {
         localScope.launch {
             modelBusy = true
+            var importedTemp: File? = null
             try {
                 val displayName = withContext(Dispatchers.IO) {
                     contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
@@ -932,6 +934,7 @@ class MainActivity : Activity() {
                     throw IllegalArgumentException("Escolha um arquivo .gguf compatível com llama.cpp.")
                 }
                 val temp = File(filesDir, "models/imported-model.gguf.part")
+                importedTemp = temp
                 withContext(Dispatchers.IO) {
                     temp.parentFile?.mkdirs()
                     contentResolver.openInputStream(uri)?.use { input ->
@@ -956,9 +959,11 @@ class MainActivity : Activity() {
                     if (target.exists()) target.delete()
                     if (!temp.renameTo(target)) throw IllegalStateException("Não foi possível guardar o modelo selecionado.")
                 }
+                importedTemp = null
                 notifyModel("loading", "Modelo " + displayName + " importado. Carregando o núcleo local…")
                 loadLocalModel()
             } catch (e: Exception) {
+                importedTemp?.delete()
                 modelBusy = false
                 notifyModel("error", "Não consegui importar o modelo: " + (e.message ?: "erro desconhecido"))
             }
