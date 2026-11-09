@@ -65,7 +65,7 @@ jobs:
           test -s "$apk"
           unzip -t "$apk"
           unzip -l "$apk" | grep -q 'AndroidManifest.xml'
-          unzip -l "$apk" | grep -Eq 'classes[0-9]*\\.dex'
+          unzip -l "$apk" | grep -Eq 'classes[0-9]*[.]dex'
 
       - name: Upload AURION APK
         uses: actions/upload-artifact@v4
