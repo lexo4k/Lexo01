@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import pg from "pg";
 import { timingSafeEqual } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { hostAllowed, isValidHttpUrl, normalizeGtin, safeStatus, sameCanonicalProduct, validateOffer } from "./lib.js";
 
 const { Pool } = pg;
@@ -301,7 +302,20 @@ app.get("/api/admin/summary", adminOnly, dbRequired, async (_req,res) => {
 });
 
 app.use((req,res) => res.status(404).json({ error:"Rota não encontrada." }));
-app.listen(PORT, () => console.log("preco-unico-api listening on " + PORT));
+async function start() {
+  if (pool) {
+    try {
+      const schema = await readFile(new URL("./schema.sql", import.meta.url), "utf8");
+      await pool.query(schema);
+      console.log("database schema verified and migrations applied");
+    } catch (error) {
+      console.error("database_schema_migration_failed", error.message);
+      process.exit(1);
+    }
+  }
+  app.listen(PORT, () => console.log("preco-unico-api listening on " + PORT));
+}
+start();
 
 process.on("SIGTERM", async () => {
   if (pool) await pool.end();
