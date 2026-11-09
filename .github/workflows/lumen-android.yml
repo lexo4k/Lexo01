@@ -5,6 +5,7 @@ on:
     branches: ["lumen-ai-core"]
     paths:
       - "lumen-android/**"
+      - "lumen-ai-core/index.html"
       - "settings.gradle.kts"
       - "gradle/**"
       - ".github/workflows/lumen-android.yml"
