@@ -106,12 +106,28 @@ function detail(id) {
     <div class="dialog-offer"><div><b>Frete</b><small>Consulte condições e endereço na loja</small></div><b>${escapeHtml(shipping)}</b></div>
     <div class="dialog-offer"><div><b>Condição</b><small>${escapeHtml(p.condition || "Não informada")}</small></div><b>${p.isOriginal ? "Original informado" : "Não confirmado"}</b></div>
     <p style="font-size:10px;color:#718096">${escapeHtml(freshness)}. Preço e disponibilidade podem mudar no site do vendedor.</p>
+    <section class="history-panel" id="priceHistory"><h3>Histórico de preço</h3><p>Consultando registros disponíveis…</p></section>
     <button class="compare-btn" style="margin-top:18px" id="goStore">Ir à loja e consultar →</button>
     <p style="font-size:10px;color:#718096;margin-top:10px">Podemos receber comissão se você comprar por um link de parceiro, sem custo adicional informado ao comprador.</p>`;
   $("#productDialog").showModal();
+  loadPriceHistory(p.id);
   $("#goStore").addEventListener("click", () => {
     window.location.href = API_BASE + "/r/" + encodeURIComponent(p.id);
   });
+}
+async function loadPriceHistory(id) {
+  const panel = $("#priceHistory");
+  try {
+    const response = await fetch(API_BASE + "/api/offers/" + encodeURIComponent(id) + "/history?days=90");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Histórico indisponível.");
+    const points = Array.isArray(data.points) ? data.points : [];
+    if (!points.length) { panel.innerHTML = "<h3>Histórico de preço</h3><p>Ainda não há capturas suficientes para mostrar a evolução.</p>"; return; }
+    panel.innerHTML = "<h3>Histórico de preço (90 dias)</h3>" + points.slice(-8).reverse().map(point =>
+      '<div class="history-point"><span>' + escapeHtml(new Date(point.capturedAt).toLocaleDateString("pt-BR")) + '</span><b>' +
+      money(point.priceCents,point.currency) + (point.shippingCents == null ? " · frete não informado" : " · frete " + money(point.shippingCents,point.currency)) +
+      '</b></div>').join("");
+  } catch (error) { panel.innerHTML = "<h3>Histórico de preço</h3><p>" + escapeHtml(error.message) + "</p>"; }
 }
 async function compareSelected() {
   if (compareIds.length < 2) return;
