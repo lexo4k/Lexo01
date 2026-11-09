@@ -4,13 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 */6 * * *"
-  push:
-    branches: [lumen-ai-core]
-    paths:
-      - "lumen-ai-core/**"
-      - "lumen-model/**"
-      - ".github/workflows/nexora-maintenance.yml"
-      - ".github/dependabot.yml"
 
 permissions:
   contents: read
