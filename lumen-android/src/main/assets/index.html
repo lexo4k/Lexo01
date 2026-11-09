@@ -111,30 +111,46 @@ details{border:1px solid #2b435a;border-radius:15px;padding:13px 15px;background
 <header><div class="brand"><div class="orb">A</div><div><strong>AURION AI</strong><small>NÚCLEO DE INTELIGÊNCIA</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
 <main>
 <section id="home" class="screen active">
-<div class="hero"><div class="eyebrow">NÚCLEO DE INTELIGÊNCIA PESSOAL</div><div class="core-visual" aria-label="Núcleo AURION"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">A</div></div><h2>Seu núcleo de inteligência, reunido em um só lugar.</h2><p>Conversa local, memória, voz, imagens, pesquisa e ferramentas. Na primeira abertura, o app prepara automaticamente um modelo local compacto, usando apenas Wi-Fi. Depois ele fica salvo no aparelho para conversar sem servidor.</p><div class="hero-foot"><button class="btn primary" onclick="show('chat')">✦ Abrir conversa</button></div></div>
-<div class="grid"><div class="metric"><span>Memórias</span><b id="memoryCount">0</b></div><div class="metric"><span>Planos / tarefas abertas</span><b id="taskCount">0</b></div><div class="metric"><span>Mensagens salvas</span><b id="chatCount">0</b></div></div>
-<div class="section-title"><h3>Centro de capacidades</h3><span>ACESSO DIRETO</span></div>
-<div class="quick">
-<button onclick="show('chat');setMode('chat')"><span class="glyph">✧</span><span><b>Inteligência conversacional</b><small>Dialogar e resolver problemas</small></span></button>
-<button onclick="show('chat');setMode('think')"><span class="glyph">◎</span><span><b>Raciocínio e planejamento</b><small>Analisar objetivos e etapas</small></span></button>
-<button onclick="show('chat');setMode('research')"><span class="glyph">⌕</span><span><b>Pesquisa pública</b><small>Buscar informações e fontes</small></span></button>
-<button onclick="show('images')"><span class="glyph">▧</span><span><b>Laboratório de imagens</b><small>Criar e analisar imagens</small></span></button>
-<button onclick="show('memory')"><span class="glyph">◈</span><span><b>Memória de longo prazo</b><small>Guardar contexto e conhecimento</small></span></button>
-<button onclick="show('knowledge')"><span class="glyph">▤</span><span><b>Base de conhecimento</b><small>Organizar referências</small></span></button>
-<button onclick="show('tasks')"><span class="glyph">✓</span><span><b>Execução acompanhada</b><small>Gerenciar tarefas e progresso</small></span></button>
-<button onclick="show('chat');setMode('chat');startVoiceInput()"><span class="glyph">🎙</span><span><b>Interface por voz</b><small>Falar com o sistema</small></span></button>
-<button onclick="show('settings')"><span class="glyph">⌘</span><span><b>Conexões e ferramentas</b><small>Ver integrações disponíveis</small></span></button>
+<div class="hero">
+ <div class="eyebrow">SEU ESPAÇO DE INTELIGÊNCIA</div>
+ <div class="core-visual" aria-label="Núcleo AURION"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">A</div></div>
+ <h2>Bem-vindo à AURION.</h2>
+ <p>Entre direto e comece a conversar. Sem cadastro, sem senha e sem token para usar o núcleo local depois que o modelo estiver preparado.</p>
+ <div class="hero-foot">
+  <button class="btn primary" onclick="enterAurion()">✦ Entrar na AURION</button>
+  <button class="btn ghost" onclick="show('settings')">⚙ Ajustes</button>
+ </div>
+ <div class="welcome-note"><span>◉ Conversa no aparelho</span><span>◇ Sua memória local</span><span>⌁ Voz e ferramentas</span></div>
 </div>
-<div class="section-title"><h3>Arquitetura AURION</h3><span>ESTADO HONESTO</span></div>
-<div class="panel"><h3>🧠 Modelo próprio</h3><p class="muted">O projeto já contém uma arquitetura Transformer e um servidor de inferência próprios. Para se tornar um modelo conversacional útil, ainda precisa de corpus amplo e licenciado, treinamento, checkpoint válido e avaliação independente.</p><div class="statusbox warn">Em desenvolvimento · não declarar inteligência própria pronta até o checkpoint passar nos testes de qualidade.</div></div>
-<div class="panel"><h3>♻ Memória e aprendizagem contextual</h3><p class="muted">Memórias, tarefas e conhecimento podem ser armazenados localmente. A sincronização permanente depende de servidor autenticado e armazenamento persistente configurado.</p><button class="btn" onclick="show('memory')">Abrir memória</button></div>
-<div class="panel"><h3>⚙ Planejamento e ferramentas</h3><p class="muted">O planejador local pode estruturar objetivos e indicar próximos passos. Ações externas exigem integração, permissão e confirmação apropriadas. Planejar não significa executar.</p><button class="btn" onclick="show('chat');setMode('think')">Testar planejamento</button></div>
-<div class="panel"><h3>🌐 Pesquisa e conexão</h3><p class="muted">A pesquisa pública e o núcleo remoto dependem da conexão configurada. Confira o estado antes de contar com resultados online.</p><button class="btn" onclick="show('chat');setMode('research')">Abrir pesquisa</button><button class="btn" onclick="show('settings')" style="margin-left:6px">Configurar núcleo</button></div>
-<div class="section-title"><h3>Visão e princípios da AURION</h3><span>IDENTIDADE OPERACIONAL</span></div>
-<div class="panel"><h3>🧭 O que significa inteligência para este núcleo?</h3><p class="muted">IA é software que processa informação para reconhecer padrões, compreender pedidos, gerar respostas e apoiar tarefas. AURION deve ser útil, verificável e transparente. Não declara consciência ou sentimentos próprios. Sua direção é ampliar conhecimento e criatividade sem substituir a autonomia humana.</p><p class="muted">Construir uma IA exige arquitetura, dados legais e de qualidade, treinamento ou ajuste, execução eficiente, avaliação, segurança, memória e ferramentas. Tokens de linguagem são unidades de texto. Tokens de acesso e chaves de API são credenciais separadas e precisam ser protegidas.</p><div class="toolrow"><button onclick="askAurion('O que significa inteligência artificial e qual deve ser a visão verdadeira de uma IA confiável?')">O que é IA?</button><button onclick="askAurion('Quais são as dificuldades reais de criar uma IA pelo método do AURION?')">Como criar uma IA?</button><button onclick="askAurion('Explique a diferença entre tokens de linguagem, token de acesso e chave de API.')">O que são tokens?</button></div></div>
-<div class="section-title"><h3>Saúde do sistema</h3><span id="lastCheck">AGUARDANDO VERIFICAÇÃO</span></div>
-<div id="homeStatus" class="statusbox warn">Modo local. Verifique a conexão para saber quais recursos remotos estão realmente ativos.</div>
-<div class="section-title"><h3>Atividade recente</h3><span>REGISTRO DO SISTEMA</span></div><div id="recentList" class="list"><div class="empty">Sua atividade aparecerá aqui.</div></div>
+<div class="home-status-wrap">
+ <div id="homeStatus" class="statusbox warn">Preparando o núcleo local. Você não precisa criar uma conta para começar.</div>
+</div>
+<div class="grid">
+ <div class="metric"><span>Memórias</span><b id="memoryCount">0</b></div>
+ <div class="metric"><span>Tarefas abertas</span><b id="taskCount">0</b></div>
+ <div class="metric"><span>Mensagens salvas</span><b id="chatCount">0</b></div>
+</div>
+<div class="section-title"><h3>O que você quer fazer?</h3><span>ATALHOS</span></div>
+<div class="quick">
+ <button onclick="enterAurion()"><span class="glyph">✧</span><span><b>Conversar</b><small>Fale com a sua IA</small></span></button>
+ <button onclick="show('chat');setMode('research')"><span class="glyph">⌕</span><span><b>Pesquisar</b><small>Encontrar informações online</small></span></button>
+ <button onclick="show('chat');setMode('think')"><span class="glyph">◎</span><span><b>Planejar</b><small>Organizar ideias e objetivos</small></span></button>
+ <button onclick="show('images')"><span class="glyph">▧</span><span><b>Criar imagens</b><small>Laboratório visual</small></span></button>
+ <button onclick="show('tasks')"><span class="glyph">✓</span><span><b>Minhas tarefas</b><small>Ver planos e progresso</small></span></button>
+ <button onclick="show('memory')"><span class="glyph">◈</span><span><b>Minha memória</b><small>Registros guardados</small></span></button>
+ <button onclick="show('video')"><span class="glyph">▶</span><span><b>Vídeos IA</b><small>Estudar e criar roteiros</small></span></button>
+ <button onclick="show('knowledge')"><span class="glyph">▤</span><span><b>Biblioteca</b><small>Conhecimento organizado</small></span></button>
+ <button onclick="show('chat');setMode('chat');startVoiceInput()"><span class="glyph">🎙</span><span><b>Falar comigo</b><small>Usar sua voz</small></span></button>
+</div>
+<details class="advanced-details">
+ <summary>Recursos avançados e estado do projeto</summary>
+ <div class="panel"><h3>🧠 Modelo próprio</h3><p class="muted">O projeto contém uma arquitetura de modelo e um servidor de inferência em desenvolvimento. Um modelo próprio só será considerado pronto depois de treinamento, checkpoint válido e avaliação independente.</p><div class="statusbox warn">Em desenvolvimento. A conversa atual usa o modelo GGUF selecionado no aparelho.</div></div>
+ <div class="panel"><h3>♻ Memória e contexto</h3><p class="muted">Memórias, tarefas e conhecimento são armazenados localmente. Sincronização permanente depende de servidor autenticado e armazenamento persistente configurado.</p><button class="btn" onclick="show('memory')">Abrir memória</button></div>
+ <div class="panel"><h3>🌐 Pesquisa e conexões</h3><p class="muted">Pesquisa pública e recursos remotos precisam de internet. A conversa local não exige servidor.</p><button class="btn" onclick="show('settings')">Ver conexões</button></div>
+ <div class="panel"><h3>🧭 Princípios da AURION</h3><p class="muted">AURION deve ser útil, verificável e transparente. Planejar não significa executar, e ações externas exigem integração e permissões apropriadas.</p></div>
+</details>
+<div class="section-title"><h3>Atividade recente</h3><span id="lastCheck">ESTADO DO SISTEMA</span></div>
+<div id="recentList" class="list"><div class="empty">Sua atividade aparecerá aqui.</div></div>
 </section>
 <section id="chat" class="screen"><div class="chatbox">
 <div class="chat-head"><div class="mini-orb">A</div><div><b>AURION · Assistente</b><small id="chatState">Modo local · IA ainda não conectada</small></div><span class="tag" style="margin-left:auto">PRIVADO</span></div>
@@ -153,16 +169,58 @@ details{border:1px solid #2b435a;border-radius:15px;padding:13px 15px;background
 <section id="knowledge" class="screen"><div class="eyebrow">ARQUIVO PESSOAL</div><h2>Base de conhecimento</h2><p class="muted">Guarde referências, resumos e informações para consultar depois.</p>
 <div class="panel"><h3>Conhecimento organizado pela IA</h3><p class="muted">Peça ao AURION para resumir e organizar informações durante uma conversa. A gravação automática só será informada como concluída quando o recurso de memória estiver realmente disponível.</p></div><div id="knowledgeList" class="list"></div>
 </section>
-<section id="settings" class="screen"><div class="eyebrow">AURION INDEPENDENTE</div><h2>Seu núcleo de IA</h2><p class="muted">A conversa principal pode rodar no próprio Android, sem token, servidor ou conta externa. Recursos online continuam opcionais.</p>
-<div class="panel"><h3>🧠 Núcleo local expansível</h3><p class="muted">Escolha o tamanho do modelo. O compacto é mais leve; o avançado pode responder melhor, mas exige mais RAM, armazenamento e bateria. A conversa local não envia suas mensagens para a nuvem.</p><div class="field"><label for="localModelSelect">Modelo local</label><select id="localModelSelect" onchange="selectLocalModel()"><option value="qwen-0.5b">Qwen 0.5B · econômico</option><option value="qwen-1.5b">Qwen 1.5B · recomendado</option><option value="qwen-3b">Qwen 3B · experimental (≈2,1 GB)</option></select></div><div id="localModelNote" class="muted">Carregando opções do aparelho…</div><div id="localModelStatus" class="statusbox warn">Verificando disponibilidade da IA local…</div><button class="btn primary" onclick="downloadLocalModel()">Ativar modelo salvo / baixar se ausente</button><button class="btn" onclick="chooseDownloadedModel()" style="margin-left:6px">Anexar modelo GGUF existente</button><p class="muted">Anexar copia o arquivo GGUF para a pasta privada do AURION e preserva o modelo mesmo se a ativação não couber na RAM. Depois use Ativar modelo salvo. O aplicativo não apaga o arquivo original. Modelos grandes podem exigir mais RAM do que o celular oferece.</p></div>
-<div id="settingsStatus" class="statusbox warn">Nenhum servidor conectado. Seus dados locais continuam disponíveis.</div>
-<div class="panel"><h3>Conexão remota opcional</h3><div class="field"><label>Endereço HTTPS do servidor</label><input id="serverUrl" inputmode="url" placeholder="https://seu-servico.exemplo.com"></div><div class="field"><label>Token privado de acesso</label><input id="accessToken" type="password" autocomplete="off" placeholder="Token configurado no servidor"></div><button class="btn primary" onclick="connectServer()">Testar e conectar</button><button class="btn" onclick="disconnectServer()" style="margin-left:6px">Desconectar</button><p class="muted">O endereço e o token ficam armazenados apenas no armazenamento privado do aplicativo/navegador. Nunca coloque a chave do provedor de IA aqui. Ela pertence somente ao servidor.</p></div>
-<div class="panel"><h3>Recursos e disponibilidade</h3><div id="capabilityList" class="list"><div class="item"><b>Interface local</b><p>Disponível neste aparelho.</p></div><div class="item"><b>Modelo de IA e pesquisa</b><p>Exigem servidor publicado e chave de provedor configurada.</p></div><div class="item"><b>Memória sincronizada</b><p>Exige conexão e banco persistente no servidor.</p></div></div></div>
-<div class="panel"><h3>Memória de correções</h3><p class="muted">A AURION guarda erros, causas e soluções. Só experiências com evidência de testes são priorizadas como verificadas.</p><div id="correctionMemoryList" class="list"><div class="item">Conecte ao núcleo para consultar a memória técnica.</div></div><details style="margin-top:12px"><summary>Registrar uma experiência técnica</summary><div style="display:grid;gap:8px;margin-top:10px"><input id="correctionSignature" placeholder="Erro ou mensagem identificadora" style="width:100%;padding:11px;border-radius:10px"><textarea id="correctionCause" placeholder="Causa-raiz identificada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><textarea id="correctionResolution" placeholder="Correção aplicada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea><input id="correctionEvidence" placeholder="Evidência do teste (opcional)" style="width:100%;padding:11px;border-radius:10px"><label style="display:flex;gap:8px;align-items:center"><input id="correctionTestsPassed" type="checkbox"> Testes passaram com essa correção</label><p class="hint">O AURION poderá registrar correções confirmadas durante o uso. Esta tela não exige cadastro manual.</p></div></details></div>
-<div class="panel"><h3>Dados neste aparelho</h3><p class="muted">Você pode exportar suas memórias, tarefas e registros locais em um arquivo JSON.</p><button class="btn" onclick="exportData()">Exportar meus dados</button><button class="btn" onclick="importData()">Importar arquivo</button><input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)"></div>
+<section id="settings" class="screen">
+ <div class="eyebrow">PERSONALIZAR A AURION</div>
+ <h2>Configurações</h2>
+ <p class="muted">O essencial já funciona localmente. Não precisa de conta, senha, servidor ou token para entrar e conversar com o modelo instalado.</p>
+ <div class="panel">
+  <h3>🧠 Motor de inteligência local</h3>
+  <p class="muted">Escolha o modelo que já está no aparelho ou importe um arquivo GGUF. O arquivo original não será apagado.</p>
+  <div class="field"><label for="localModelSelect">Modelo selecionado</label><select id="localModelSelect" onchange="selectLocalModel()"><option value="qwen-0.5b">Qwen 0.5B · econômico</option><option value="qwen-1.5b">Qwen 1.5B · recomendado</option><option value="qwen-3b">Qwen 3B · experimental</option></select></div>
+  <div id="localModelNote" class="muted">Verificando as opções disponíveis neste aparelho…</div>
+  <div id="localModelStatus" class="statusbox warn">Verificando o modelo local…</div>
+  <div class="home-actions">
+   <button class="btn primary" onclick="downloadLocalModel()">Ativar modelo</button>
+   <button class="btn" onclick="chooseDownloadedModel()">Selecionar GGUF</button>
+  </div>
+  <p class="muted">Anexar apenas copia e salva o arquivo. Ativar carrega o modelo na memória. Modelos maiores podem não caber na RAM do celular.</p>
+ </div>
+ <div id="settingsStatus" class="statusbox warn">Recursos locais disponíveis. Conexões online são opcionais.</div>
+ <details class="advanced-details">
+  <summary>Conexão remota opcional</summary>
+  <p class="muted">Use somente para recursos online e sincronização. Nunca é necessária para conversar offline. Não coloque aqui chaves de provedores de IA.</p>
+  <div class="field"><label for="serverUrl">Endereço HTTPS do servidor</label><input id="serverUrl" inputmode="url" placeholder="https://seu-servico.exemplo.com"></div>
+  <div class="field"><label for="accessToken">Token privado de acesso</label><input id="accessToken" type="password" autocomplete="off" placeholder="Token configurado no servidor"></div>
+  <button class="btn primary" onclick="connectServer()">Testar e conectar</button>
+  <button class="btn" onclick="disconnectServer()">Desconectar</button>
+  <p class="muted">O endereço e o token ficam armazenados no armazenamento privado deste aplicativo. A chave do provedor deve permanecer no servidor.</p>
+  <div class="divider"></div>
+  <h3>Recursos e disponibilidade</h3>
+  <div id="capabilityList" class="list"><div class="item"><b>Interface local</b><p>Disponível neste aparelho.</p></div><div class="item"><b>Modelo de IA e pesquisa</b><p>Modelo local sem servidor; recursos online dependem de conexão.</p></div></div>
+ </details>
+ <details class="advanced-details">
+  <summary>Memória técnica e correções</summary>
+  <p class="muted">Experiências e correções técnicas só são consideradas verificadas quando existe evidência de teste.</p>
+  <div id="correctionMemoryList" class="list"><div class="item">Nenhum registro carregado.</div></div>
+  <details style="margin-top:12px"><summary>Registrar uma experiência técnica</summary>
+   <div style="display:grid;gap:8px;margin-top:10px">
+    <input id="correctionSignature" placeholder="Erro ou mensagem identificadora" style="width:100%;padding:11px;border-radius:10px">
+    <textarea id="correctionCause" placeholder="Causa-raiz identificada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea>
+    <textarea id="correctionResolution" placeholder="Correção aplicada" rows="2" style="width:100%;padding:11px;border-radius:10px"></textarea>
+    <input id="correctionEvidence" placeholder="Evidência do teste (opcional)" style="width:100%;padding:11px;border-radius:10px">
+    <label style="display:flex;gap:8px;align-items:center"><input id="correctionTestsPassed" type="checkbox"> Testes passaram com essa correção</label>
+   </div>
+  </details>
+ </details>
+ <details class="advanced-details">
+  <summary>Backup dos meus dados</summary>
+  <p class="muted">Exporte suas memórias, tarefas e registros locais ou importe um backup salvo.</p>
+  <button class="btn" onclick="exportData()">Exportar meus dados</button>
+  <button class="btn" onclick="importData()">Importar arquivo</button>
+  <input id="importFile" class="hidden" type="file" accept="application/json" onchange="handleImport(event)">
+ </details>
 </section>
-</main>
-<nav class="bottom"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="images" onclick="show('images')"><span>▧</span>Imagens</button><button data-screen="video" onclick="show('video')"><span>▶</span>Vídeos IA</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="tasks" onclick="show('tasks')"><span>✓</span>Tarefas</button></div></nav>
+<nav class="bottom" aria-label="Navegação principal"><div class="nav"><button class="active" data-screen="home" onclick="show('home')"><span>⌂</span>Início</button><button data-screen="chat" onclick="show('chat')"><span>✧</span>Conversa</button><button data-screen="images" onclick="show('images')"><span>▧</span>Criar</button><button data-screen="memory" onclick="show('memory')"><span>◈</span>Memória</button><button data-screen="settings" onclick="show('settings')"><span>⚙</span>Ajustes</button></div></nav>
 </div>
 <!-- AURION: busca online, evidências e síntese pelo modelo local do aparelho -->
 <script>
@@ -199,6 +257,37 @@ function wormholeRetrieve(records,query,limit,maxChars){
 function saveData(){localStorage.setItem(KEY,JSON.stringify(data));renderAll()}
 function loadConfig(){const defaultUrl="https://nexora-ai-core.onrender.com";try{const saved=JSON.parse(localStorage.getItem(CFG));if(!saved)return{url:defaultUrl,token:""};if(!saved.url||saved.url==="https://lumen-ai-core.vercel.app"||saved.url==="https://lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app")return{url:defaultUrl,token:""};return{url:saved.url,token:saved.token||""}}catch{return{url:defaultUrl,token:""}}}
 function saveConfig(){localStorage.setItem(CFG,JSON.stringify(config))}
+function enterAurion(){
+ show("chat");
+ if(!window.AurionNative){
+  $("chatState").textContent="Abra o aplicativo Android para usar o modelo local.";
+  setCoreActivity("MODO DE PRÉVIA","A conversa offline está disponível no APK instalado.");
+  return;
+ }
+ const state=localModelState();
+ if(state==="ready"){
+  $("chatState").textContent="IA local pronta · sem conta ou servidor";
+  $("message").focus();
+  return;
+ }
+ if(state==="blocked"){
+  $("chatState").textContent="Modelo salvo, mas bloqueado pela memória disponível.";
+  setCoreActivity("ATIVAÇÃO BLOQUEADA",localModelBlockDetail());
+  return;
+ }
+ if(state==="working"){
+  $("chatState").textContent="Preparando o modelo local…";
+  return;
+ }
+ if(state==="downloaded"){
+  $("chatState").textContent="Ativando o modelo já salvo…";
+  window.AurionNative.prepareLocalModel();
+  return;
+ }
+ $("chatState").textContent="Localizando ou preparando o modelo local…";
+ try{window.AurionNative.autoPrepareModelOnStartup();}
+ catch(e){$("chatState").textContent="Não foi possível iniciar: "+e.message;}
+}
 function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="settings"){$("serverUrl").value=config.url;$("accessToken").value=config.token;renderCapabilities();loadCorrectionMemory();refreshLocalModel()}if(id==="chat")setTimeout(()=>$("message").focus(),80);renderAll()}
 function demo(prompt){show("chat");$("message").value=prompt;sendMessage()}
 function aurionStartupCheck(){
