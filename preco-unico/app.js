@@ -5,7 +5,8 @@ let query = "";
 let saved = JSON.parse(localStorage.getItem("pu-saved") || "[]");
 let savedMode = false;
 let compareIds = [];
-let apiMessage = "Carregando ofertas reais…";
+let apiMessage = "Carregando catálogo de ofertas…";
+let searchInProgress = false;
 const $ = (s) => document.querySelector(s);
 const money = (cents, currency = "BRL") => {
   try {
@@ -50,7 +51,7 @@ function visible() {
 }
 function render() {
   const list = visible();
-  $("#resultsCount").textContent = list.length + (list.length === 1 ? " oferta encontrada" : " ofertas encontradas");
+  $("#resultsCount").textContent = searchInProgress ? "Pesquisando no catálogo…" : list.length + (list.length === 1 ? " oferta encontrada" : " ofertas encontradas");
   $("#savedCount").textContent = saved.length;
   $("#productGrid").innerHTML = list.map(p => {
     const isSaved = saved.includes(String(p.id)) || saved.includes(p.id);
@@ -85,7 +86,7 @@ function render() {
   $("#emptyState").hidden = list.length > 0;
   $("#productGrid").hidden = list.length === 0;
   if (!list.length) {
-    $("#emptyState h3").textContent = savedMode ? "Nenhum produto salvo nesta busca" : "Nenhuma oferta real disponível";
+    $("#emptyState h3").textContent = savedMode ? "Nenhum produto salvo nesta busca" : query ? "Nenhuma oferta encontrada para “" + query + "”" : "Nenhuma oferta real disponível";
     $("#emptyState p").textContent = apiMessage;
   }
 }
@@ -148,31 +149,42 @@ async function compareSelected() {
     }).join("");
   } catch (error) { target.textContent = error.message; }
 }
-async function loadOffers() {
+async function loadOffers(searchTerm = query) {
+  searchInProgress = true;
+  render();
   try {
-    const response = await fetch(API_BASE + "/api/offers", { headers:{ "Accept":"application/json" } });
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("q", searchTerm);
+    if (category !== "Todos") params.set("category", category);
+    const response = await fetch(API_BASE + "/api/offers" + (params.size ? "?" + params.toString() : ""), { headers:{ "Accept":"application/json" } });
     if (!response.ok) throw new Error("API indisponível");
     const data = await response.json();
     products = Array.isArray(data.offers) ? data.offers : [];
     apiMessage = products.length ? "Compare preço, frete e condições. A compra acontece no site da loja." :
-      "Estamos preparando as conexões oficiais com lojas e redes de afiliados. Não exibimos produtos fictícios.";
+      (data.message || (searchTerm ? "A pesquisa foi executada, mas não há ofertas correspondentes no catálogo conectado." : "Nenhuma oferta real foi conectada ainda."));
   } catch {
     products = [];
     apiMessage = "O serviço de ofertas está temporariamente indisponível. Tente novamente em instantes.";
   }
+  searchInProgress = false;
   render();
 }
 $("#searchForm").addEventListener("submit", e => {
-  e.preventDefault(); query = $("#searchInput").value.trim(); savedMode = false; render();
+  e.preventDefault();
+  query = $("#searchInput").value.trim();
+  savedMode = false;
+  category = "Todos";
+  document.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x.dataset.category === "Todos"));
   $("#ofertas").scrollIntoView({ behavior:"smooth" });
+  loadOffers(query);
 });
-$("#searchInput").addEventListener("input", e => { query = e.target.value.trim(); savedMode = false; render(); });
+$("#searchInput").addEventListener("input", e => { query = e.target.value.trim(); savedMode = false; });
 $("#categoryList").addEventListener("click", e => {
   const button = e.target.closest("[data-category]");
   if (!button) return;
   category = button.dataset.category;
   document.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === button));
-  render();
+  loadOffers(query);
 });
 $("#sortSelect").addEventListener("change", render);
 $("#compareNow").addEventListener("click", compareSelected);
@@ -211,4 +223,4 @@ $("#clearFilters").addEventListener("click", () => {
   document.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x.dataset.category === "Todos"));
   render();
 });
-loadOffers();
+loadOffers("");
