@@ -71,6 +71,7 @@ function render() {
         <div class="product-type">${escapeHtml(p.category)} · ${escapeHtml(p.condition || "Condição não informada")}</div>
         <h3>${escapeHtml(p.title)}</h3>
         <div class="product-sub">${escapeHtml(p.merchant)} · ${escapeHtml(p.partner)}</div>
+        <div class="price-note">${p.gtin ? "GTIN/EAN confirmado: " + escapeHtml(p.gtin) : "Identidade exata ainda não confirmada"}</div>
         <div class="price-row"><div><div class="price">${money(p.priceCents, p.currency)}</div><div class="price-note">${shipping}</div></div></div>
         <div class="price-note">${escapeHtml(freshness)}</div>
         <button class="compare-btn" data-detail="${escapeHtml(p.id)}">Ver oferta e condições →</button>
@@ -100,7 +101,7 @@ function detail(id) {
   $("#dialogContent").innerHTML = `
     <div class="eyebrow dark">OFERTA DE PARCEIRO</div>
     ${p.imageUrl && /^https:\/\//i.test(p.imageUrl) ? `<img class="dialog-image" src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.title)}" loading="lazy" referrerpolicy="no-referrer">` : `<div class="dialog-emoji" aria-hidden="true">🛍️</div>`}
-    <h2>${escapeHtml(p.title)}</h2>
+    <h2>${escapeHtml(p.title)}</h2>\n    <div class="price-note">${p.gtin ? "GTIN/EAN: " + escapeHtml(p.gtin) : "Sem GTIN/EAN: não pode entrar em comparação de produto exato"}</div>
     <p style="color:#718096;font-size:12px;line-height:1.7">${escapeHtml(p.description || "Descrição não fornecida pela loja.")}</p>
     <div class="dialog-offer"><div><b>${escapeHtml(p.merchant)}</b><small>Fonte: ${escapeHtml(p.partner)}</small></div><b>${money(p.priceCents, p.currency)}</b></div>
     <div class="dialog-offer"><div><b>Frete</b><small>Consulte condições e endereço na loja</small></div><b>${escapeHtml(shipping)}</b></div>
@@ -140,7 +141,7 @@ async function compareSelected() {
     if (!response.ok) throw new Error(data.error || "Comparação indisponível.");
     const rows = Array.isArray(data.offers) ? data.offers : [];
     if (rows.length < 2) throw new Error("Não foi possível recuperar pelo menos duas ofertas ativas.");
-    target.innerHTML = rows.map(p => {
+    target.innerHTML = (data.product ? "<h3>Produto identificado: " + escapeHtml(data.product.title) + " · GTIN " + escapeHtml(data.product.gtin) + "</h3>" : "") + rows.map(p => {
       const freight = p.shippingCents == null ? "A consultar" : p.shippingCents === 0 ? "Grátis informado" : money(p.shippingCents,p.currency);
       const total = p.shippingCents == null ? "Total não calculado" : money(p.priceCents+p.shippingCents,p.currency);
       return `<article class="compare-result"><b>${escapeHtml(p.title)}</b><span>${escapeHtml(p.merchant)}</span><strong>${money(p.priceCents,p.currency)}</strong><span>Frete: ${escapeHtml(freight)}</span><strong>Total: ${escapeHtml(total)}</strong><span>Condição: ${escapeHtml(p.condition || "Não informada")}</span><span>Disponibilidade: ${escapeHtml(p.availability || "Não informada")}</span><a href="${API_BASE}/r/${encodeURIComponent(p.id)}" rel="noopener">Ver na loja →</a></article>`;
