@@ -22,6 +22,8 @@ const pool = DATABASE_URL ? new Pool({
 }) : null;
 
 app.disable("x-powered-by");
+// Render terminates TLS and forwards the original client IP through one trusted proxy.
+app.set("trust proxy", 1);
 app.use(helmet());
 app.use(cors({ origin: FRONTEND_ORIGIN.split(",").map(x => x.trim()), methods:["GET","POST"], allowedHeaders:["Content-Type","Authorization"] }));
 app.use(express.json({ limit:"256kb" }));
