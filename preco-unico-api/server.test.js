@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hostAllowed, isValidHttpUrl, safeStatus, validateOffer } from "./lib.js";
+import { hostAllowed, isValidHttpUrl, normalizeGtin, safeStatus, sameCanonicalProduct, validateOffer } from "./lib.js";
 
 const validOffer = () => ({
   externalId:"sku-1",partner:"partner-x",merchant:"Loja X",title:"Produto válido",
@@ -64,4 +64,29 @@ test("only accepts known commission states", () => {
   assert.equal(safeStatus("approved"),"approved");
   assert.equal(safeStatus("paid"),"paid");
   assert.equal(safeStatus("magic"),null);
+});
+
+test("validates GTIN/EAN check digits and normalizes separators", () => {
+  assert.equal(normalizeGtin("4006381333931"),"4006381333931");
+  assert.equal(normalizeGtin(" 4006381-333931 "),"4006381333931");
+  assert.equal(normalizeGtin("4006381333932"),null);
+  assert.equal(normalizeGtin("12345"),null);
+  assert.equal(normalizeGtin("00000000"),"00000000");
+});
+
+test("requires one shared canonical product for comparison", () => {
+  assert.equal(sameCanonicalProduct([{catalog_product_id:7},{catalog_product_id:7}]),true);
+  assert.equal(sameCanonicalProduct([{catalog_product_id:7},{catalog_product_id:8}]),false);
+  assert.equal(sameCanonicalProduct([{catalog_product_id:7},{catalog_product_id:null}]),false);
+  assert.equal(sameCanonicalProduct([{catalog_product_id:7}]),false);
+});
+
+test("accepts optional product identity fields and rejects invalid GTIN", () => {
+  const offer = validOffer();
+  offer.gtin = "4006381333931";
+  offer.brand = "Marca";
+  offer.model = "Modelo X";
+  assert.equal(validateOffer(offer,["track.example"]).ok,true);
+  offer.gtin = "4006381333932";
+  assert.equal(validateOffer(offer,["track.example"]).ok,false);
 });
