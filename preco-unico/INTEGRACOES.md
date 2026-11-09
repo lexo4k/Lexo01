@@ -50,6 +50,15 @@ O modelo inicial é afiliado: o consumidor paga diretamente à loja ou ao market
 - Cadastros, contratos e recebimentos devem cumprir os requisitos de idade e representação legal do provedor e do programa. Quando exigido, devem ser administrados por responsável adulto.
 - Não solicitar nem armazenar senha, token, código de autenticação, documento ou dado bancário em chat, frontend ou repositório.
 
+## Comparação e histórico implementados no código
+
+- A vitrine permite selecionar de 2 a 4 ofertas e solicitar uma comparação lado a lado.
+- A API oferece `GET /api/offers/compare?ids=1,2`, devolvendo preço, frete, moeda, condição, disponibilidade e origem. Não converte moedas diferentes nem presume frete grátis.
+- A API oferece `GET /api/offers/:id/history?days=90`; o importador grava observações em `price_history`, com preço e frete separados e supressão de capturas repetidas em janela de 5 minutos.
+- O detalhe da oferta consulta o histórico e mostra as capturas disponíveis.
+- **Dependência ainda pendente:** executar `preco-unico-api/schema.sql` num banco próprio e conectar `DATABASE_URL`. Sem isso, histórico e comparação não conseguem consultar dados persistidos; a vitrine permanece sem ofertas até existir feed autorizado.
+- A comparação lado a lado compara ofertas selecionadas, mas ainda não afirma que são o mesmo modelo/variante. Correspondência exata por GTIN/EAN, marca e modelo será uma etapa separada antes de recomendar “menor preço do mesmo produto”.
+
 ## Arquitetura de produção
 1. Frontend público: catálogo, busca, filtros e comparação.
 2. Backend privado: normalização de catálogo, atualização de ofertas e geração de links autorizados.
