@@ -6,6 +6,7 @@
 <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml">
 <title>AURION AI</title>
 <!-- AURION local model import and chat recovery -->
+<!-- Synchronized UI contract -->
 <style>
 :root{color-scheme:dark;--bg:#07111f;--panel:#101e30;--panel2:#14263b;--line:#263d56;--text:#edf7ff;--muted:#91a8bc;--cyan:#72e4ef;--mint:#8ce8c2;--gold:#f2cf83;--danger:#ff9b9b}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:15px Inter,system-ui,-apple-system,Segoe UI,sans-serif}body{background:radial-gradient(ellipse at 50% -15%,#16405a 0,transparent 46%),var(--bg);padding-bottom:calc(82px + env(safe-area-inset-bottom))}
@@ -209,7 +210,10 @@ function localModelState(){
  try{return window.AurionNative?window.AurionNative.modelState():"unavailable"}catch{return "unavailable"}
 }
 function localModelCanRun(){
- try{return Boolean(window.AurionNative&&window.AurionNative.canRunLocalModel&&window.AurionNative.canRunLocalModel())}catch{return false}
+ try{
+  if(typeof window.AurionNative.canRunLocalModel==="function")return Boolean(window.AurionNative.canRunLocalModel());
+  return false;
+ }catch{return false}
 }
 function localModelBlockDetail(){
  try{return window.AurionNative&&window.AurionNative.localModelBlockReason?String(window.AurionNative.localModelBlockReason()):"O modelo não pode ser carregado com segurança neste momento."}catch(e){return "Falha ao consultar a memória do modelo: "+e.message}
