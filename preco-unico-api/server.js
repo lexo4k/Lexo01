@@ -126,7 +126,7 @@ app.get("/api/offers/:id/history", dbRequired, async (req,res) => {
 
 app.get("/api/offers/compare", dbRequired, async (req,res) => {
   const ids = String(req.query.ids || "").split(",").map(x => x.trim()).filter(Boolean);
-  if (ids.length < 2 || ids.length > 4 || ids.some(id => !/^\\d+$/.test(id))) {
+  if (ids.length < 2 || ids.length > 4 || ids.some(id => !/^\d+$/.test(id))) {
     return res.status(400).json({ error:"Informe de 2 a 4 IDs de ofertas válidos." });
   }
   try {
