@@ -62,6 +62,11 @@
         <div class="filter-group"><label class="check-filter"><input type="checkbox" id="originalOnly"> Somente originais informados</label><label class="check-filter"><input type="checkbox" id="budgetOnly"> Com frete informado</label></div>
       </div>
       <div class="results-line"><span id="resultsCount">Carregando ofertas…</span><span class="demo-label">● SOMENTE DADOS REAIS</span></div>
+      <section class="compare-tray" id="compareTray" hidden aria-live="polite">
+        <div><b><span id="compareCount">0</span>/4 ofertas selecionadas</b><small>Escolha pelo menos duas para comparar preço, frete e condição.</small></div>
+        <div><button id="compareNow" disabled>Comparar selecionadas</button><button id="clearCompare" class="clear-compare">Limpar</button></div>
+      </section>
+      <div class="compare-results" id="compareResults" hidden></div>
       <div class="product-grid" id="productGrid"></div>
       <div class="empty-state" id="emptyState" hidden><div>⌕</div><h3>Nenhuma oferta real disponível</h3><p>Estamos preparando as conexões oficiais com lojas e redes de afiliados.</p><button class="outline-btn" id="clearFilters">Limpar filtros</button></div>
     </section>
