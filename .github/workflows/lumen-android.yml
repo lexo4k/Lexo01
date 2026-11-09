@@ -67,6 +67,10 @@ jobs:
           unzip -t "$apk"
           unzip -l "$apk" | grep -q 'AndroidManifest.xml'
           unzip -l "$apk" | grep -Eq 'classes[0-9]*[.]dex'
+          # AURION precisa levar o runtime nativo llama.cpp no APK, não apenas a interface.
+          unzip -l "$apk" | grep -q 'lib/arm64-v8a/libllama.so'
+          unzip -l "$apk" | grep -q 'lib/arm64-v8a/libllama_jni.so'
+          unzip -l "$apk" | grep -q 'lib/arm64-v8a/libggml-base.so'
 
       - name: Upload AURION APK
         uses: actions/upload-artifact@v4
