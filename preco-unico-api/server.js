@@ -101,6 +101,56 @@ app.get("/api/offers", async (req,res) => {
   }
 });
 
+app.get("/api/offers/:id/history", dbRequired, async (req,res) => {
+  const days = Math.min(365, Math.max(1, Number.parseInt(req.query.days || "90", 10) || 90));
+  try {
+    const result = await pool.query(
+      `SELECT price_cents, shipping_cents, currency, captured_at
+       FROM price_history
+       WHERE offer_id = $1 AND captured_at >= NOW() - ($2::int * INTERVAL '1 day')
+       ORDER BY captured_at ASC LIMIT 500`,
+      [req.params.id, days]
+    );
+    res.json({ offerId:req.params.id, days, points:result.rows.map(row => ({
+      priceCents:Number(row.price_cents),
+      shippingCents:row.shipping_cents === null ? null : Number(row.shipping_cents),
+      currency:row.currency,
+      capturedAt:row.captured_at
+    })) });
+  } catch (error) {
+    if (error.code === "42P01") return res.status(503).json({ error:"Histórico ainda não foi inicializado. Aplique a migração do banco.", code:"HISTORY_SCHEMA_MISSING" });
+    console.error("price_history_failed", error.message);
+    res.status(500).json({ error:"Não foi possível consultar o histórico." });
+  }
+});
+
+app.get("/api/offers/compare", dbRequired, async (req,res) => {
+  const ids = String(req.query.ids || "").split(",").map(x => x.trim()).filter(Boolean);
+  if (ids.length < 2 || ids.length > 4 || ids.some(id => !/^\\d+$/.test(id))) {
+    return res.status(400).json({ error:"Informe de 2 a 4 IDs de ofertas válidos." });
+  }
+  try {
+    const result = await pool.query(
+      `SELECT id,title,merchant,partner,price_cents,shipping_cents,currency,
+              condition,is_original,availability,product_url,image_url,source_updated_at,updated_at
+       FROM offers
+       WHERE id = ANY($1::bigint[]) AND active = TRUE
+         AND (expires_at IS NULL OR expires_at > NOW())`,
+      [ids]
+    );
+    res.json({ offers:result.rows.map(row => ({
+      id:String(row.id),title:row.title,merchant:row.merchant,partner:row.partner,
+      priceCents:Number(row.price_cents),shippingCents:row.shipping_cents === null ? null : Number(row.shipping_cents),
+      currency:row.currency,condition:row.condition,isOriginal:row.is_original,
+      availability:row.availability,productUrl:row.product_url,imageUrl:row.image_url,
+      sourceUpdatedAt:row.source_updated_at,updatedAt:row.updated_at
+    })) });
+  } catch (error) {
+    console.error("offer_compare_failed", error.message);
+    res.status(500).json({ error:"Não foi possível comparar as ofertas." });
+  }
+});
+
 app.get("/r/:id", dbRequired, async (req,res) => {
   try {
     const result = await pool.query(
@@ -133,7 +183,7 @@ app.post("/api/admin/offers", adminOnly, dbRequired, async (req,res) => {
   try {
     await client.query("BEGIN");
     for (const item of items) {
-      await client.query(
+      const saved = await client.query(
         `INSERT INTO offers
          (external_id, partner, merchant, title, description, category, product_url, affiliate_url,
           price_cents, shipping_cents, currency, availability, condition, is_original, image_url,
@@ -145,11 +195,25 @@ app.post("/api/admin/offers", adminOnly, dbRequired, async (req,res) => {
           price_cents=EXCLUDED.price_cents,shipping_cents=EXCLUDED.shipping_cents,currency=EXCLUDED.currency,
           availability=EXCLUDED.availability,condition=EXCLUDED.condition,is_original=EXCLUDED.is_original,
           image_url=EXCLUDED.image_url,expires_at=EXCLUDED.expires_at,active=TRUE,
-          source_updated_at=EXCLUDED.source_updated_at,updated_at=NOW()`,
+          source_updated_at=EXCLUDED.source_updated_at,updated_at=NOW()
+         RETURNING id,price_cents,shipping_cents,currency`,
         [String(item.externalId),item.partner,item.merchant,item.title.trim(),item.description || null,
          item.category,item.productUrl,item.affiliateUrl,item.priceCents,item.shippingCents ?? null,
          item.currency || "BRL",item.availability || "unknown",item.condition || "new",
          item.isOriginal === true,item.imageUrl || null,item.expiresAt || null,item.sourceUpdatedAt || null]
+      );
+      const offer = saved.rows[0];
+      await client.query(
+        `INSERT INTO price_history (offer_id,price_cents,shipping_cents,currency)
+         SELECT $1,$2,$3,$4
+         WHERE NOT EXISTS (
+           SELECT 1 FROM price_history
+           WHERE offer_id=$1 AND price_cents=$2
+             AND shipping_cents IS NOT DISTINCT FROM $3
+             AND currency=$4
+             AND captured_at >= NOW() - INTERVAL '5 minutes'
+         )`,
+        [offer.id,offer.price_cents,offer.shipping_cents,offer.currency]
       );
     }
     await client.query("COMMIT");
