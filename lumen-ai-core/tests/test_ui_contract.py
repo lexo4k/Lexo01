@@ -143,6 +143,16 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('filter(x=>x.status==="useful"||x.status==="corrected")', html)
         self.assertIn("Feedback explícito do usuário", html)
 
+    def test_android_discovers_large_gguf_and_checks_realistic_ram_budget(self):
+        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn('size > 6_000_000_000L', activity)
+        self.assertIn('private fun modelMemoryBlockReason(modelBytes: Long)', activity)
+        self.assertIn('(modelBytes * 1.35).toLong() + 450_000_000L', activity)
+        self.assertNotIn('minOf(2_500_000_000L', activity)
+        self.assertNotIn('memory.totalMem * 0.30', activity)
+        self.assertIn('size >= 1_900_000_000L -> "qwen-3b"', activity)
+        self.assertIn('return candidates.filter { modelMemoryBlockReason(it.size) == null }', activity)
+
     def test_android_has_practical_default_and_optional_larger_local_model(self):
         activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
         self.assertIn('"qwen-1.5b" to LocalModelProfile', activity)
