@@ -6,10 +6,6 @@ on:
     paths:
       - "lumen-model/**"
       - ".github/workflows/nexora-own-model.yml"
-  pull_request:
-    paths:
-      - "lumen-model/**"
-      - ".github/workflows/nexora-own-model.yml"
   workflow_dispatch:
 
 permissions:
