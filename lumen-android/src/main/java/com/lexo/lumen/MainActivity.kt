@@ -365,22 +365,6 @@ class MainActivity : Activity() {
             return candidates.maxByOrNull { it.size }
         }
 
-        private fun modelMemoryBlockReason(modelBytes: Long): String? {
-            val memory = ActivityManager.MemoryInfo()
-            (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
-            // GGUF pode exigir memória adicional para buffers, contexto e estruturas nativas.
-            // Usa RAM física com margem, em vez de um teto fixo que bloqueava qualquer arquivo >2,5 GB.
-            val estimatedRequired = (modelBytes * 1.35).toLong() + 450_000_000L
-            val usableBudget = (memory.totalMem * 0.82).toLong()
-            if (estimatedRequired > usableBudget) {
-                return "Modelo detectado (" + String.format(Locale.US, "%.2f", modelBytes / 1_000_000_000.0) +
-                    " GB), mas a estimativa de memória para executá-lo é " +
-                    String.format(Locale.US, "%.2f", estimatedRequired / 1_000_000_000.0) +
-                    " GB. A RAM física disponível para este app não oferece margem segura. O arquivo não foi apagado nem baixado novamente."
-            }
-            return null
-        }
-
         private fun selectProfileForDownloadedSize(size: Long) {
             selectedModelId = when {
                 size >= 1_900_000_000L -> "qwen-3b"
@@ -824,6 +808,22 @@ class MainActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun modelMemoryBlockReason(modelBytes: Long): String? {
+        val memory = ActivityManager.MemoryInfo()
+        (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
+        // GGUF pode exigir memória adicional para buffers, contexto e estruturas nativas.
+        // Usa RAM física com margem, em vez de um teto fixo que bloqueava qualquer arquivo >2,5 GB.
+        val estimatedRequired = (modelBytes * 1.35).toLong() + 450_000_000L
+        val usableBudget = (memory.totalMem * 0.82).toLong()
+        if (estimatedRequired > usableBudget) {
+            return "Modelo detectado (" + String.format(Locale.US, "%.2f", modelBytes / 1_000_000_000.0) +
+                " GB), mas a estimativa de memória para executá-lo é " +
+                String.format(Locale.US, "%.2f", estimatedRequired / 1_000_000_000.0) +
+                " GB. A RAM física disponível para este app não oferece margem segura. O arquivo não foi apagado nem baixado novamente."
+        }
+        return null
     }
 
     private suspend fun loadLocalModel(): LlamaModel = modelLoadMutex.withLock {
