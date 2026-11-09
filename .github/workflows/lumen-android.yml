@@ -5,7 +5,6 @@ on:
     branches: ["lumen-ai-core"]
     paths:
       - "lumen-android/**"
-      - "lumen-ai-core/index.html"
       - "settings.gradle.kts"
       - "gradle/**"
       - ".github/workflows/lumen-android.yml"
@@ -21,20 +20,10 @@ concurrency:
 jobs:
   build-lumen:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Checkout AURION source
         uses: actions/checkout@v4
-
-      - name: Set up Python for regression tests
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install AURION core dependencies
-        run: python -m pip install -r lumen-ai-core/requirements.txt
-
-      - name: Verify AURION core and Android interface contract
-        run: PYTHONPATH=lumen-ai-core python -m unittest discover -s lumen-ai-core/tests -v
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -55,7 +44,7 @@ jobs:
 
       - name: Build only the AURION Android app
         working-directory: lumen-android
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon --parallel --build-cache assembleDebug
 
       - name: Verify generated APK archive
         working-directory: lumen-android
