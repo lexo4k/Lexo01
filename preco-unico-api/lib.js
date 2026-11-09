@@ -34,7 +34,7 @@ export function hostAllowed(value, allowlist = []) {
 export function normalizeGtin(value) {
   if (value === undefined || value === null || value === "") return null;
   const digits = String(value).replace(/[ -]/g, "");
-  if (!/^\\d{8}$|^\\d{12}$|^\\d{13}$|^\\d{14}$/.test(digits)) return null;
+  if (!/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(digits)) return null;
   const body = digits.slice(0, -1);
   let sum = 0;
   for (let i = body.length - 1, weight = 3; i >= 0; i--, weight = weight === 3 ? 1 : 3) {
