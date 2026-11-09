@@ -8,12 +8,6 @@ on:
       - "lumen-model/**"
       - "render.yaml"
       - ".github/workflows/nexora-backend.yml"
-  pull_request:
-    paths:
-      - "lumen-ai-core/**"
-      - "lumen-model/**"
-      - "render.yaml"
-      - ".github/workflows/nexora-backend.yml"
   workflow_dispatch:
 
 permissions:
