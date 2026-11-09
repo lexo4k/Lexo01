@@ -978,15 +978,22 @@ class MainActivity : Activity() {
                     if (!temp.renameTo(target)) throw IllegalStateException("O arquivo foi copiado, mas o Android não conseguiu finalizá-lo no armazenamento do aplicativo.")
                 }
                 importedTemp = null
-                modelBusy = false
                 val memoryWarning = modelMemoryBlockReason(size)
-                notifyModel(
-                    if (memoryWarning == null) "downloaded" else "blocked",
-                    "Modelo " + displayName + " anexado e salvo (" +
-                        String.format(Locale.US, "%.2f", size / 1_000_000_000.0) +
-                        " GB). O original não foi apagado. " +
-                        (memoryWarning ?: "Toque em Ativar modelo salvo para carregá-lo no motor local.")
-                )
+                if (memoryWarning != null) {
+                    modelBusy = false
+                    notifyModel(
+                        "blocked",
+                        "Modelo " + displayName + " foi anexado e salvo (" +
+                            String.format(Locale.US, "%.2f", size / 1_000_000_000.0) +
+                            " GB), mas este aparelho não tem margem de memória segura para carregá-lo. O arquivo original permanece intacto. " +
+                            memoryWarning
+                    )
+                    return@launch
+                }
+                // Importar significa preparar o modelo: não deixar o usuário preso a um botão
+                // adicional de ativação depois de selecionar o GGUF.
+                notifyModel("loading", "Modelo " + displayName + " salvo. Carregando automaticamente no motor local…")
+                loadLocalModel()
             } catch (e: Exception) {
                 importedTemp?.delete()
                 modelBusy = false
