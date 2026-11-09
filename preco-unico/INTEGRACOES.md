@@ -9,6 +9,23 @@
 - Testes automatizados cobrem validação HTTPS, allowlist de links e estados de comissão.
 - **Ainda não há banco de dados conectado, parceiro aprovado, feed real, chave administrativa ou comissões reais.** A API retorna catálogo vazio até as dependências serem configuradas. Nenhuma receita foi gerada ou confirmada.
 
+## Fontes oficiais pesquisadas em 09/11/2026
+
+### Awin — feed de produtos
+- A documentação oficial oferece feeds em CSV via Create-a-Feed/lista de produtos e também feeds Enhanced no formato JSON Lines (JSONL).
+- O endpoint de Enhanced Feed documentado é `GET https://api.awin.com/publishers/{PUBLISHER_ID}/awinfeeds/download/{ADVERTISER_ID}-retail-{LOCALE}.jsonl`, com autenticação Bearer.
+- O download só funciona quando o feed existe e há permissão concedida. A documentação limita a 5 solicitações por minuto e não permite chamadas simultâneas para o mesmo feed.
+- A documentação em português informa que a chave usada para baixar a lista de feeds é diferente da chave da API de Publisher.
+- Estado PREÇO ÚNICO: **não conectado**. Ainda faltam conta elegível/representação adequada, autorização do anunciante, token e feed específico. Não há catálogo Awin sendo importado.
+- Fontes oficiais: https://help.awin.com/apidocs/retail-publisher-productapidocumentation-1 e https://success.awin.com/articles/pt_BR/Knowledge/How-can-I-access-a-Product-Feed
+
+### Amazon Brasil — Creators API
+- A documentação atual orienta novas integrações para a Creators API, sucessora da Product Advertising API 5.0 (PA-API).
+- A Creators API usa OAuth 2.0 com Credential ID, Credential Secret e versão regional; tokens são temporários e devem ser mantidos no backend.
+- A documentação informa requisito de participação no programa de Associados e pelo menos 10 vendas qualificadas nos 30 dias anteriores para acesso à API.
+- Estado PREÇO ÚNICO: **não conectado e sem credenciais**. PA-API antiga não deve ser usada para uma integração nova.
+- Fontes oficiais: https://associados.amazon.com.br/creatorsapi/docs/en-us/introduction e https://associados.amazon.com.br/creatorsapi/docs/en-us/migrating-to-creatorsapi-from-paapi
+
 ## Cobertura planejada
 Categorias preparadas na interface: tecnologia, casa, moda, esportes, mercado, beleza, automotivo, pets e importados. A cobertura depende de feeds e APIs autorizados por cada parceiro.
 
