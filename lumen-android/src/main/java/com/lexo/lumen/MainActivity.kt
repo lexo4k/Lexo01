@@ -278,14 +278,20 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun canRunLocalModel(): Boolean =
-            localModel != null || (modelFile.exists() && modelFile.length() >= selectedProfile().minBytes)
+            localModel != null || (modelFile.exists() &&
+                modelFile.length() >= selectedProfile().minBytes &&
+                modelMemoryBlockReason(modelFile.length()) == null)
+
+        @JavascriptInterface fun localModelBlockReason(): String =
+            if (modelFile.exists()) modelMemoryBlockReason(modelFile.length()) ?: "" else ""
 
         @JavascriptInterface fun modelState(): String {
             val profile = selectedProfile()
             return when {
                 localModel != null -> "ready"
                 modelBusy -> "working"
-                modelFile.exists() && modelFile.length() >= profile.minBytes -> "downloaded"
+                modelFile.exists() && modelFile.length() >= profile.minBytes ->
+                    if (modelMemoryBlockReason(modelFile.length()) == null) "downloaded" else "blocked"
                 findSharedModelUri(profile) != null -> "shared"
                 else -> "missing"
             }
@@ -932,22 +938,30 @@ class MainActivity : Activity() {
                     } ?: "modelo.gguf"
                 }
                 if (!displayName.lowercase(Locale.ROOT).endsWith(".gguf")) {
-                    throw IllegalArgumentException("Escolha um arquivo .gguf compatível com llama.cpp.")
+                    throw IllegalArgumentException("Este motor aceita modelos no formato GGUF. O arquivo selecionado não termina em .gguf.")
                 }
-                val temp = File(filesDir, "models/imported-model.gguf.part")
+                // Temporário e destino ficam no mesmo volume. Antes o temporário ficava em
+                // filesDir e o destino em getExternalFilesDir, fazendo renameTo falhar em
+                // aparelhos nos quais esses caminhos pertencem a volumes diferentes.
+                val modelDirectory = getExternalFilesDir("models") ?: File(filesDir, "models")
+                if (!modelDirectory.exists() && !modelDirectory.mkdirs()) {
+                    throw IllegalStateException("Não foi possível criar a pasta privada dos modelos.")
+                }
+                val temp = File(modelDirectory, "aurion-import.gguf.part")
                 importedTemp = temp
                 withContext(Dispatchers.IO) {
-                    temp.parentFile?.mkdirs()
+                    if (temp.exists() && !temp.delete()) throw IllegalStateException("Não foi possível limpar uma importação temporária anterior.")
+                    if (modelDirectory.usableSpace < 500_000_000L) throw IllegalStateException("Há pouco espaço livre para importar e preparar o modelo.")
                     contentResolver.openInputStream(uri)?.use { input ->
                         FileOutputStream(temp).use { output ->
-                            input.copyTo(output, 64 * 1024)
+                            input.copyTo(output, 1024 * 1024)
                             output.fd.sync()
                         }
-                    } ?: throw IllegalStateException("Não foi possível ler o arquivo selecionado.")
+                    } ?: throw IllegalStateException("O Android não conseguiu abrir o arquivo selecionado.")
                 }
                 val size = temp.length()
-                if (size < 450_000_000L) throw IllegalArgumentException("O arquivo é pequeno demais para ser um modelo GGUF completo.")
-                modelMemoryBlockReason(size)?.let { throw IllegalArgumentException(it) }
+                if (size < 450_000_000L) throw IllegalArgumentException("O arquivo tem apenas " + size + " bytes. Parece incompleto ou não é um modelo GGUF completo.")
+                if (size > 6_000_000_000L) throw IllegalArgumentException("O arquivo excede o limite de importação desta versão (6 GB).")
                 selectedModelId = when {
                     size >= 1_900_000_000L -> "qwen-3b"
                     size >= 1_050_000_000L -> "qwen-1.5b"
@@ -956,17 +970,23 @@ class MainActivity : Activity() {
                 getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", selectedModelId).apply()
                 val target = modelFile
                 withContext(Dispatchers.IO) {
-                    target.parentFile?.mkdirs()
-                    if (target.exists()) target.delete()
-                    if (!temp.renameTo(target)) throw IllegalStateException("Não foi possível guardar o modelo selecionado.")
+                    if (target.exists() && !target.delete()) throw IllegalStateException("Não foi possível substituir o modelo anterior.")
+                    if (!temp.renameTo(target)) throw IllegalStateException("O arquivo foi copiado, mas o Android não conseguiu finalizá-lo no armazenamento do aplicativo.")
                 }
                 importedTemp = null
-                notifyModel("loading", "Modelo " + displayName + " importado. Carregando o núcleo local…")
-                loadLocalModel()
+                modelBusy = false
+                val memoryWarning = modelMemoryBlockReason(size)
+                notifyModel(
+                    if (memoryWarning == null) "downloaded" else "blocked",
+                    "Modelo " + displayName + " anexado e salvo (" +
+                        String.format(Locale.US, "%.2f", size / 1_000_000_000.0) +
+                        " GB). O original não foi apagado. " +
+                        (memoryWarning ?: "Toque em Ativar modelo salvo para carregá-lo no motor local.")
+                )
             } catch (e: Exception) {
                 importedTemp?.delete()
                 modelBusy = false
-                notifyModel("error", "Não consegui importar o modelo: " + (e.message ?: "erro desconhecido"))
+                notifyModel("error", "Falha ao anexar o modelo: " + (e.message ?: "erro desconhecido") + ". O arquivo original escolhido não foi apagado.")
             }
         }
     }
