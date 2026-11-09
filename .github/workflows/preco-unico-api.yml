@@ -1,0 +1,22 @@
+name: PRECO UNICO API checks
+on:
+  push:
+    branches: [preco-unico]
+    paths:
+      - "preco-unico-api/**"
+      - ".github/workflows/preco-unico-api.yml"
+  pull_request:
+    branches: [preco-unico]
+    paths:
+      - "preco-unico-api/**"
+      - ".github/workflows/preco-unico-api.yml"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --prefix preco-unico-api
+      - run: npm test --prefix preco-unico-api
