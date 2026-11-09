@@ -34,8 +34,12 @@ function visible() {
     const currencyA = String(a.currency || "BRL");
     const currencyB = String(b.currency || "BRL");
     if (currencyA !== currencyB) return currencyA.localeCompare(currencyB);
-    const totalA = Number(a.priceCents || 0) + Number(a.shippingCents || 0);
-    const totalB = Number(b.priceCents || 0) + Number(b.shippingCents || 0);
+    const shippingKnownA = a.shippingCents !== null && a.shippingCents !== undefined;
+    const shippingKnownB = b.shippingCents !== null && b.shippingCents !== undefined;
+    // Não tratar frete desconhecido como grátis: ofertas com custo total conhecido vêm primeiro.
+    if (shippingKnownA !== shippingKnownB) return shippingKnownA ? -1 : 1;
+    const totalA = Number(a.priceCents || 0) + (shippingKnownA ? Number(a.shippingCents) : 0);
+    const totalB = Number(b.priceCents || 0) + (shippingKnownB ? Number(b.shippingCents) : 0);
     return descending ? totalB - totalA : totalA - totalB;
   };
   if (sort === "low") list.sort((a,b) => byCurrencyThenPrice(a,b));
@@ -59,7 +63,7 @@ function render() {
       <div class="product-visual">
         <span class="tag ${p.isOriginal ? "" : "alt"}">${p.isOriginal ? "ORIGINAL INFORMADO" : "OFERTA DO PARCEIRO"}</span>
         <button class="save ${isSaved ? "saved" : ""}" data-save="${escapeHtml(p.id)}" aria-label="Salvar produto">${isSaved ? "♥" : "♡"}</button>
-        <span class="emoji">🛍️</span>
+        ${p.imageUrl && /^https:\/\//i.test(p.imageUrl) ? `<img class="product-image" src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.title)}" loading="lazy" referrerpolicy="no-referrer">` : `<span class="emoji" aria-hidden="true">🛍️</span>`}
       </div>
       <div class="product-info">
         <div class="product-type">${escapeHtml(p.category)} · ${escapeHtml(p.condition || "Condição não informada")}</div>
@@ -89,7 +93,7 @@ function detail(id) {
     received ? "Registro recebido em: " + received + ". A fonte não informou a data original." : "Data não informada";
   $("#dialogContent").innerHTML = `
     <div class="eyebrow dark">OFERTA DE PARCEIRO</div>
-    <div class="dialog-emoji">🛍️</div>
+    ${p.imageUrl && /^https:\/\//i.test(p.imageUrl) ? `<img class="dialog-image" src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.title)}" loading="lazy" referrerpolicy="no-referrer">` : `<div class="dialog-emoji" aria-hidden="true">🛍️</div>`}
     <h2>${escapeHtml(p.title)}</h2>
     <p style="color:#718096;font-size:12px;line-height:1.7">${escapeHtml(p.description || "Descrição não fornecida pela loja.")}</p>
     <div class="dialog-offer"><div><b>${escapeHtml(p.merchant)}</b><small>Fonte: ${escapeHtml(p.partner)}</small></div><b>${money(p.priceCents, p.currency)}</b></div>
