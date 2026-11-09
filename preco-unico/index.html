@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#101a2b">
-  <meta name="description" content="PREÇO ÚNICO: encontre, compare e economize. Compare produtos originais e alternativas econômicas com transparência.">
+  <meta name="description" content="PREÇO ÚNICO: pesquise e compare ofertas reais de lojas parceiras com transparência.">
   <title>PREÇO ÚNICO | Encontre. Compare. Economize.</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -14,14 +14,13 @@
     <nav class="nav"><a href="#ofertas">Ofertas</a><a href="#como-funciona">Como funciona</a><a href="#seguranca">Segurança</a></nav>
     <button class="saved-button" id="savedToggle" type="button">♡ <span>Salvos</span> <i id="savedCount">0</i></button>
   </header>
-
   <main>
     <section class="hero">
       <div class="hero-glow"></div>
       <div class="hero-content">
         <div class="eyebrow"><span class="pulse"></span> COMPARAÇÃO INTELIGENTE DE PREÇOS</div>
         <h1>O melhor preço<br><em>não precisa ser difícil.</em></h1>
-        <p>Pesquise, compare lojas e descubra opções originais e alternativas econômicas. Tudo em um só lugar.</p>
+        <p>Pesquise, compare lojas e confira preço, frete e condições antes de comprar.</p>
         <form class="searchbar" id="searchForm">
           <span class="search-icon">⌕</span>
           <input id="searchInput" type="search" placeholder="O que você está procurando hoje?" autocomplete="off" aria-label="Pesquisar produtos">
@@ -36,17 +35,15 @@
         <div class="big-tag"><small>PREÇO</small><strong>JUSTO</strong><span>começa na comparação.</span></div>
       </div>
     </section>
-
     <section class="trust-strip">
       <div><span class="trust-icon">⌕</span><b>Busca simples</b><small>Digite o que deseja</small></div>
       <div><span class="trust-icon">⇄</span><b>Compare lado a lado</b><small>Preço e condições</small></div>
-      <div><span class="trust-icon">◇</span><b>Escolha consciente</b><small>Original ou alternativa</small></div>
+      <div><span class="trust-icon">◇</span><b>Escolha consciente</b><small>Informação clara</small></div>
       <div><span class="trust-icon">↗</span><b>Compra na loja</b><small>Checkout do vendedor</small></div>
     </section>
-
     <section class="catalog section" id="ofertas">
       <div class="section-heading">
-        <div><div class="eyebrow dark">VITRINE DE EXEMPLO</div><h2>Encontre sua próxima <em>boa escolha.</em></h2><p>Explore tecnologia, casa, moda, mercado, beleza, automotivo, pets e importados. Os dados desta versão são demonstrativos.</p></div>
+        <div><div class="eyebrow dark">OFERTAS DE PARCEIROS</div><h2>Encontre sua próxima <em>boa escolha.</em></h2><p>Estamos conectando fontes oficiais de produtos e preços. Só publicaremos ofertas reais, com origem e atualização identificadas.</p></div>
         <label class="sort-wrap">Ordenar por <select id="sortSelect"><option value="recommended">Recomendados</option><option value="low">Menor preço</option><option value="high">Maior preço</option><option value="name">Nome</option></select></label>
       </div>
       <div class="toolbar">
@@ -62,34 +59,29 @@
           <button class="chip" data-category="Pets">♡ Pets</button>
           <button class="chip" data-category="Importados">◎ Importados</button>
         </div>
-        <div class="filter-group"><label class="check-filter"><input type="checkbox" id="originalOnly"> Somente originais</label><label class="check-filter"><input type="checkbox" id="budgetOnly"> Econômicos</label></div>
+        <div class="filter-group"><label class="check-filter"><input type="checkbox" id="originalOnly"> Somente originais informados</label><label class="check-filter"><input type="checkbox" id="budgetOnly"> Com frete informado</label></div>
       </div>
-      <div class="results-line"><span id="resultsCount">8 opções de demonstração</span><span class="demo-label">● CATÁLOGO FICTÍCIO</span></div>
+      <div class="results-line"><span id="resultsCount">Carregando ofertas…</span><span class="demo-label">● SOMENTE DADOS REAIS</span></div>
       <div class="product-grid" id="productGrid"></div>
-      <div class="empty-state" id="emptyState" hidden><div>⌕</div><h3>Nenhum produto encontrado</h3><p>Tente outro termo ou retire algum filtro.</p><button class="outline-btn" id="clearFilters">Limpar filtros</button></div>
+      <div class="empty-state" id="emptyState" hidden><div>⌕</div><h3>Nenhuma oferta real disponível</h3><p>Estamos preparando as conexões oficiais com lojas e redes de afiliados.</p><button class="outline-btn" id="clearFilters">Limpar filtros</button></div>
     </section>
-
     <section class="compare-banner">
       <div class="compare-symbol">⇄</div><div><div class="eyebrow">COMPARAR É ECONOMIZAR</div><h2>Preço é importante.<br><em>O conjunto todo também.</em></h2><p>Uma boa oferta considera frete, prazo, condição do produto e confiança no vendedor.</p></div>
       <div class="compare-checks"><span>✓ Preço do produto</span><span>✓ Frete e entrega</span><span>✓ Originalidade e condição</span><span>✓ Identificação da loja</span></div>
     </section>
-
     <section class="how section" id="como-funciona">
       <div class="eyebrow dark">SEM COMPLICAÇÃO</div><h2>Da pesquisa à compra,<br><em>em poucos passos.</em></h2>
       <div class="steps">
         <article><span>01</span><div class="step-icon">⌕</div><h3>Pesquise</h3><p>Digite o produto, marca ou modelo que deseja encontrar.</p></article>
-        <article><span>02</span><div class="step-icon">⇄</div><h3>Compare</h3><p>Veja as opções e avalie preço, frete, prazo e condição.</p></article>
+        <article><span>02</span><div class="step-icon">⇄</div><h3>Compare</h3><p>Veja preço, frete, prazo e condição informados pela fonte.</p></article>
         <article><span>03</span><div class="step-icon">↗</div><h3>Compre na loja</h3><p>Você finaliza o pedido diretamente com o vendedor escolhido.</p></article>
       </div>
     </section>
-
     <section class="safety section" id="seguranca">
-      <div class="safety-badge">✓</div><div><div class="eyebrow">NOSSO COMPROMISSO</div><h2>Clareza antes do clique.</h2><p>Produtos originais, similares, usados ou recondicionados devem ser identificados corretamente. Não inventamos avaliações, certificações, parcerias ou descontos. Quando houver links de afiliados, isso será informado com transparência.</p></div>
+      <div class="safety-badge">✓</div><div><div class="eyebrow">NOSSO COMPROMISSO</div><h2>Clareza antes do clique.</h2><p>Não inventamos avaliações, certificações, parcerias ou descontos. Quando houver links de afiliados, isso será informado. Preço e disponibilidade devem ser confirmados na loja.</p></div>
     </section>
   </main>
-
-  <footer><a class="brand" href="#"><span class="brand-mark">P</span><span>PREÇO <b>ÚNICO</b></span></a><span>Seu shopping, um só lugar.</span><span>Versão demonstrativa · 2026</span></footer>
-
+  <footer><a class="brand" href="#"><span class="brand-mark">P</span><span>PREÇO <b>ÚNICO</b></span></a><span>Seu shopping, um só lugar.</span><span>Ofertas de parceiros · 2026</span></footer>
   <dialog id="productDialog" class="product-dialog"><button class="dialog-close" id="dialogClose" aria-label="Fechar">×</button><div id="dialogContent"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./app.js"></script>
