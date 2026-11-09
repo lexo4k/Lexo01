@@ -378,11 +378,11 @@ function refreshLocalModel(){
  if(window.AurionNative){try{const options=JSON.parse(window.AurionNative.modelOptions());const select=$("localModelSelect");if(select&&options.selected){select.value=options.selected}const chosen=(options.models||[]).find(x=>x.id===options.selected);if(chosen)$("localModelNote").textContent=chosen.note+" Contexto: "+chosen.context+" tokens · saída máxima configurada: "+chosen.maxTokens+" tokens.";}catch(e){}}
  const state=localModelState();
  if(state==="ready")window.onAurionModelState("ready","IA local pronta neste aparelho.");
- else if(state==="downloaded")window.onAurionModelState("downloaded","Modelo salvo neste aparelho. Toque em Ativar modelo salvo para carregá-lo.");
+ else if(state==="downloaded")window.onAurionModelState("downloaded","Modelo salvo neste aparelho. Carregando automaticamente no motor local…");
  else if(state==="blocked")window.onAurionModelState("blocked",window.AurionNative&&window.AurionNative.localModelBlockReason?window.AurionNative.localModelBlockReason():"O modelo está salvo, mas excede a margem segura de memória deste aparelho.");
  else if(state==="shared")window.onAurionModelState("restoring","Modelo preservado em Downloads/AURION AI. Recuperando sem novo download…");
  else if(state==="working")window.onAurionModelState("loading","A IA local está sendo preparada.");
- else if(state==="missing")window.onAurionModelState("missing","Modelo ainda não baixado. Toque no botão para ativar a IA local.");
+ else if(state==="missing")window.onAurionModelState("missing","Nenhum modelo GGUF foi encontrado. Importe um arquivo ou baixe um modelo para iniciar a IA local.");
  else if(state==="unavailable")window.onAurionModelState("unavailable","A IA local roda no aplicativo Android. A prévia web não tem acesso ao motor nativo.");
 }
 function setMode(mode){
@@ -747,7 +747,7 @@ async function saveCorrectionMemory(){
  }catch(e){setSettingsStatus("Falha ao salvar experiência: "+e.message,false)}
 }
 function setSettingsStatus(msg,ok){$("settingsStatus").textContent=msg;$("settingsStatus").className="statusbox "+(ok?"good":"warn")}
-function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está aberto em modo local. Memórias e tarefas podem ser guardadas neste aparelho. Para respostas locais, ative o modelo salvo. Pesquisa na web e locais próximos usam internet; não exigem conectar o motor de conversa.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
+function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está em modo local. Quando um modelo GGUF é importado ou encontrado, AURION tenta carregá-lo automaticamente. Pesquisa na web e locais próximos exigem internet.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
 function disconnectServer(){config={url:config.url||"https://nexora-ai-core.onrender.com",token:""};saveConfig();connected=false;apiCaps=null;setConnection(false);$("chatState").textContent="Modo local · IA ainda não conectada";$("settingsStatus").textContent="Motor remoto desconectado. Pesquisa pública continua disponível quando houver internet.";renderCapabilities()}
 function renderCapabilities(){
 const c=apiCaps;
