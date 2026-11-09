@@ -1,31 +1,138 @@
-const products=[
-{id:1,name:"Smartphone Nova X",category:"Tecnologia",kind:"Original",emoji:"📱",price:1899.90,store:"Loja demonstrativa A",shipping:0,delivery:"3 a 6 dias úteis",condition:"Novo",description:"Exemplo fictício de um smartphone original. As especificações e a oferta não representam uma loja real."},
-{id:2,name:"Celular Essencial 5G",category:"Tecnologia",kind:"Econômico",emoji:"📲",price:899.90,store:"Loja demonstrativa B",shipping:29.90,delivery:"5 a 9 dias úteis",condition:"Novo",description:"Alternativa econômica fictícia. Não é o mesmo modelo do produto original acima."},
-{id:3,name:"Fone sem fio Pro",category:"Tecnologia",kind:"Original",emoji:"🎧",price:499.90,store:"Loja demonstrativa C",shipping:0,delivery:"2 a 5 dias úteis",condition:"Novo",description:"Produto original de demonstração, sem parceria comercial ativa."},
-{id:4,name:"Fone Bluetooth básico",category:"Tecnologia",kind:"Econômico",emoji:"🎵",price:89.90,store:"Loja demonstrativa D",shipping:14.90,delivery:"5 a 10 dias úteis",condition:"Novo",description:"Alternativa de entrada fictícia. Recursos e qualidade podem ser diferentes."},
-{id:5,name:"Cafeteira Compacta",category:"Casa",kind:"Original",emoji:"☕",price:279.90,store:"Loja demonstrativa E",shipping:19.90,delivery:"4 a 7 dias úteis",condition:"Novo",description:"Exemplo de produto para casa."},
-{id:6,name:"Tênis Corrida Flex",category:"Esportes",kind:"Econômico",emoji:"👟",price:159.90,store:"Loja demonstrativa F",shipping:17.90,delivery:"4 a 8 dias úteis",condition:"Novo",description:"Alternativa econômica fictícia. Não representa produto de marca original."},
-{id:7,name:"Mochila Urbana",category:"Moda",kind:"Original",emoji:"🎒",price:219.90,store:"Loja demonstrativa G",shipping:0,delivery:"3 a 6 dias úteis",condition:"Novo",description:"Exemplo de produto de moda."},
-{id:8,name:"Relógio Digital",category:"Moda",kind:"Econômico",emoji:"⌚",price:69.90,store:"Loja demonstrativa H",shipping:12.90,delivery:"6 a 12 dias úteis",condition:"Novo",description:"Alternativa de baixo custo fictícia."}
-];
-products.push(
-{id:9,name:"Kit cuidados pessoais",category:"Beleza",kind:"Econômico",emoji:"🧴",price:49.90,store:"Loja demonstrativa I",shipping:9.90,delivery:"4 a 8 dias úteis",condition:"Novo",description:"Exemplo fictício de cuidados pessoais."},
-{id:10,name:"Ração para cães 10 kg",category:"Pets",kind:"Original",emoji:"🐾",price:129.90,store:"Loja demonstrativa J",shipping:14.90,delivery:"3 a 6 dias úteis",condition:"Novo",description:"Exemplo fictício de produto para pets."},
-{id:11,name:"Acessório automotivo",category:"Automotivo",kind:"Econômico",emoji:"🚗",price:79.90,store:"Loja demonstrativa K",shipping:18.90,delivery:"5 a 9 dias úteis",condition:"Novo",description:"Exemplo fictício de acessório automotivo."},
-{id:12,name:"Café especial 500 g",category:"Mercado",kind:"Original",emoji:"☕",price:34.90,store:"Loja demonstrativa L",shipping:8.90,delivery:"2 a 5 dias úteis",condition:"Novo",description:"Exemplo fictício de item de mercado."},
-{id:13,name:"Fone importado econômico",category:"Importados",kind:"Econômico",emoji:"🎧",price:59.90,store:"Loja demonstrativa M",shipping:25.90,delivery:"12 a 25 dias úteis",condition:"Novo",description:"Exemplo fictício de item importado. Tributos e prazo podem variar."}
-);
-let category="Todos",query="",saved=JSON.parse(localStorage.getItem("pu-saved")||"[]"),savedMode=false;
-const $=s=>document.querySelector(s), money=v=>v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-function toast(msg){const el=$("#toast");el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}
-function visible(){let list=products.filter(p=>(category==="Todos"||p.category===category)&&(!query||(p.name+" "+p.category+" "+p.kind).toLowerCase().includes(query.toLowerCase()))&&(!$("#originalOnly").checked||p.kind==="Original")&&(!$("#budgetOnly").checked||p.kind==="Econômico")&&(!savedMode||saved.includes(p.id)));const sort=$("#sortSelect").value;if(sort==="low")list.sort((a,b)=>(a.price+a.shipping)-(b.price+b.shipping));if(sort==="high")list.sort((a,b)=>b.price-a.price);if(sort==="name")list.sort((a,b)=>a.name.localeCompare(b.name));return list}
-function render(){const list=visible();$("#resultsCount").textContent=list.length+" opções de demonstração";$("#savedCount").textContent=saved.length;$("#productGrid").innerHTML=list.map(p=>`<article class="product-card"><div class="product-visual"><span class="tag ${p.kind==="Econômico"?"alt":""}">${p.kind==="Original"?"ORIGINAL · EXEMPLO":"OPÇÃO ECONÔMICA"}</span><button class="save ${saved.includes(p.id)?"saved":""}" data-save="${p.id}" aria-label="Salvar produto">${saved.includes(p.id)?"♥":"♡"}</button><span class="emoji">${p.emoji}</span></div><div class="product-info"><div class="product-type">${p.category} · ${p.condition}</div><h3>${p.name}</h3><div class="product-sub">${p.store}</div><div class="price-row"><div><div class="price">${money(p.price)}</div><div class="price-note">${p.shipping===0?"Frete grátis (exemplo)":"Frete "+money(p.shipping)+" (exemplo)"}</div></div></div><button class="compare-btn" data-detail="${p.id}">Ver detalhes e comparar →</button></div></article>`).join("");$("#emptyState").hidden=list.length>0;$("#productGrid").hidden=list.length===0}
-function detail(id){const p=products.find(x=>x.id===id);const alternatives=products.filter(x=>x.category===p.category&&x.id!==id).slice(0,3);$("#dialogContent").innerHTML=`<div class="eyebrow dark">DETALHES DO PRODUTO · DEMONSTRAÇÃO</div><div class="dialog-emoji">${p.emoji}</div><h2>${p.name}</h2><p style="color:#718096;font-size:12px;line-height:1.7">${p.description}</p><div class="dialog-offer"><div><b>${p.store}</b><small>${p.kind} · ${p.condition} · Entrega: ${p.delivery}</small></div><b>${money(p.price+p.shipping)}</b></div><p style="font-size:10px;color:#9a6b2c">Preço total ilustrativo, incluindo frete demonstrativo. Nenhuma loja ou oferta está conectada.</p><h3 style="font:700 14px Manrope;margin-top:24px">Outras opções da categoria</h3>${alternatives.map(a=>`<div class="dialog-offer"><div><b>${a.name}</b><small>${a.kind} · ${a.store}</small></div><b>${money(a.price+a.shipping)}</b></div>`).join("")}<button class="compare-btn" style="margin-top:18px" id="demoBuy">Link de demonstração · compra indisponível</button>`;$("#productDialog").showModal();$("#demoBuy").addEventListener("click",()=>toast("Ainda não há lojas ou links de afiliados conectados."))}
-$("#searchForm").addEventListener("submit",e=>{e.preventDefault();query=$("#searchInput").value.trim();savedMode=false;render();$("#ofertas").scrollIntoView({behavior:"smooth"})});
-$("#searchInput").addEventListener("input",e=>{query=e.target.value.trim();savedMode=false;render()});
-$("#categoryList").addEventListener("click",e=>{const b=e.target.closest("[data-category]");if(!b)return;category=b.dataset.category;document.querySelectorAll(".chip").forEach(x=>x.classList.toggle("active",x===b));render()});
-$("#sortSelect").addEventListener("change",render);$("#originalOnly").addEventListener("change",()=>{$("#budgetOnly").checked=false;render()});$("#budgetOnly").addEventListener("change",()=>{$("#originalOnly").checked=false;render()});
-$("#productGrid").addEventListener("click",e=>{const save=e.target.closest("[data-save]");if(save){const id=Number(save.dataset.save);saved=saved.includes(id)?saved.filter(x=>x!==id):[...saved,id];localStorage.setItem("pu-saved",JSON.stringify(saved));render();return}const d=e.target.closest("[data-detail]");if(d)detail(Number(d.dataset.detail))});
-$("#savedToggle").addEventListener("click",()=>{savedMode=!savedMode;$("#savedToggle").classList.toggle("active",savedMode);toast(savedMode?"Mostrando seus produtos salvos":"Mostrando todos os produtos");render();$("#ofertas").scrollIntoView({behavior:"smooth"})});
-$("#dialogClose").addEventListener("click",()=>$("#productDialog").close());$("#clearFilters").addEventListener("click",()=>{query="";category="Todos";$("#searchInput").value="";$("#originalOnly").checked=false;$("#budgetOnly").checked=false;savedMode=false;document.querySelectorAll(".chip").forEach(x=>x.classList.toggle("active",x.dataset.category==="Todos"));render()});
-render();
+const API_BASE = window.PRECO_UNICO_API || "https://preco-unico-api.onrender.com";
+let products = [];
+let category = "Todos";
+let query = "";
+let saved = JSON.parse(localStorage.getItem("pu-saved") || "[]");
+let savedMode = false;
+let apiMessage = "Carregando ofertas reais…";
+const $ = (s) => document.querySelector(s);
+const money = (cents) => (Number(cents || 0) / 100).toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+function toast(message) {
+  const el = $("#toast");
+  el.textContent = message;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2400);
+}
+function visible() {
+  let list = products.filter(p =>
+    (category === "Todos" || p.category === category) &&
+    (!query || (p.title + " " + p.category + " " + p.merchant).toLowerCase().includes(query.toLowerCase())) &&
+    (!$("#originalOnly").checked || p.isOriginal === true) &&
+    (!$("#budgetOnly").checked || p.shippingCents !== null && p.shippingCents !== undefined) &&
+    (!savedMode || saved.includes(String(p.id)) || saved.includes(p.id))
+  );
+  const sort = $("#sortSelect").value;
+  if (sort === "low") list.sort((a,b) => (a.priceCents + (a.shippingCents || 0)) - (b.priceCents + (b.shippingCents || 0)));
+  if (sort === "high") list.sort((a,b) => b.priceCents - a.priceCents);
+  if (sort === "name") list.sort((a,b) => a.title.localeCompare(b.title, "pt-BR"));
+  return list;
+}
+function render() {
+  const list = visible();
+  $("#resultsCount").textContent = list.length + (list.length === 1 ? " oferta encontrada" : " ofertas encontradas");
+  $("#savedCount").textContent = saved.length;
+  $("#productGrid").innerHTML = list.map(p => {
+    const isSaved = saved.includes(String(p.id)) || saved.includes(p.id);
+    const shipping = p.shippingCents === null || p.shippingCents === undefined ? "Frete a consultar" :
+      (p.shippingCents === 0 ? "Frete grátis informado" : "Frete " + money(p.shippingCents));
+    const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString("pt-BR") : "Data não informada";
+    return `<article class="product-card">
+      <div class="product-visual">
+        <span class="tag ${p.isOriginal ? "" : "alt"}">${p.isOriginal ? "ORIGINAL INFORMADO" : "OFERTA DO PARCEIRO"}</span>
+        <button class="save ${isSaved ? "saved" : ""}" data-save="${escapeHtml(p.id)}" aria-label="Salvar produto">${isSaved ? "♥" : "♡"}</button>
+        <span class="emoji">🛍️</span>
+      </div>
+      <div class="product-info">
+        <div class="product-type">${escapeHtml(p.category)} · ${escapeHtml(p.condition || "Condição não informada")}</div>
+        <h3>${escapeHtml(p.title)}</h3>
+        <div class="product-sub">${escapeHtml(p.merchant)} · ${escapeHtml(p.partner)}</div>
+        <div class="price-row"><div><div class="price">${money(p.priceCents)}</div><div class="price-note">${shipping}</div></div></div>
+        <div class="price-note">Atualizado: ${escapeHtml(updated)}</div>
+        <button class="compare-btn" data-detail="${escapeHtml(p.id)}">Ver oferta e condições →</button>
+      </div>
+    </article>`;
+  }).join("");
+  $("#emptyState").hidden = list.length > 0;
+  $("#productGrid").hidden = list.length === 0;
+  if (!list.length) {
+    $("#emptyState h3").textContent = savedMode ? "Nenhum produto salvo nesta busca" : "Nenhuma oferta real disponível";
+    $("#emptyState p").textContent = apiMessage;
+  }
+}
+function detail(id) {
+  const p = products.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const shipping = p.shippingCents === null || p.shippingCents === undefined ? "Consulte o frete na loja" :
+    (p.shippingCents === 0 ? "Frete grátis informado pela fonte" : money(p.shippingCents));
+  const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleString("pt-BR") : "Não informado";
+  $("#dialogContent").innerHTML = `
+    <div class="eyebrow dark">OFERTA DE PARCEIRO</div>
+    <div class="dialog-emoji">🛍️</div>
+    <h2>${escapeHtml(p.title)}</h2>
+    <p style="color:#718096;font-size:12px;line-height:1.7">${escapeHtml(p.description || "Descrição não fornecida pela loja.")}</p>
+    <div class="dialog-offer"><div><b>${escapeHtml(p.merchant)}</b><small>Fonte: ${escapeHtml(p.partner)}</small></div><b>${money(p.priceCents)}</b></div>
+    <div class="dialog-offer"><div><b>Frete</b><small>Consulte condições e endereço na loja</small></div><b>${escapeHtml(shipping)}</b></div>
+    <div class="dialog-offer"><div><b>Condição</b><small>${escapeHtml(p.condition || "Não informada")}</small></div><b>${p.isOriginal ? "Original informado" : "Não confirmado"}</b></div>
+    <p style="font-size:10px;color:#718096">Última atualização informada: ${escapeHtml(updated)}. Preço e disponibilidade podem mudar no site do vendedor.</p>
+    <button class="compare-btn" style="margin-top:18px" id="goStore">Ir à loja e consultar →</button>
+    <p style="font-size:10px;color:#718096;margin-top:10px">Podemos receber comissão se você comprar por um link de parceiro, sem custo adicional informado ao comprador.</p>`;
+  $("#productDialog").showModal();
+  $("#goStore").addEventListener("click", () => {
+    window.location.href = API_BASE + "/r/" + encodeURIComponent(p.id);
+  });
+}
+async function loadOffers() {
+  try {
+    const response = await fetch(API_BASE + "/api/offers", { headers:{ "Accept":"application/json" } });
+    if (!response.ok) throw new Error("API indisponível");
+    const data = await response.json();
+    products = Array.isArray(data.offers) ? data.offers : [];
+    apiMessage = products.length ? "Compare preço, frete e condições. A compra acontece no site da loja." :
+      "Estamos preparando as conexões oficiais com lojas e redes de afiliados. Não exibimos produtos fictícios.";
+  } catch {
+    products = [];
+    apiMessage = "O serviço de ofertas está temporariamente indisponível. Tente novamente em instantes.";
+  }
+  render();
+}
+$("#searchForm").addEventListener("submit", e => {
+  e.preventDefault(); query = $("#searchInput").value.trim(); savedMode = false; render();
+  $("#ofertas").scrollIntoView({ behavior:"smooth" });
+});
+$("#searchInput").addEventListener("input", e => { query = e.target.value.trim(); savedMode = false; render(); });
+$("#categoryList").addEventListener("click", e => {
+  const button = e.target.closest("[data-category]");
+  if (!button) return;
+  category = button.dataset.category;
+  document.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === button));
+  render();
+});
+$("#sortSelect").addEventListener("change", render);
+$("#originalOnly").addEventListener("change", () => { if ($("#originalOnly").checked) $("#budgetOnly").checked = false; render(); });
+$("#budgetOnly").addEventListener("change", () => { if ($("#budgetOnly").checked) $("#originalOnly").checked = false; render(); });
+$("#productGrid").addEventListener("click", e => {
+  const save = e.target.closest("[data-save]");
+  if (save) {
+    const id = String(save.dataset.save);
+    saved = saved.includes(id) ? saved.filter(x => String(x) !== id) : [...saved, id];
+    localStorage.setItem("pu-saved", JSON.stringify(saved));
+    render(); return;
+  }
+  const button = e.target.closest("[data-detail]");
+  if (button) detail(button.dataset.detail);
+});
+$("#savedToggle").addEventListener("click", () => {
+  savedMode = !savedMode;
+  $("#savedToggle").classList.toggle("active", savedMode);
+  toast(savedMode ? "Mostrando produtos salvos" : "Mostrando todas as ofertas");
+  render(); $("#ofertas").scrollIntoView({ behavior:"smooth" });
+});
+$("#dialogClose").addEventListener("click", () => $("#productDialog").close());
+$("#clearFilters").addEventListener("click", () => {
+  query = ""; category = "Todos"; savedMode = false;
+  $("#searchInput").value = ""; $("#originalOnly").checked = false; $("#budgetOnly").checked = false;
+  document.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x.dataset.category === "Todos"));
+  render();
+});
+loadOffers();
