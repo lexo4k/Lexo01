@@ -74,7 +74,7 @@ main{padding:18px 16px 30px}.screen{display:none}.screen.active{display:block}.e
 <header><div class="brand"><div class="orb">A</div><div><strong>AURION AI</strong><small>NÚCLEO DE INTELIGÊNCIA</small></div></div><div class="head-actions"><span class="pill" id="connectionPill">● modo local</span><button class="iconbtn" onclick="show('settings')" aria-label="Configurações">⚙</button></div></header>
 <main>
 <section id="home" class="screen active">
-<div class="hero"><div class="eyebrow">NÚCLEO DE INTELIGÊNCIA PESSOAL</div><div class="core-visual" aria-label="Núcleo AURION"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">A</div></div><h2>Seu núcleo de inteligência, reunido em um só lugar.</h2><p>Conversa local, memória, voz, imagens, pesquisa e ferramentas. Na primeira preparação, o app baixa o modelo de IA uma vez. Depois ele fica guardado em Downloads/AURION AI e pode ser recuperado após reinstalar.</p><div class="hero-foot"><button class="btn primary" onclick="show('chat')">✦ Abrir conversa</button></div></div>
+<div class="hero"><div class="eyebrow">NÚCLEO DE INTELIGÊNCIA PESSOAL</div><div class="core-visual" aria-label="Núcleo AURION"><span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span><span class="orbit-dot d1"></span><span class="orbit-dot d2"></span><div class="core">A</div></div><h2>Seu núcleo de inteligência, reunido em um só lugar.</h2><p>Conversa local, memória, voz, imagens, pesquisa e ferramentas. Na primeira abertura, o app prepara automaticamente um modelo local compacto, usando apenas Wi-Fi. Depois ele fica salvo no aparelho para conversar sem servidor.</p><div class="hero-foot"><button class="btn primary" onclick="show('chat')">✦ Abrir conversa</button></div></div>
 <div class="grid"><div class="metric"><span>Memórias</span><b id="memoryCount">0</b></div><div class="metric"><span>Planos / tarefas abertas</span><b id="taskCount">0</b></div><div class="metric"><span>Mensagens salvas</span><b id="chatCount">0</b></div></div>
 <div class="section-title"><h3>Centro de capacidades</h3><span>ACESSO DIRETO</span></div>
 <div class="quick">
@@ -175,8 +175,8 @@ function aurionStartupCheck(){
   return;
  }
  if(state==="missing"){
-  const message="Estou verificando meus sistemas. O núcleo local ainda precisa ser preparado. Vou solicitar uma única autorização para baixar o modelo e, depois disso, cuidar da preparação automaticamente.";
-  $("homeStatus").textContent="Preparação inicial necessária. O AURION solicitará autorização uma vez para baixar o modelo local.";
+  const message="Estou verificando meus sistemas. O núcleo local ainda precisa ser preparado. Vou preparar o modelo compacto automaticamente. O download só começa quando houver Wi-Fi e espaço livre.";
+  $("homeStatus").textContent="Preparação automática em andamento. O modelo compacto será baixado somente por Wi-Fi.";
   $("homeStatus").className="statusbox warn";
   if(autoSpeakEnabled)speakText(message);
   if(window.AurionNative.autoPrepareModelOnStartup&&!window.__aurionSetupPromptRequested){
@@ -197,7 +197,7 @@ function prepareBrain(){
  try{
   const state=localModelState();
   if(state==="missing"||state==="shared"){
-   $("localModelStatus").textContent=state==="shared"?"Modelo encontrado no armazenamento compartilhado. Recuperando…":"Primeira preparação: iniciando o download do modelo Qwen selecionado. Use Wi-Fi e mantenha pelo menos 1,5 GB livres.";
+   $("localModelStatus").textContent=state==="shared"?"Modelo encontrado no armazenamento compartilhado. Recuperando…":"Primeira preparação: baixando o modelo Qwen compacto. O download usa somente Wi-Fi e precisa de cerca de 700 MB livres.";
    window.AurionNative.downloadModel();
   }else{
    window.AurionNative.prepareLocalModel();
