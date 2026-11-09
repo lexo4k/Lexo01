@@ -19,7 +19,8 @@ class UiContractTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('MediaStore.Files.getContentUri("external")', activity)
         self.assertIn('endsWith(".gguf")', activity)
-        self.assertIn("memory.availMem", activity)
+        self.assertIn("memory.totalMem", activity)
+        self.assertIn("modelMemoryBlockReason", activity)
         self.assertIn("aurionStartupCheck()", html)
         self.assertIn("window.AurionNative.autoPrepareModelOnStartup()", html)
 
