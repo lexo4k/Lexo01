@@ -100,3 +100,14 @@ A Awin documenta explicitamente feeds de produtos e uso por sites de comparaçã
 - testes de privacidade, segurança e acessibilidade;
 - suporte, política de privacidade, termos e canal de correção de ofertas;
 - validação de conversões e pagamentos com cada parceiro.
+
+
+## Identidade canônica e comparação exata
+
+- A importação aceita GTIN-8, UPC-A/GTIN-12, EAN-13 e GTIN-14 com dígito verificador validado.
+- O catálogo canônico usa GTIN como chave única; marca, modelo e variante são metadados auxiliares.
+- Ofertas sem GTIN válido continuam no catálogo, mas não recebem identidade canônica.
+- A rota de comparação retorna HTTP 409 (`PRODUCT_IDENTITY_MISMATCH`) se as ofertas selecionadas não apontarem para o mesmo produto canônico.
+- Ofertas precisam ter GTIN idêntico; sem inferência por título, marca ou similaridade textual.
+- Execute `preco-unico-api/schema.sql` no banco antes de importar ofertas com identidade ou usar histórico/comparação.
+- Campos de feed aceitos no payload administrativo: `gtin`, `brand`, `model`, `variant`.
