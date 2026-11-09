@@ -453,6 +453,10 @@ class MainActivity : Activity() {
         @JavascriptInterface fun prepareLocalModel() {
             when (modelState()) {
                 "ready", "working" -> return
+                "blocked" -> {
+                    notifyModel("blocked", localModelBlockReason())
+                    return
+                }
                 "downloaded" -> {
                     modelBusy = true
                     localScope.launch { try { loadLocalModel() } catch (e: Exception) { modelBusy = false; notifyModel("error", e.message ?: "Falha ao carregar o modelo local") } }
