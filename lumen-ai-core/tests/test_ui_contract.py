@@ -19,6 +19,8 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("window.AurionNative.resumeAuthorizedModelSetup()", activity)
         self.assertIn("@JavascriptInterface fun resumeAuthorizedModelSetup()", activity)
         self.assertIn("Download bloqueado para proteger seus dados móveis", activity)
+        self.assertIn('putBoolean("model_download_authorized", true)', activity)
+        self.assertIn('getString("model_id", "qwen-0.5b")', activity)
         self.assertIn('setRequestProperty("Range", "bytes="', activity)
         start = activity.index("@JavascriptInterface fun prepareLocalModel()")
         end = activity.index("@JavascriptInterface fun downloadModel()", start)
@@ -137,7 +139,7 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('"qwen-1.5b" to LocalModelProfile', activity)
         self.assertIn('"qwen-3b" to LocalModelProfile', activity)
         self.assertIn('Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf', activity)
-        self.assertIn('getString("model_id", "qwen-1.5b")', activity)
+        self.assertIn('getString("model_id", "qwen-0.5b")', activity)
         self.assertIn('history.takeLast(1800)', activity)
         self.assertIn('maxTokens = selectedProfile().maxTokens', activity)
 
