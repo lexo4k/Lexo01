@@ -4,6 +4,7 @@ on:
     branches: [preco-unico]
     paths:
       - "preco-unico-api/**"
+      - "preco-unico/**"
       - ".github/workflows/preco-unico-api.yml"
   pull_request:
     branches: [preco-unico]
@@ -20,3 +21,4 @@ jobs:
           node-version: 22
       - run: npm install --prefix preco-unico-api
       - run: npm test --prefix preco-unico-api
+      - run: node --check preco-unico/app.js
