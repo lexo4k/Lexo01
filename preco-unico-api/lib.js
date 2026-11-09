@@ -37,7 +37,7 @@ export function normalizeGtin(value) {
   if (!/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(digits)) return null;
   const body = digits.slice(0, -1);
   let sum = 0;
-  for (let i = body.length - 1, weight = 1; i >= 0; i--, weight = weight === 3 ? 1 : 3) {
+  for (let i = body.length - 1, weight = 3; i >= 0; i--, weight = weight === 3 ? 1 : 3) {
     sum += Number(body[i]) * weight;
   }
   const checkDigit = (10 - (sum % 10)) % 10;
