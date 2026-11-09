@@ -1,8 +1,7 @@
 name: Build Android APKs
 
 on:
-  push:
-    branches: ["**"]
+  # Workflow legado dos outros aplicativos: execute somente sob demanda.
   workflow_dispatch:
 
 permissions:
