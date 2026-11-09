@@ -367,11 +367,64 @@ window.onAurionModelState=function(state,detail){
  else if(state==="waiting_network"||state==="wifi_required"){$("chatState").textContent=detail;$("connectionPill").textContent="● download só no Wi-Fi";$("connectionPill").classList.remove("online")}
  else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
 };
+function applyAurionLocalActions(actions,userText){
+ const source=String(userText||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLocaleLowerCase("pt-BR");
+ const results=[];
+ (Array.isArray(actions)?actions:[]).slice(0,3).forEach(action=>{
+  if(!action||typeof action!=="object")return;
+  const tool=String(action.tool||"");
+  if(tool==="create_task"&&/(crie|criar|adicione|adicionar|registre|registrar|nova tarefa|tarefas para|tarefas de)/.test(source)){
+   const title=String(action.title||"").trim().slice(0,140);
+   if(!title)return;
+   if(data.tasks.some(t=>!t.done&&String(t.title||"").toLocaleLowerCase("pt-BR")===title.toLocaleLowerCase("pt-BR"))){results.push("Tarefa já existia: "+title);return}
+   data.tasks.push({id:newId(),title,details:String(action.details||"Criada pelo agente local AURION").slice(0,500),done:false,at:stamp()});
+   activity("Agente AURION criou tarefa",title);results.push("Tarefa criada: "+title);return;
+  }
+  if(tool==="save_memory"&&/(lembre|lembrar|guarde|guardar|salve na memoria|salvar na memoria|grave na memoria)/.test(source)){
+   const value=String(action.content||"").trim().slice(0,700);
+   if(!value)return;
+   data.memories.push({id:newId(),content:value,category:"memória da conversa",at:stamp()});
+   activity("Agente AURION guardou memória",value.slice(0,100));results.push("Memória guardada.");return;
+  }
+  if(tool==="save_knowledge"&&/(arquive|arquivar|salve|salvar|registre|registrar).{0,35}(conhecimento|nota|informacao)/.test(source)){
+   const body=String(action.content||"").trim().slice(0,1800);
+   if(!body)return;
+   const title=String(action.title||body.slice(0,90)).trim().slice(0,120);
+   data.knowledge.push({id:newId(),title,content:body,source:"Agente local AURION",at:stamp()});
+   activity("Agente AURION arquivou conhecimento",title);results.push("Conhecimento arquivado: "+title);return;
+  }
+  if(tool==="complete_task"&&/(conclua|concluir|finalize|finalizar|marque como concluida)/.test(source)){
+   const query=String(action.query||"").trim().toLocaleLowerCase("pt-BR");
+   if(!query)return;
+   const task=data.tasks.find(t=>!t.done&&String(t.title||"").toLocaleLowerCase("pt-BR").includes(query));
+   if(!task){results.push("Não encontrei a tarefa indicada.");return}
+   task.done=true;activity("Agente AURION concluiu tarefa",task.title);results.push("Tarefa concluída: "+task.title);
+  }
+ });
+ if(results.length)saveData();
+ return results;
+}
 window.onAurionNativeAnswer=function(answer,failed){
- setCoreActivity(failed?"ERRO":"CONCLUÍDO",failed?"O modelo local retornou um erro.":"Resposta produzida pelo modelo local neste aparelho.");
+ let visibleAnswer=String(answer||"");
+ let actionResults=[];
+ if(!failed){
+  try{
+   const first=visibleAnswer.indexOf("{"),last=visibleAnswer.lastIndexOf("}");
+   if(first>=0&&last>first){
+    const payload=JSON.parse(visibleAnswer.slice(first,last+1));
+    if(payload&&typeof payload.reply==="string"&&Array.isArray(payload.actions)){
+     const lastUser=data.messages.slice().reverse().find(x=>x.role==="user");
+     actionResults=applyAurionLocalActions(payload.actions,lastUser?lastUser.content:"");
+     visibleAnswer=payload.reply.trim()||"Concluído.";
+     if(actionResults.length)visibleAnswer+="\\n\\nAÇÕES LOCAIS VERIFICADAS\\n"+actionResults.map((x,i)=>(i+1)+". "+x).join("\\n");
+    }
+   }
+  }catch(e){/* Resposta fora do protocolo: exibe o texto original sem executar ações. */}
+ }
+ setCoreActivity(failed?"ERRO":"CONCLUÍDO",failed?"O modelo local retornou um erro.":actionResults.length?"Resposta gerada e ações locais verificadas.":"Resposta produzida pelo modelo local neste aparelho.");
  const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
- if(pending){pending.content=answer;pending.at=stamp();delete pending.pendingLocal}
- lastAssistantText=answer;saveData();renderMessages();if(autoSpeakEnabled||liveConversationEnabled)speakText(answer);
+ if(pending){pending.content=visibleAnswer;pending.at=stamp();delete pending.pendingLocal}
+ lastAssistantText=visibleAnswer;saveData();renderMessages();if(autoSpeakEnabled||liveConversationEnabled)speakText(visibleAnswer);
  $("chatState").textContent=failed?"IA local · verifique a mensagem":"IA local · resposta gerada no aparelho";
 };
 function refreshLocalModel(){
