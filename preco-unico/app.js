@@ -6,7 +6,13 @@ let saved = JSON.parse(localStorage.getItem("pu-saved") || "[]");
 let savedMode = false;
 let apiMessage = "Carregando ofertas reais…";
 const $ = (s) => document.querySelector(s);
-const money = (cents) => (Number(cents || 0) / 100).toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+const money = (cents, currency = "BRL") => {
+  try {
+    return new Intl.NumberFormat("pt-BR", { style:"currency", currency }).format(Number(cents || 0) / 100);
+  } catch {
+    return (Number(cents || 0) / 100).toFixed(2) + " " + String(currency || "BRL");
+  }
+};
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
 function toast(message) {
   const el = $("#toast");
@@ -23,8 +29,17 @@ function visible() {
     (!savedMode || saved.includes(String(p.id)) || saved.includes(p.id))
   );
   const sort = $("#sortSelect").value;
-  if (sort === "low") list.sort((a,b) => (a.priceCents + (a.shippingCents || 0)) - (b.priceCents + (b.shippingCents || 0)));
-  if (sort === "high") list.sort((a,b) => b.priceCents - a.priceCents);
+  // Valores em moedas diferentes não são comparáveis sem uma cotação cambial confiável.
+  const byCurrencyThenPrice = (a,b,descending = false) => {
+    const currencyA = String(a.currency || "BRL");
+    const currencyB = String(b.currency || "BRL");
+    if (currencyA !== currencyB) return currencyA.localeCompare(currencyB);
+    const totalA = Number(a.priceCents || 0) + Number(a.shippingCents || 0);
+    const totalB = Number(b.priceCents || 0) + Number(b.shippingCents || 0);
+    return descending ? totalB - totalA : totalA - totalB;
+  };
+  if (sort === "low") list.sort((a,b) => byCurrencyThenPrice(a,b));
+  if (sort === "high") list.sort((a,b) => byCurrencyThenPrice(a,b,true));
   if (sort === "name") list.sort((a,b) => a.title.localeCompare(b.title, "pt-BR"));
   return list;
 }
@@ -35,8 +50,11 @@ function render() {
   $("#productGrid").innerHTML = list.map(p => {
     const isSaved = saved.includes(String(p.id)) || saved.includes(p.id);
     const shipping = p.shippingCents === null || p.shippingCents === undefined ? "Frete a consultar" :
-      (p.shippingCents === 0 ? "Frete grátis informado" : "Frete " + money(p.shippingCents));
-    const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString("pt-BR") : "Data não informada";
+      (p.shippingCents === 0 ? "Frete grátis informado" : "Frete " + money(p.shippingCents, p.currency));
+    const sourceUpdated = p.sourceUpdatedAt ? new Date(p.sourceUpdatedAt).toLocaleDateString("pt-BR") : null;
+    const received = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString("pt-BR") : null;
+    const freshness = sourceUpdated ? "Fonte atualizada: " + sourceUpdated :
+      received ? "Registro recebido: " + received + " (fonte sem data própria)" : "Data não informada";
     return `<article class="product-card">
       <div class="product-visual">
         <span class="tag ${p.isOriginal ? "" : "alt"}">${p.isOriginal ? "ORIGINAL INFORMADO" : "OFERTA DO PARCEIRO"}</span>
@@ -47,8 +65,8 @@ function render() {
         <div class="product-type">${escapeHtml(p.category)} · ${escapeHtml(p.condition || "Condição não informada")}</div>
         <h3>${escapeHtml(p.title)}</h3>
         <div class="product-sub">${escapeHtml(p.merchant)} · ${escapeHtml(p.partner)}</div>
-        <div class="price-row"><div><div class="price">${money(p.priceCents)}</div><div class="price-note">${shipping}</div></div></div>
-        <div class="price-note">Atualizado: ${escapeHtml(updated)}</div>
+        <div class="price-row"><div><div class="price">${money(p.priceCents, p.currency)}</div><div class="price-note">${shipping}</div></div></div>
+        <div class="price-note">${escapeHtml(freshness)}</div>
         <button class="compare-btn" data-detail="${escapeHtml(p.id)}">Ver oferta e condições →</button>
       </div>
     </article>`;
@@ -64,17 +82,20 @@ function detail(id) {
   const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
   const shipping = p.shippingCents === null || p.shippingCents === undefined ? "Consulte o frete na loja" :
-    (p.shippingCents === 0 ? "Frete grátis informado pela fonte" : money(p.shippingCents));
-  const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleString("pt-BR") : "Não informado";
+    (p.shippingCents === 0 ? "Frete grátis informado pela fonte" : money(p.shippingCents, p.currency));
+  const sourceUpdated = p.sourceUpdatedAt ? new Date(p.sourceUpdatedAt).toLocaleString("pt-BR") : null;
+  const received = p.updatedAt ? new Date(p.updatedAt).toLocaleString("pt-BR") : null;
+  const freshness = sourceUpdated ? "Atualização declarada pela fonte: " + sourceUpdated :
+    received ? "Registro recebido em: " + received + ". A fonte não informou a data original." : "Data não informada";
   $("#dialogContent").innerHTML = `
     <div class="eyebrow dark">OFERTA DE PARCEIRO</div>
     <div class="dialog-emoji">🛍️</div>
     <h2>${escapeHtml(p.title)}</h2>
     <p style="color:#718096;font-size:12px;line-height:1.7">${escapeHtml(p.description || "Descrição não fornecida pela loja.")}</p>
-    <div class="dialog-offer"><div><b>${escapeHtml(p.merchant)}</b><small>Fonte: ${escapeHtml(p.partner)}</small></div><b>${money(p.priceCents)}</b></div>
+    <div class="dialog-offer"><div><b>${escapeHtml(p.merchant)}</b><small>Fonte: ${escapeHtml(p.partner)}</small></div><b>${money(p.priceCents, p.currency)}</b></div>
     <div class="dialog-offer"><div><b>Frete</b><small>Consulte condições e endereço na loja</small></div><b>${escapeHtml(shipping)}</b></div>
     <div class="dialog-offer"><div><b>Condição</b><small>${escapeHtml(p.condition || "Não informada")}</small></div><b>${p.isOriginal ? "Original informado" : "Não confirmado"}</b></div>
-    <p style="font-size:10px;color:#718096">Última atualização informada: ${escapeHtml(updated)}. Preço e disponibilidade podem mudar no site do vendedor.</p>
+    <p style="font-size:10px;color:#718096">${escapeHtml(freshness)}. Preço e disponibilidade podem mudar no site do vendedor.</p>
     <button class="compare-btn" style="margin-top:18px" id="goStore">Ir à loja e consultar →</button>
     <p style="font-size:10px;color:#718096;margin-top:10px">Podemos receber comissão se você comprar por um link de parceiro, sem custo adicional informado ao comprador.</p>`;
   $("#productDialog").showModal();
