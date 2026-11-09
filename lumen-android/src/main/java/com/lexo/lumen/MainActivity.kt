@@ -313,27 +313,59 @@ class MainActivity : Activity() {
 
 
         private fun scanDownloadedModels(): DownloadedModel? {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
             val memory = ActivityManager.MemoryInfo()
             (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
-            // Reserva memória para Android, WebView, KV cache e buffers nativos do llama.cpp.
-            val safeLimit = minOf(2_500_000_000L, (memory.totalMem * 0.30).toLong())
-            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            // Considera a memória atualmente disponível, não apenas a RAM física total.
+            // Mantém margem para Android, WebView, KV cache e buffers nativos.
+            val availableBudget = (memory.availMem * 0.65).toLong()
+            val safeLimit = minOf(2_500_000_000L, maxOf(650_000_000L, availableBudget))
+            // MediaStore.Files cobre Downloads e outras pastas públicas indexadas, inclusive
+            // arquivos baixados por navegadores diferentes do gerenciador padrão.
+            val collection = MediaStore.Files.getContentUri("external")
             val columns = arrayOf(
                 android.provider.MediaStore.MediaColumns._ID,
                 android.provider.MediaStore.MediaColumns.DISPLAY_NAME,
                 android.provider.MediaStore.MediaColumns.SIZE
             )
             val candidates = mutableListOf<DownloadedModel>()
-            contentResolver.query(collection, columns, null, null, android.provider.MediaStore.MediaColumns.DATE_MODIFIED + " DESC")?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns._ID)
-                val nameCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.DISPLAY_NAME)
-                val sizeCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.SIZE)
-                while (cursor.moveToNext()) {
-                    val name = cursor.getString(nameCol) ?: continue
-                    val size = cursor.getLong(sizeCol)
-                    if (!name.lowercase(Locale.ROOT).endsWith(".gguf") || size < 491_400_032L || size > safeLimit) continue
-                    candidates.add(DownloadedModel(Uri.withAppendedPath(collection, cursor.getLong(idCol).toString()), name, size))
+            try {
+                contentResolver.query(
+                    collection,
+                    columns,
+                    null,
+                    null,
+                    android.provider.MediaStore.MediaColumns.DATE_MODIFIED + " DESC"
+                )?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns._ID)
+                    val nameCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.DISPLAY_NAME)
+                    val sizeCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.SIZE)
+                    while (cursor.moveToNext()) {
+                        val name = cursor.getString(nameCol) ?: continue
+                        val size = cursor.getLong(sizeCol)
+                        if (!name.lowercase(Locale.ROOT).endsWith(".gguf")) continue
+                        if (size < 450_000_000L || size > safeLimit) continue
+                        candidates.add(DownloadedModel(Uri.withAppendedPath(collection, cursor.getLong(idCol).toString()), name, size))
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("AurionModel", "Falha ao consultar MediaStore.Files; tentando Downloads", e)
+            }
+            if (candidates.isEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val downloads = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                try {
+                    contentResolver.query(downloads, columns, null, null, android.provider.MediaStore.MediaColumns.DATE_MODIFIED + " DESC")?.use { cursor ->
+                        val idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns._ID)
+                        val nameCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.DISPLAY_NAME)
+                        val sizeCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.SIZE)
+                        while (cursor.moveToNext()) {
+                            val name = cursor.getString(nameCol) ?: continue
+                            val size = cursor.getLong(sizeCol)
+                            if (!name.lowercase(Locale.ROOT).endsWith(".gguf") || size < 450_000_000L || size > safeLimit) continue
+                            candidates.add(DownloadedModel(Uri.withAppendedPath(downloads, cursor.getLong(idCol).toString()), name, size))
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("AurionModel", "Falha ao consultar MediaStore.Downloads", e)
                 }
             }
             return candidates.maxByOrNull { it.size }
