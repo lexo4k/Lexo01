@@ -5,8 +5,6 @@ on:
     branches: ["lumen-ai-core"]
     paths:
       - "lumen-android/**"
-      - "settings.gradle.kts"
-      - "gradle/**"
       - ".github/workflows/lumen-android.yml"
   workflow_dispatch:
 
@@ -22,8 +20,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Checkout AURION source
+      - name: Checkout only the AURION Android module
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: lumen-android
+          sparse-checkout-cone-mode: true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
