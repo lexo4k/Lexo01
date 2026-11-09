@@ -4,7 +4,6 @@ on:
     branches: [lumen-ai-core]
     paths:
       - "lumen-model/**"
-      - ".github/workflows/lumen-model-checks.yml"
   workflow_dispatch:
 jobs:
   train-smoke-test:
