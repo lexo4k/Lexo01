@@ -8,6 +8,13 @@ const products=[
 {id:7,name:"Mochila Urbana",category:"Moda",kind:"Original",emoji:"🎒",price:219.90,store:"Loja demonstrativa G",shipping:0,delivery:"3 a 6 dias úteis",condition:"Novo",description:"Exemplo de produto de moda."},
 {id:8,name:"Relógio Digital",category:"Moda",kind:"Econômico",emoji:"⌚",price:69.90,store:"Loja demonstrativa H",shipping:12.90,delivery:"6 a 12 dias úteis",condition:"Novo",description:"Alternativa de baixo custo fictícia."}
 ];
+products.push(
+{id:9,name:"Kit cuidados pessoais",category:"Beleza",kind:"Econômico",emoji:"🧴",price:49.90,store:"Loja demonstrativa I",shipping:9.90,delivery:"4 a 8 dias úteis",condition:"Novo",description:"Exemplo fictício de cuidados pessoais."},
+{id:10,name:"Ração para cães 10 kg",category:"Pets",kind:"Original",emoji:"🐾",price:129.90,store:"Loja demonstrativa J",shipping:14.90,delivery:"3 a 6 dias úteis",condition:"Novo",description:"Exemplo fictício de produto para pets."},
+{id:11,name:"Acessório automotivo",category:"Automotivo",kind:"Econômico",emoji:"🚗",price:79.90,store:"Loja demonstrativa K",shipping:18.90,delivery:"5 a 9 dias úteis",condition:"Novo",description:"Exemplo fictício de acessório automotivo."},
+{id:12,name:"Café especial 500 g",category:"Mercado",kind:"Original",emoji:"☕",price:34.90,store:"Loja demonstrativa L",shipping:8.90,delivery:"2 a 5 dias úteis",condition:"Novo",description:"Exemplo fictício de item de mercado."},
+{id:13,name:"Fone importado econômico",category:"Importados",kind:"Econômico",emoji:"🎧",price:59.90,store:"Loja demonstrativa M",shipping:25.90,delivery:"12 a 25 dias úteis",condition:"Novo",description:"Exemplo fictício de item importado. Tributos e prazo podem variar."}
+);
 let category="Todos",query="",saved=JSON.parse(localStorage.getItem("pu-saved")||"[]"),savedMode=false;
 const $=s=>document.querySelector(s), money=v=>v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 function toast(msg){const el=$("#toast");el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}
