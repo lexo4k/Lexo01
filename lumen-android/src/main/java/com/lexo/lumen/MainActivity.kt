@@ -679,11 +679,11 @@ class MainActivity : Activity() {
             }
         }
 
-        fun startVoiceRecognitionNow() {
+        fun startVoiceRecognitionNow(forceNetwork: Boolean = false) {
             try {
                 speechRecognizer?.cancel()
                 speechRecognizer?.destroy()
-                val offlineAvailable = Build.VERSION.SDK_INT >= 31 &&
+                val offlineAvailable = !forceNetwork && Build.VERSION.SDK_INT >= 31 &&
                     SpeechRecognizer.isOnDeviceRecognitionAvailable(this@MainActivity)
                 speechRecognizer = if (offlineAvailable) {
                     SpeechRecognizer.createOnDeviceSpeechRecognizer(this@MainActivity)
@@ -699,9 +699,22 @@ class MainActivity : Activity() {
                         override fun onBufferReceived(buffer: ByteArray?) {}
                         override fun onEndOfSpeech() { notifySpeechStatus("Áudio recebido. Convertendo fala em texto…") }
                         override fun onError(error: Int) {
-                            notifyVoiceResult("", "O reconhecimento de voz falhou (código " + error + ").")
+                            // Alguns serviços informam ERROR_SERVER_DISCONNECTED (11) no reconhecedor
+                            // local. Tenta uma vez o serviço padrão do Android antes de desistir.
+                            if (error == 11 && offlineAvailable) {
+                                notifySpeechStatus("Reconhecimento offline indisponível. Tentando o serviço de voz do Android…")
+                                mainHandler.postDelayed({ startVoiceRecognitionNow(forceNetwork = true) }, 500L)
+                                return
+                            }
+                            val detail = when (error) {
+                                7 -> "Não entendi a fala. Tente falar mais perto do microfone e em um ambiente silencioso."
+                                11 -> "O serviço de reconhecimento foi desconectado. Verifique o serviço de voz do Android e a conexão."
+                                6 -> "Não detectei fala. Toque em Voz e tente novamente."
+                                else -> "O reconhecimento de voz falhou (código " + error + ")."
+                            }
+                            notifyVoiceResult("", detail)
                             if (liveConversationEnabled && error in listOf(6, 7, 8)) {
-                                mainHandler.postDelayed({ if (liveConversationEnabled) startVoiceRecognitionNow() }, 850L)
+                                mainHandler.postDelayed({ if (liveConversationEnabled) startVoiceRecognitionNow(forceNetwork) }, 1000L)
                             }
                         }
                         override fun onResults(results: Bundle?) {
