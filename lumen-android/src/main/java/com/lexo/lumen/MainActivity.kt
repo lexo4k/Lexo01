@@ -45,6 +45,7 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.io.RandomAccessFile
 import java.util.Locale
 import java.net.HttpURLConnection
 import java.net.URL
@@ -788,7 +789,7 @@ class MainActivity : Activity() {
             locationTimeout = null
         }
 
-        @JavascriptInterface fun sendLocalMessage(prompt: String, history: String) {
+        @JavascriptInterface fun sendLocalMessage(prompt: String, history: String, requestId: String) {
             localScope.launch {
                 inferenceMutex.withLock {
                     try {
@@ -830,11 +831,29 @@ class MainActivity : Activity() {
                                 maxTokens = selectedProfile().maxTokens
                             )
                         }
-                        notifyAnswer(result.text.ifBlank { "Não consegui formular uma resposta. Tente novamente com uma pergunta mais curta." }, false)
+                        notifyAnswer(result.text.ifBlank { "Não consegui formular uma resposta. Tente novamente com uma pergunta mais curta." }, false, requestId)
                     } catch (e: Exception) {
-                        notifyAnswer("A IA local encontrou um erro: ${e.message ?: "falha de inferência"}", true)
+                        notifyAnswer("A IA local encontrou um erro: ${e.message ?: "falha de inferência"}", true, requestId)
                     }
                 }
+            }
+        }
+    }
+
+    private fun validateGgufHeader(file: File) {
+        if (!file.isFile || file.length() < 8L) {
+            throw IllegalArgumentException("O arquivo está incompleto e não contém um cabeçalho GGUF válido.")
+        }
+        RandomAccessFile(file, "r").use { input ->
+            val magic = ByteArray(4)
+            input.readFully(magic)
+            val expected = byteArrayOf('G'.code.toByte(), 'G'.code.toByte(), 'U'.code.toByte(), 'F'.code.toByte())
+            if (!magic.contentEquals(expected)) {
+                throw IllegalArgumentException("O arquivo selecionado não possui a assinatura GGUF. Escolha o modelo original, não um ZIP ou arquivo renomeado.")
+            }
+            val version = Integer.reverseBytes(input.readInt()).toLong() and 0xffffffffL
+            if (version !in 1L..3L) {
+                throw IllegalArgumentException("Versão GGUF $version não reconhecida pelo runtime local atual.")
             }
         }
     }
@@ -860,6 +879,7 @@ class MainActivity : Activity() {
         if (!modelFile.exists() || modelFile.length() < selectedProfile().minBytes) {
             throw IllegalStateException("O modelo selecionado ainda não foi baixado. Abra Configurar e toque em Baixar e ativar IA local.")
         }
+        validateGgufHeader(modelFile)
         modelMemoryBlockReason(modelFile.length())?.let { throw IllegalStateException(it) }
         modelBusy = true
         notifyModel("loading", "Carregando o modelo no aparelho. Na primeira vez pode demorar um pouco.")
@@ -886,8 +906,8 @@ class MainActivity : Activity() {
         if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
     }
 
-    private fun notifyAnswer(answer: String, failed: Boolean) {
-        val script = "window.onAurionNativeAnswer && window.onAurionNativeAnswer(" + JSONObject.quote(answer) + "," + failed + ")"
+    private fun notifyAnswer(answer: String, failed: Boolean, requestId: String) {
+        val script = "window.onAurionNativeAnswer && window.onAurionNativeAnswer(" + JSONObject.quote(answer) + "," + failed + "," + JSONObject.quote(requestId) + ")"
         if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(script, null) }
     }
 
@@ -982,6 +1002,7 @@ class MainActivity : Activity() {
                 }
                 val size = temp.length()
                 if (size < 450_000_000L) throw IllegalArgumentException("O arquivo tem apenas " + size + " bytes. Parece incompleto ou não é um modelo GGUF completo.")
+                validateGgufHeader(temp)
                 if (size > 6_000_000_000L) throw IllegalArgumentException("O arquivo excede o limite de importação desta versão (6 GB).")
                 selectedModelId = when {
                     size >= 1_900_000_000L -> "qwen-3b"
