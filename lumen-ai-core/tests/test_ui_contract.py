@@ -190,5 +190,23 @@ class UiContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
+    def test_local_inference_responses_are_correlated_and_have_a_watchdog(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn("window.onAurionNativeAnswer=function(answer,failed,requestId)", html)
+        self.assertIn("x.requestId===requestId", html)
+        self.assertIn("pending.userText||", html)
+        self.assertIn("function watchLocalRequest(pending,requestId)", html)
+        self.assertIn("fun sendLocalMessage(prompt: String, history: String, requestId: String)", activity)
+        self.assertIn("JSONObject.quote(requestId)", activity)
+
+    def test_gguf_header_is_validated_before_import_and_native_load(self):
+        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+        self.assertIn("private fun validateGgufHeader(file: File)", activity)
+        self.assertIn("validateGgufHeader(temp)", activity)
+        self.assertIn("validateGgufHeader(modelFile)", activity)
+        self.assertIn("magic.contentEquals(expected)", activity)
+        self.assertIn("version !in 1L..3L", activity)
+
 if __name__ == "__main__":
     unittest.main()
