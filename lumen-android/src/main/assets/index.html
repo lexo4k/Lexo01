@@ -867,7 +867,7 @@ const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configur
 // No modo offline, execute ferramentas locais antes de consultar o modelo do aparelho.
 const command=(!modelReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();setCoreActivity("CONCLUÍDO","Comando local atendido pelo recurso disponível no aparelho.");if(autoSpeakEnabled)speakText(command);return}
-if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
+if(nativeLocalReady&&!modelReady&&(activeMode!=="research"||!connected)&&!imageData){
  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
  data.messages.push(pending);saveData();renderMessages();
  const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
@@ -899,7 +899,11 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  // A janela Kotlin usa os últimos 1.800 caracteres: priorize as conversas primeiro e a memória consolidada no final.
  const history=("CONVERSA RECENTE:\n"+dialogue+"\n\n"+memoryContext).slice(-4500);
  try{
-  window.AurionNative.sendLocalMessage(msg,history);
+  const localPrompt=(activeMode==="research"&&!connected)
+   ?"A pesquisa na web não está conectada nesta instalação. Não afirme que pesquisou nem invente fontes. Responda usando somente seu conhecimento interno, informe claramente que não consultou a internet e indique o que precisaria ser verificado online.\\n\\nPEDIDO: "+msg
+   :msg;
+  if(activeMode==="research"&&!connected)setCoreActivity("MODO LOCAL · SEM WEB","O serviço de pesquisa online não está conectado. Vou responder com o conhecimento do modelo, sem fingir que consultei a internet.");
+  window.AurionNative.sendLocalMessage(localPrompt,history);
   const startedAt=Date.now();
   window.setTimeout(()=>{
    const stillPending=data.messages.find(x=>x===pending&&x.pendingLocal);
