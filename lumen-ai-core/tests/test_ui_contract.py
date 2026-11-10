@@ -109,7 +109,7 @@ class UiContractTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn("typeof window.AurionNative.canRunLocalModel===\"function\"", html)
         self.assertIn("@JavascriptInterface fun canRunLocalModel(): Boolean", (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8"))
-        self.assertIn("if(nativeLocalReady&&!modelReady&&activeMode!==", html)
+        self.assertIn('if(nativeLocalReady&&!modelReady&&(activeMode!=="research"||!connected)&&!imageData){', html)
         self.assertIn("MEMÓRIAS RELEVANTES:", html)
         self.assertIn("BASE DE CONHECIMENTO:", html)
         self.assertIn("TAREFAS EM ABERTO:", html)
