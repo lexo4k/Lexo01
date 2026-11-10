@@ -367,22 +367,84 @@ window.onAurionModelState=function(state,detail){
  else if(state==="waiting_network"||state==="wifi_required"){$("chatState").textContent=detail;$("connectionPill").textContent="● download só no Wi-Fi";$("connectionPill").classList.remove("online")}
  else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
 };
-window.onAurionNativeAnswer=function(answer,failed){
- setCoreActivity(failed?"ERRO":"CONCLUÍDO",failed?"O modelo local retornou um erro.":"Resposta produzida pelo modelo local neste aparelho.");
- const pending=data.messages.slice().reverse().find(x=>x.role==="assistant"&&x.pendingLocal);
- if(pending){pending.content=answer;pending.at=stamp();delete pending.pendingLocal}
- lastAssistantText=answer;saveData();renderMessages();if(autoSpeakEnabled||liveConversationEnabled)speakText(answer);
+function applyAurionLocalActions(actions,userText){
+ const source=String(userText||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR");
+ const results=[];
+ (Array.isArray(actions)?actions:[]).slice(0,3).forEach(action=>{
+  if(!action||typeof action!=="object")return;
+  const tool=String(action.tool||"");
+  if(tool==="create_task"&&/(crie|criar|adicione|adicionar|registre|registrar|nova tarefa|tarefas para|tarefas de)/.test(source)){
+   const title=String(action.title||"").trim().slice(0,140);
+   if(!title)return;
+   if(data.tasks.some(t=>!t.done&&String(t.title||"").toLocaleLowerCase("pt-BR")===title.toLocaleLowerCase("pt-BR"))){results.push("Tarefa já existia: "+title);return}
+   data.tasks.push({id:newId(),title,details:String(action.details||"Criada pelo agente local AURION").slice(0,500),done:false,at:stamp()});
+   activity("Agente AURION criou tarefa",title);results.push("Tarefa criada: "+title);return;
+  }
+  if(tool==="save_memory"&&/(lembre|lembrar|guarde|guardar|salve na memoria|salvar na memoria|grave na memoria)/.test(source)){
+   const value=String(action.content||"").trim().slice(0,700);
+   if(!value)return;
+   data.memories.push({id:newId(),content:value,category:"memória da conversa",at:stamp()});
+   activity("Agente AURION guardou memória",value.slice(0,100));results.push("Memória guardada.");return;
+  }
+  if(tool==="save_knowledge"&&/(arquive|arquivar|salve|salvar|registre|registrar).{0,35}(conhecimento|nota|informacao)/.test(source)){
+   const body=String(action.content||"").trim().slice(0,1800);
+   if(!body)return;
+   const title=String(action.title||body.slice(0,90)).trim().slice(0,120);
+   data.knowledge.push({id:newId(),title,content:body,source:"Agente local AURION",at:stamp()});
+   activity("Agente AURION arquivou conhecimento",title);results.push("Conhecimento arquivado: "+title);return;
+  }
+  if(tool==="complete_task"&&/(conclua|concluir|finalize|finalizar|marque como concluida)/.test(source)){
+   const query=String(action.query||"").trim().toLocaleLowerCase("pt-BR");
+   if(!query)return;
+   const task=data.tasks.find(t=>!t.done&&String(t.title||"").toLocaleLowerCase("pt-BR").includes(query));
+   if(!task){results.push("Não encontrei a tarefa indicada.");return}
+   task.done=true;activity("Agente AURION concluiu tarefa",task.title);results.push("Tarefa concluída: "+task.title);
+  }
+ });
+ if(results.length)saveData();
+ return results;
+}
+window.onAurionNativeAnswer=function(answer,failed,requestId){
+ const pending=data.messages.find(x=>x.role==="assistant"&&x.requestId===requestId);
+ if(!pending)return;
+ let visibleAnswer=String(answer||"");
+ let actionResults=[];
+ if(!failed){
+  try{
+   const first=visibleAnswer.indexOf("{"),last=visibleAnswer.lastIndexOf("}");
+   if(first>=0&&last>first){
+    const payload=JSON.parse(visibleAnswer.slice(first,last+1));
+    if(payload&&typeof payload.reply==="string"&&Array.isArray(payload.actions)){
+     actionResults=applyAurionLocalActions(payload.actions,pending.userText||"");
+     visibleAnswer=payload.reply.trim()||"Concluído.";
+     if(actionResults.length)visibleAnswer+="\n\nAÇÕES LOCAIS VERIFICADAS\n"+actionResults.map((x,i)=>(i+1)+". "+x).join("\n");
+    }
+   }
+  }catch(e){/* Resposta fora do protocolo: exibe o texto original sem executar ações. */}
+ }
+ setCoreActivity(failed?"ERRO":"CONCLUÍDO",failed?"O modelo local retornou um erro.":actionResults.length?"Resposta gerada e ações locais verificadas.":"Resposta produzida pelo modelo local neste aparelho.");
+ pending.content=visibleAnswer;pending.at=stamp();delete pending.pendingLocal;delete pending.requestId;delete pending.userText
+ lastAssistantText=visibleAnswer;saveData();renderMessages();if(autoSpeakEnabled||liveConversationEnabled)speakText(visibleAnswer);
  $("chatState").textContent=failed?"IA local · verifique a mensagem":"IA local · resposta gerada no aparelho";
 };
+function watchLocalRequest(pending,requestId){
+ const startedAt=Date.now();
+ window.setTimeout(()=>{
+  if(pending.requestId!==requestId||!pending.pendingLocal||Date.now()-startedAt<300000)return;
+  pending.content="O núcleo local não respondeu após cinco minutos. O modelo pode ser incompatível, estar sem memória suficiente ou ter travado durante a inferência. O arquivo salvo foi preservado.";
+  delete pending.pendingLocal;pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();
+  setCoreActivity("TEMPO ESGOTADO","A inferência local não concluiu. O AURION preservou o modelo e a conversa.");
+ },300000);
+}
 function refreshLocalModel(){
  if(window.AurionNative){try{const options=JSON.parse(window.AurionNative.modelOptions());const select=$("localModelSelect");if(select&&options.selected){select.value=options.selected}const chosen=(options.models||[]).find(x=>x.id===options.selected);if(chosen)$("localModelNote").textContent=chosen.note+" Contexto: "+chosen.context+" tokens · saída máxima configurada: "+chosen.maxTokens+" tokens.";}catch(e){}}
  const state=localModelState();
  if(state==="ready")window.onAurionModelState("ready","IA local pronta neste aparelho.");
- else if(state==="downloaded")window.onAurionModelState("downloaded","Modelo salvo neste aparelho. Toque em Ativar modelo salvo para carregá-lo.");
+ else if(state==="downloaded")window.onAurionModelState("downloaded","Modelo salvo neste aparelho. Carregando automaticamente no motor local…");
  else if(state==="blocked")window.onAurionModelState("blocked",window.AurionNative&&window.AurionNative.localModelBlockReason?window.AurionNative.localModelBlockReason():"O modelo está salvo, mas excede a margem segura de memória deste aparelho.");
  else if(state==="shared")window.onAurionModelState("restoring","Modelo preservado em Downloads/AURION AI. Recuperando sem novo download…");
  else if(state==="working")window.onAurionModelState("loading","A IA local está sendo preparada.");
- else if(state==="missing")window.onAurionModelState("missing","Modelo ainda não baixado. Toque no botão para ativar a IA local.");
+ else if(state==="missing")window.onAurionModelState("missing","Nenhum modelo GGUF foi encontrado. Importe um arquivo ou baixe um modelo para iniciar a IA local.");
  else if(state==="unavailable")window.onAurionModelState("unavailable","A IA local roda no aplicativo Android. A prévia web não tem acesso ao motor nativo.");
 }
 function setMode(mode){
@@ -747,7 +809,7 @@ async function saveCorrectionMemory(){
  }catch(e){setSettingsStatus("Falha ao salvar experiência: "+e.message,false)}
 }
 function setSettingsStatus(msg,ok){$("settingsStatus").textContent=msg;$("settingsStatus").className="statusbox "+(ok?"good":"warn")}
-function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está aberto em modo local. Memórias e tarefas podem ser guardadas neste aparelho. Para respostas locais, ative o modelo salvo. Pesquisa na web e locais próximos usam internet; não exigem conectar o motor de conversa.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
+function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está em modo local. Quando um modelo GGUF é importado ou encontrado, AURION tenta carregá-lo automaticamente. Pesquisa na web e locais próximos exigem internet.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
 function disconnectServer(){config={url:config.url||"https://nexora-ai-core.onrender.com",token:""};saveConfig();connected=false;apiCaps=null;setConnection(false);$("chatState").textContent="Modo local · IA ainda não conectada";$("settingsStatus").textContent="Motor remoto desconectado. Pesquisa pública continua disponível quando houver internet.";renderCapabilities()}
 function renderCapabilities(){
 const c=apiCaps;
@@ -814,8 +876,9 @@ const modelReady=Boolean(connected&&apiCaps&&apiCaps.chat&&apiCaps.chat.configur
 // No modo offline, execute ferramentas locais antes de consultar o modelo do aparelho.
 const command=(!modelReady&&msg)?localCommand(msg):null;
 if(command){data.messages.push({role:"assistant",content:command,at:stamp()});lastAssistantText=command;saveData();renderMessages();setCoreActivity("CONCLUÍDO","Comando local atendido pelo recurso disponível no aparelho.");if(autoSpeakEnabled)speakText(command);return}
-if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
- const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true};
+if(nativeLocalReady&&!modelReady&&(activeMode!=="research"||!connected)&&!imageData){
+  const requestId=newId();
+  const pending={role:"assistant",content:"Pensando com o núcleo local…",at:stamp(),pendingLocal:true,requestId,userText:msg};
  data.messages.push(pending);saveData();renderMessages();
  const dialogue=data.messages.slice(-9,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\n");
  const relevantMemories=wormholeRetrieve(data.memories,msg,5,360);
@@ -846,18 +909,15 @@ if(nativeLocalReady&&!modelReady&&activeMode!=="research"&&!imageData){
  // A janela Kotlin usa os últimos 1.800 caracteres: priorize as conversas primeiro e a memória consolidada no final.
  const history=("CONVERSA RECENTE:\n"+dialogue+"\n\n"+memoryContext).slice(-4500);
  try{
-  window.AurionNative.sendLocalMessage(msg,history);
-  const startedAt=Date.now();
-  window.setTimeout(()=>{
-   const stillPending=data.messages.find(x=>x===pending&&x.pendingLocal);
-   if(stillPending&&Date.now()-startedAt>=300000){
-    stillPending.content="O núcleo local não respondeu após cinco minutos. O modelo pode ser incompatível, estar sem memória suficiente ou ter travado durante a inferência. O arquivo salvo foi preservado.";
-    delete stillPending.pendingLocal;stillPending.at=stamp();lastAssistantText=stillPending.content;saveData();renderMessages();
-    setCoreActivity("TEMPO ESGOTADO","A inferência local não concluiu. O AURION preservou o modelo e a conversa.");
-   }
-  },300000);
+  const localPrompt=(activeMode==="research"&&!connected)
+   ?"A pesquisa na web não está conectada nesta instalação. Não afirme que pesquisou nem invente fontes. Responda usando somente seu conhecimento interno, informe claramente que não consultou a internet e indique o que precisaria ser verificado online.\\n\\nPEDIDO: "+msg
+   :msg;
+  if(activeMode==="research"&&!connected)setCoreActivity("MODO LOCAL · SEM WEB","O serviço de pesquisa online não está conectado. Vou responder com o conhecimento do modelo, sem fingir que consultei a internet.");
+  window.AurionNative.sendLocalMessage(localPrompt,history,requestId);
+   watchLocalRequest(pending,requestId);
  }catch(e){
-  pending.content="Não consegui iniciar o motor local: "+e.message;delete pending.pendingLocal;pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();setCoreActivity("ERRO AO INICIAR",e.message);
+   delete pending.requestId;delete pending.userText;
+   pending.content="Não consegui iniciar o motor local: "+e.message;delete pending.pendingLocal;pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();setCoreActivity("ERRO AO INICIAR",e.message);
  }
  return;
 }
@@ -874,15 +934,16 @@ if(activeMode==="research"){
   const canSynthesize=Boolean(window.AurionNative&&(localModelState()==="ready"||localModelCanRun()));
   if(canSynthesize&&sourceText){
    pending.content="Encontrei "+sources.length+" fontes. Estou cruzando os trechos com o modelo local…";
-   pending.pendingLocal=true;pending.at=stamp();saveData();renderMessages();
-   const synthesisPrompt="Responda à pergunta usando SOMENTE as evidências abaixo. Sintetize em português brasileiro, separe fatos de inferências, informe quando as fontes não bastarem e não invente detalhes. Inclua ao final as URLs das fontes relevantes.\nPERGUNTA: "+msg+"\n\nRESULTADOS DA PESQUISA PÚBLICA:\n"+sourceText+"\n\nNão diga que verificou o conteúdo integral das páginas; foram recebidos títulos e trechos de busca.";
-   window.AurionNative.sendLocalMessage(synthesisPrompt,"MODO ONLINE HÍBRIDO: a busca foi feita agora na internet. Use os títulos, trechos e URLs recebidos como evidências limitadas. Não afirme que abriu páginas completas.");
+    const requestId=newId();pending.pendingLocal=true;pending.requestId=requestId;pending.userText=msg;pending.at=stamp();saveData();renderMessages();
+    const synthesisPrompt="Responda à pergunta usando SOMENTE as evidências abaixo. Sintetize em português brasileiro, separe fatos de inferências, informe quando as fontes não bastarem e não invente detalhes. Inclua ao final as URLs das fontes relevantes.\nPERGUNTA: "+msg+"\n\nRESULTADOS DA PESQUISA PÚBLICA:\n"+sourceText+"\n\nNão diga que verificou o conteúdo integral das páginas; foram recebidos títulos e trechos de busca.";
+   window.AurionNative.sendLocalMessage(synthesisPrompt,"MODO ONLINE HÍBRIDO: a busca foi feita agora na internet. Use os títulos, trechos e URLs recebidos como evidências limitadas. Não afirme que abriu páginas completas.",requestId);
+    watchLocalRequest(pending,requestId);
    setCoreActivity("PESQUISA + IA LOCAL","Busca online concluída; o modelo local está sintetizando os resultados.");
    return;
   }
   pending.content=(research.answer||"Pesquisa concluída.")+sourceLinks+(research.attribution?"\n\n"+research.attribution+" · "+research.attribution_url:"");
   if(!sources.length)pending.content+="\n\nNenhuma fonte foi retornada. Tente reformular a pesquisa.";
- }catch(e){useLocationForNextResearch=false;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
+ }catch(e){useLocationForNextResearch=false;delete pending.pendingLocal;delete pending.requestId;delete pending.userText;pending.content="Não consegui pesquisar agora: "+e.message+"\nVerifique a conexão e tente novamente.";}
  pending.at=stamp();lastAssistantText=pending.content;saveData();renderMessages();setCoreActivity(pending.content.startsWith("Não consegui")?"ERRO":"CONCLUÍDO",pending.content.slice(0,220));if(autoSpeakEnabled)speakText(pending.content);return;
 }
 if(imageData&&!connected){const answer="A imagem foi selecionada, mas a análise visual exige um servidor conectado com modelo compatível. Ative a conexão nas Configurações. Nenhum conteúdo da imagem foi analisado.";data.messages.push({role:"assistant",content:answer,at:stamp()});lastAssistantText=answer;saveData();renderMessages();setCoreActivity("AGUARDANDO CONEXÃO",answer);return;}
@@ -915,11 +976,14 @@ pending.at=stamp();lastAssistantText=pending.content;
  const canFallback=!imageData&&activeMode==="chat"&&window.AurionNative&&(localState==="ready"||localModelCanRun());
  if(canFallback){
   pending.content="O núcleo remoto falhou. Estou continuando com o modelo local deste aparelho…";
-  pending.pendingLocal=true;
-  pending.at=stamp();saveData();renderMessages();
-  const fallbackHistory=data.messages.slice(-10,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\\n");
-  window.AurionNative.sendLocalMessage(msg,fallbackHistory);
-  setCoreActivity("FALLBACK LOCAL","A conexão remota falhou; a solicitação foi encaminhada ao modelo local.");
+   const requestId=newId();pending.pendingLocal=true;pending.requestId=requestId;pending.userText=msg;
+   pending.at=stamp();saveData();renderMessages();
+   const fallbackHistory=data.messages.slice(-10,-1).map(x=>(x.role==="user"?"Pessoa":"AURION")+": "+x.content).join("\\n");
+   try{
+    window.AurionNative.sendLocalMessage(msg,fallbackHistory,requestId);
+    watchLocalRequest(pending,requestId);
+   }catch(localError){delete pending.pendingLocal;delete pending.requestId;delete pending.userText;pending.content="Não consegui iniciar o modelo local: "+localError.message;pending.at=stamp();saveData();renderMessages();setCoreActivity("ERRO AO INICIAR",localError.message);return;}
+   setCoreActivity("FALLBACK LOCAL","A conexão remota falhou; a solicitação foi encaminhada ao modelo local.");
   return;
  }
  pending.content="Falha no recurso "+activeMode+": "+e.message;pending.at=stamp();lastAssistantText=pending.content;
