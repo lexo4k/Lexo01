@@ -368,7 +368,7 @@ window.onAurionModelState=function(state,detail){
  else if(state==="missing"){$("chatState").textContent="Modelo ainda não baixado. Faça o download uma vez pelo Wi-Fi."; $("connectionPill").textContent="● modelo não instalado";$("connectionPill").classList.remove("online")}
 };
 function applyAurionLocalActions(actions,userText){
- const source=String(userText||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLocaleLowerCase("pt-BR");
+ const source=String(userText||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR");
  const results=[];
  (Array.isArray(actions)?actions:[]).slice(0,3).forEach(action=>{
   if(!action||typeof action!=="object")return;
@@ -416,7 +416,7 @@ window.onAurionNativeAnswer=function(answer,failed){
      const lastUser=data.messages.slice().reverse().find(x=>x.role==="user");
      actionResults=applyAurionLocalActions(payload.actions,lastUser?lastUser.content:"");
      visibleAnswer=payload.reply.trim()||"Concluído.";
-     if(actionResults.length)visibleAnswer+="\\n\\nAÇÕES LOCAIS VERIFICADAS\\n"+actionResults.map((x,i)=>(i+1)+". "+x).join("\\n");
+     if(actionResults.length)visibleAnswer+="\n\nAÇÕES LOCAIS VERIFICADAS\n"+actionResults.map((x,i)=>(i+1)+". "+x).join("\n");
     }
    }
   }catch(e){/* Resposta fora do protocolo: exibe o texto original sem executar ações. */}
