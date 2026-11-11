@@ -121,7 +121,7 @@ $("settings").addEventListener("click",e=>{if(e.target===$("settings"))closeSett
 $("prepare").addEventListener("click",()=>{if(window.AurionNative)window.AurionNative.confirmModelDownload();else setStatus("Abra a versão Android para preparar o modelo.","error")});
 $("chooseModel").addEventListener("click",()=>{if(window.AurionNative)window.AurionNative.chooseDownloadedModel();else setStatus("Importação disponível no Android.","error")});
 render();
-window.aurionStartupCheck=function(){
+function aurionStartupCheck(){
  if(!window.AurionNative)return;
  try{
   const state=window.AurionNative.modelState();
