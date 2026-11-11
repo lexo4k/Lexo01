@@ -1,0 +1,32 @@
+name: AURION Minecraft Relay
+
+on:
+  push:
+    branches: ["lumen-ai-core"]
+    paths:
+      - "minecraft-bedrock/**"
+      - ".github/workflows/minecraft-relay.yml"
+  pull_request:
+    paths:
+      - "minecraft-bedrock/**"
+      - ".github/workflows/minecraft-relay.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  relay-tests:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: minecraft-bedrock/relay
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install relay dependencies
+        run: python -m pip install -r requirements.txt pytest httpx
+      - name: Run relay security and contract tests
+        run: python -m pytest -q
