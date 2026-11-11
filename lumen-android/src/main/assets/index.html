@@ -185,6 +185,15 @@ details{border:1px solid #2b435a;border-radius:15px;padding:13px 15px;background
   </div>
   <p class="muted">Anexar apenas copia e salva o arquivo. Ativar carrega o modelo na memória. Modelos maiores podem não caber na RAM do celular.</p>
  </div>
+ <div class="panel">
+  <h3>🎮 Minecraft Bedrock · AURION</h3>
+  <p class="muted">Ponte experimental para o Minecraft oficial conectado a um servidor Bedrock compatível. AURION processa os diálogos com o modelo GGUF local.</p>
+  <div class="field"><label for="minecraftRelayUrl">Endereço HTTPS do relay Minecraft</label><input id="minecraftRelayUrl" inputmode="url" placeholder="https://seu-relay-minecraft.onrender.com"></div>
+  <button class="btn primary" onclick="startMinecraftBridge()">Iniciar ponte e gerar código</button>
+  <button class="btn" onclick="stopMinecraftBridge()">Pausar ponte</button>
+  <div id="minecraftPairingCode" class="statusbox warn" hidden></div>
+  <div id="minecraftBridgeStatus" class="statusbox warn">Ponte Minecraft ainda não iniciada.</div>
+ </div>
  <div id="settingsStatus" class="statusbox warn">Recursos locais disponíveis. Conexões online são opcionais.</div>
  <details class="advanced-details">
   <summary>Conexão remota opcional</summary>
@@ -810,6 +819,26 @@ async function saveCorrectionMemory(){
 }
 function setSettingsStatus(msg,ok){$("settingsStatus").textContent=msg;$("settingsStatus").className="statusbox "+(ok?"good":"warn")}
 function setConnection(ok){connected=ok;$("connectionPill").textContent=ok?"● núcleo conectado":"● modo local";$("connectionPill").classList.toggle("online",ok);$("homeStatus").textContent=ok?"Servidor conectado. A disponibilidade do modelo e do banco é exibida nas configurações.":"O aplicativo está em modo local. Quando um modelo GGUF é importado ou encontrado, AURION tenta carregá-lo automaticamente. Pesquisa na web e locais próximos exigem internet.";$("homeStatus").className="statusbox "+(ok?"good":"warn")}
+function startMinecraftBridge(){
+ const endpoint=$("minecraftRelayUrl").value.trim();
+ if(!endpoint.startsWith("https://")){$("minecraftBridgeStatus").textContent="Informe o endereço HTTPS do relay.";return}
+ if(!window.AurionNative||!window.AurionNative.startMinecraftAssistant){$("minecraftBridgeStatus").textContent="Ponte nativa disponível somente no APK Android atualizado.";return}
+ $("minecraftBridgeStatus").textContent="Solicitando pareamento seguro ao relay…";
+ window.AurionNative.startMinecraftAssistant(endpoint);
+}
+function stopMinecraftBridge(){
+ if(window.AurionNative&&window.AurionNative.stopMinecraftAssistant)window.AurionNative.stopMinecraftAssistant();
+ $("minecraftBridgeStatus").textContent="Ponte pausada.";
+}
+window.onMinecraftPairingStarted=function(code,expires){
+ const box=$("minecraftPairingCode");
+ box.hidden=false;
+ box.textContent="Código temporário do servidor: "+code+" · expira em "+Math.floor(expires/60)+" min. O servidor Bedrock precisa reivindicar este código.";
+};
+window.onMinecraftStatus=function(message){
+ const el=$("minecraftBridgeStatus");
+ if(el)el.textContent=String(message||"");
+};
 function disconnectServer(){config={url:config.url||"https://nexora-ai-core.onrender.com",token:""};saveConfig();connected=false;apiCaps=null;setConnection(false);$("chatState").textContent="Modo local · IA ainda não conectada";$("settingsStatus").textContent="Motor remoto desconectado. Pesquisa pública continua disponível quando houver internet.";renderCapabilities()}
 function renderCapabilities(){
 const c=apiCaps;
