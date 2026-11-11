@@ -701,11 +701,11 @@ class MainActivity : Activity() {
                 try {
                     val active = localModel ?: loadLocalModel()
                     val prompt = buildString {
-                        append("MENSAGEM RECEBIDA NO MUNDO MINECRAFT\\n")
-                        append("Jogador: ").append(event.player).append('\\n')
-                        append("Personagem: ").append(event.npc).append('\\n')
-                        append("Tipo: ").append(event.eventType).append('\\n')
-                        append("Mensagem: ").append(event.message.ifBlank { "O jogador interagiu com você." }).append("\\n\\n")
+                        append("MENSAGEM RECEBIDA NO MUNDO MINECRAFT\n")
+                        append("Jogador: ").append(event.player).append('\n')
+                        append("Personagem: ").append(event.npc).append('\n')
+                        append("Tipo: ").append(event.eventType).append('\n')
+                        append("Mensagem: ").append(event.message.ifBlank { "O jogador interagiu com você." }).append("\n\n")
                         append("Responda como esse personagem, em português brasileiro, com personalidade coerente. ")
                         append("Não diga que executou ações no jogo. Seja breve e responda somente ao evento recebido.")
                     }
