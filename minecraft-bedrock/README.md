@@ -2,7 +2,7 @@
 
 ## Status
 
-The relay prototype and automated contract tests are now present. The Android-to-relay bridge, Bedrock behavior pack, hosted relay deployment, and real game round-trip are **not yet implemented or validated**. This directory is not yet an installable Minecraft add-on or a completed integration.
+The relay prototype and automated contract tests are present. An Android HTTPS client and an initial AURION app bridge are now committed: the app can request a pairing code, poll game events, run the existing local GGUF inference path, and submit generated replies. This Android bridge has **not yet been build-validated or exercised against a live relay**. The Bedrock behavior pack, server-side pairing client, hosted relay deployment, and real game round-trip are still **not implemented or validated**. This directory is not yet an installable Minecraft add-on or a completed integration.
 
 ## User requirement
 
@@ -46,7 +46,7 @@ The server token must remain in BDS server-side secret configuration, never in a
 1. Confirm the exact Minecraft Bedrock Android client version and a compatible BDS/API version, including whether the required server-net module is available to that release.
 2. Implement a minimal BDS behavior pack that detects one explicit interaction and emits a structured event.
 3. Deploy and harden the relay, including persistent storage or an explicit session-recovery policy.
-4. Add an opt-in AURION bridge screen and foreground polling. Route prompts through the existing local inference method; only return generated text after successful inference.
+4. Finish and validate the opt-in Android bridge screen and foreground polling already started in the app. Route prompts through the existing local inference method; only return generated text after successful inference.
 5. Add server-side response delivery and test a full round trip with a real Android Bedrock client.
 6. Add NPC identity and conversation memory only after the round trip is reliable.
 7. Demonstrate Android voice playback for returned NPC dialogue. Do not claim that speech is audible inside Minecraft until that separate audio path is demonstrated.
