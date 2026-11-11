@@ -47,7 +47,12 @@ def test_event_round_trip_stays_inside_paired_session():
     assert client.get("/v1/app/events", headers=auth(app_token)).json()["events"] == [event]
     reply = {"event_id": event["event_id"], "message": "Bom dia! Como posso ajudar?", "npc": "Aldeão"}
     assert client.post("/v1/app/replies", json=reply, headers=auth(app_token)).status_code == 202
+    assert client.get("/v1/app/events", headers=auth(app_token)).json()["events"] == []
     assert client.get("/v1/server/replies", headers=auth(server_token)).json()["replies"] == [reply]
+    assert client.get("/v1/server/replies", headers=auth(server_token)).json()["replies"] == [reply]
+    ack = client.post("/v1/server/ack", json={"event_id": event["event_id"]}, headers=auth(server_token))
+    assert ack.status_code == 200
+    assert client.get("/v1/server/replies", headers=auth(server_token)).json()["replies"] == []
 
 
 def test_sessions_are_isolated_and_duplicate_events_rejected():
