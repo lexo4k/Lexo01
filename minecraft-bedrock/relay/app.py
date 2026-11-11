@@ -15,14 +15,17 @@ from dataclasses import dataclass, field
 from threading import RLock
 from typing import Deque
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 PAIRING_TTL_SECONDS = 300
 SESSION_IDLE_TTL_SECONDS = 12 * 60 * 60
 RATE_WINDOW_SECONDS = 60
 RATE_LIMIT_PER_MINUTE = 30
+PAIR_RATE_LIMIT_PER_MINUTE = 10
 QUEUE_LIMIT = 64
+EVENT_DEDUPE_LIMIT = 512
+SESSION_LIMIT = 1000
 
 
 def _digest(value: str) -> str:
@@ -45,6 +48,7 @@ class Session:
     events: Deque[dict] = field(default_factory=lambda: deque(maxlen=QUEUE_LIMIT))
     replies: Deque[dict] = field(default_factory=lambda: deque(maxlen=QUEUE_LIMIT))
     event_ids: set[str] = field(default_factory=set)
+    event_order: Deque[str] = field(default_factory=deque)
     reply_ids: set[str] = field(default_factory=set)
     request_times: dict[str, Deque[float]] = field(default_factory=dict)
 
@@ -57,13 +61,26 @@ class RelayStore:
         self.pairings: dict[str, Pairing] = {}
         self.sessions: dict[str, Session] = {}
         self.token_index: dict[str, tuple[str, str]] = {}
+        self.ip_requests: dict[str, Deque[float]] = {}
 
-    def start_pairing(self) -> dict[str, str]:
+    def rate_limit_ip(self, address: str, limit: int = PAIR_RATE_LIMIT_PER_MINUTE) -> None:
+        now = time.monotonic()
+        with self.lock:
+            times = self.ip_requests.setdefault(address, deque())
+            while times and now - times[0] >= RATE_WINDOW_SECONDS:
+                times.popleft()
+            if len(times) >= limit:
+                raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde antes de tentar novamente.")
+            times.append(now)
+
+    def start_pairing(self) -> dict[str, str | int]:
         now = time.monotonic()
         code = f"{secrets.randbelow(100_000_000):08d}"
         app_token = secrets.token_urlsafe(32)
         with self.lock:
             self._purge(now)
+            if len(self.pairings) >= SESSION_LIMIT:
+                raise HTTPException(status_code=503, detail="Serviço ocupado. Tente novamente mais tarde.")
             self.pairings[_digest(code)] = Pairing(app_token, now + PAIRING_TTL_SECONDS)
         return {"pairing_code": code, "app_token": app_token, "expires_in": PAIRING_TTL_SECONDS}
 
@@ -75,6 +92,8 @@ class RelayStore:
             pairing = self.pairings.pop(key, None)
             if pairing is None or pairing.expires_at <= now:
                 raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+            if len(self.sessions) >= SESSION_LIMIT:
+                raise HTTPException(status_code=503, detail="Limite de sessões temporárias atingido.")
             server_token = secrets.token_urlsafe(32)
             session_id = secrets.token_urlsafe(18)
             session = Session(
@@ -97,11 +116,12 @@ class RelayStore:
             raise HTTPException(status_code=401, detail="Credencial inválida.")
         token_hash = _digest(token)
         with self.lock:
+            now = time.monotonic()
+            self._purge(now)
             indexed = self.token_index.get(token_hash)
             if indexed is None or indexed[1] != side:
                 raise HTTPException(status_code=401, detail="Credencial inválida.")
             session = self.sessions.get(indexed[0])
-            now = time.monotonic()
             if session is None or now - session.last_activity > SESSION_IDLE_TTL_SECONDS:
                 raise HTTPException(status_code=401, detail="Sessão expirada.")
             expected = session.app_token_hash if side == "app" else session.server_token_hash
@@ -119,6 +139,15 @@ class RelayStore:
             if len(times) >= RATE_LIMIT_PER_MINUTE:
                 raise HTTPException(status_code=429, detail="Limite temporário de solicitações atingido.")
             times.append(now)
+
+    def remember_event(self, session: Session, event_id: str) -> None:
+        if event_id in session.event_ids:
+            raise HTTPException(status_code=409, detail="Evento duplicado.")
+        if len(session.event_order) >= EVENT_DEDUPE_LIMIT:
+            expired_id = session.event_order.popleft()
+            session.event_ids.discard(expired_id)
+        session.event_order.append(event_id)
+        session.event_ids.add(event_id)
 
     def _purge(self, now: float) -> None:
         expired_pairings = [key for key, value in self.pairings.items() if value.expires_at <= now]
@@ -157,18 +186,26 @@ store = RelayStore()
 app = FastAPI(title="AURION Minecraft Relay", version="0.1.0")
 
 
+def _client_address(request: Request) -> str:
+    # Do not trust X-Forwarded-For from arbitrary clients. Configure trusted
+    # proxy handling at the hosting layer if IP-aware throttling is required.
+    return request.client.host if request.client else "unknown"
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "component": "aurion-minecraft-relay"}
 
 
 @app.post("/v1/pair/start")
-def pair_start() -> dict[str, str | int]:
+def pair_start(request: Request) -> dict[str, str | int]:
+    store.rate_limit_ip(_client_address(request))
     return store.start_pairing()
 
 
 @app.post("/v1/pair/claim")
-def pair_claim(body: PairClaim) -> dict[str, str]:
+def pair_claim(body: PairClaim, request: Request) -> dict[str, str]:
+    store.rate_limit_ip(_client_address(request))
     return store.claim_pairing(body.pairing_code)
 
 
@@ -177,9 +214,7 @@ def server_event(body: GameEvent, authorization: str | None = Header(default=Non
     session = store.authenticate(authorization, "server")
     store.rate_limit(session, "server")
     with store.lock:
-        if body.event_id in session.event_ids:
-            raise HTTPException(status_code=409, detail="Evento duplicado.")
-        session.event_ids.add(body.event_id)
+        store.remember_event(session, body.event_id)
         session.events.append(body.model_dump())
     return {"accepted": body.event_id}
 
