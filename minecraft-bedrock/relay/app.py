@@ -182,6 +182,10 @@ class AURIONReply(BaseModel):
     npc: str = Field(min_length=1, max_length=80)
 
 
+class ReplyAck(BaseModel):
+    event_id: str = Field(min_length=8, max_length=80)
+
+
 store = RelayStore()
 app = FastAPI(title="AURION Minecraft Relay", version="0.1.0")
 
@@ -238,6 +242,12 @@ def app_reply(body: AURIONReply, authorization: str | None = Header(default=None
             raise HTTPException(status_code=409, detail="Resposta para este evento já registrada.")
         session.reply_ids.add(body.event_id)
         session.replies.append(body.model_dump())
+        # Once AURION has generated and submitted the answer, the event no
+        # longer needs to be offered for inference on every poll.
+        session.events = deque(
+            (event for event in session.events if event["event_id"] != body.event_id),
+            maxlen=QUEUE_LIMIT,
+        )
     return {"accepted": body.event_id}
 
 
@@ -246,6 +256,21 @@ def server_replies(authorization: str | None = Header(default=None)) -> dict[str
     session = store.authenticate(authorization, "server")
     store.rate_limit(session, "server")
     with store.lock:
-        replies = list(session.replies)
-        session.replies.clear()
-        return {"replies": replies}
+        # Non-destructive reads allow the BDS script to retry after a network
+        # interruption. It acknowledges each reply only after in-game delivery.
+        return {"replies": list(session.replies)}
+
+
+@app.post("/v1/server/ack")
+def server_ack(body: ReplyAck, authorization: str | None = Header(default=None)) -> dict[str, str]:
+    session = store.authenticate(authorization, "server")
+    store.rate_limit(session, "server")
+    with store.lock:
+        before = len(session.replies)
+        session.replies = deque(
+            (reply for reply in session.replies if reply["event_id"] != body.event_id),
+            maxlen=QUEUE_LIMIT,
+        )
+        if len(session.replies) == before:
+            raise HTTPException(status_code=404, detail="Resposta não encontrada nesta sessão.")
+    return {"acknowledged": body.event_id}
