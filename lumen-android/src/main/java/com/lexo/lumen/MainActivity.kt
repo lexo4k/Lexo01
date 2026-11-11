@@ -193,7 +193,7 @@ class MainActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.AurionNative.resumeAuthorizedModelSetup();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
+                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.AurionNative.resumeAuthorizedModelSetup();window.AurionNative.resumeMinecraftAssistant();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
                 }
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val uri = request?.url ?: return true
@@ -649,9 +649,9 @@ class MainActivity : Activity() {
                     val pairing = withContext(Dispatchers.IO) { client.startPairing() }
                     getSharedPreferences("aurion_minecraft", MODE_PRIVATE).edit()
                         .putString("relay_url", endpoint)
-                        .putString("app_token", pairing.appToken)
                         .putString("session_id", "")
                         .apply()
+                    SecureTokenStore.put(this@MainActivity, "minecraft_app_token", pairing.appToken)
                     minecraftRelay = client
                     minecraftAppToken = pairing.appToken
                     runOnUiThread {
@@ -661,25 +661,46 @@ class MainActivity : Activity() {
                             null
                         )
                     }
-                    minecraftPollJob?.cancel()
-                    minecraftPollJob = localScope.launch {
-                        notifyMinecraftStatus("AURION aguardando eventos do mundo Minecraft. O servidor Bedrock ainda precisa concluir o pareamento.")
-                        while (isActive) {
-                            try {
-                                val events = withContext(Dispatchers.IO) {
-                                    client.fetchEvents(pairing.appToken)
-                                }
-                                for (event in events) {
-                                    processMinecraftEvent(client, pairing.appToken, event)
-                                }
-                            } catch (e: Exception) {
-                                notifyMinecraftStatus("Ponte Minecraft: " + (e.message ?: "falha temporária de comunicação"))
-                            }
-                            delay(2000L)
-                        }
-                    }
+                    beginMinecraftPolling(client, pairing.appToken)
                 } catch (e: Exception) {
                     notifyMinecraftStatus("Não foi possível iniciar a ponte Minecraft: " + (e.message ?: "erro desconhecido"))
+                }
+            }
+        }
+
+        @JavascriptInterface fun resumeMinecraftAssistant() {
+            val prefs = getSharedPreferences("aurion_minecraft", MODE_PRIVATE)
+            val endpoint = prefs.getString("relay_url", null)?.trim()?.trimEnd('/') ?: return
+            val token = SecureTokenStore.get(this, "minecraft_app_token") ?: run {
+                notifyMinecraftStatus("A conexão salva precisa ser refeita. Inicie o pareamento novamente.")
+                return
+            }
+            if (minecraftPollJob?.isActive == true) return
+            localScope.launch {
+                try {
+                    val client = withContext(Dispatchers.IO) { MinecraftRelayClient(endpoint) }
+                    minecraftRelay = client
+                    minecraftAppToken = token
+                    beginMinecraftPolling(client, token)
+                    notifyMinecraftStatus("Conexão AURION Minecraft restaurada automaticamente.")
+                } catch (e: Exception) {
+                    notifyMinecraftStatus("Não foi possível restaurar a conexão: " + (e.message ?: "erro desconhecido"))
+                }
+            }
+        }
+
+        private fun beginMinecraftPolling(client: MinecraftRelayClient, appToken: String) {
+            minecraftPollJob?.cancel()
+            minecraftPollJob = localScope.launch {
+                notifyMinecraftStatus("AURION conectado ao relay. Aguardando eventos do mundo Minecraft.")
+                while (isActive) {
+                    try {
+                        val events = withContext(Dispatchers.IO) { client.fetchEvents(appToken) }
+                        for (event in events) processMinecraftEvent(client, appToken, event)
+                    } catch (e: Exception) {
+                        notifyMinecraftStatus("Ponte Minecraft: " + (e.message ?: "falha temporária de comunicação"))
+                    }
+                    delay(2000L)
                 }
             }
         }
