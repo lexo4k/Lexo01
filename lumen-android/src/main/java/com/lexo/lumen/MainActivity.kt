@@ -35,6 +35,9 @@ import dev.ffmpegkit.llama.Llama
 import dev.ffmpegkit.llama.LlamaConfig
 import dev.ffmpegkit.llama.LlamaModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -66,6 +69,9 @@ class MainActivity : Activity() {
     private val inferenceMutex = Mutex()
     // Serializa a carga nativa: a inicialização da tela e o primeiro envio podem ocorrer juntos.
     private val modelLoadMutex = Mutex()
+    @Volatile private var minecraftRelay: MinecraftRelayClient? = null
+    @Volatile private var minecraftAppToken: String? = null
+    private var minecraftPollJob: Job? = null
     private var textToSpeech: TextToSpeech? = null
     @Volatile private var ttsReady = false
     @Volatile private var pendingSpeechText: String? = null
@@ -628,6 +634,116 @@ class MainActivity : Activity() {
                 getSharedPreferences("aurion_permissions", MODE_PRIVATE)
                     .edit().putBoolean("model_download_authorized", true).apply()
                 downloadModel()
+            }
+        }
+
+        @JavascriptInterface fun startMinecraftAssistant(relayUrl: String) {
+            val endpoint = relayUrl.trim().trimEnd('/')
+            if (!endpoint.startsWith("https://") || endpoint.length > 512) {
+                notifyMinecraftStatus("Informe o endereço HTTPS do relay AURION Minecraft.")
+                return
+            }
+            localScope.launch {
+                try {
+                    val client = withContext(Dispatchers.IO) { MinecraftRelayClient(endpoint) }
+                    val pairing = withContext(Dispatchers.IO) { client.startPairing() }
+                    getSharedPreferences("aurion_minecraft", MODE_PRIVATE).edit()
+                        .putString("relay_url", endpoint)
+                        .putString("app_token", pairing.appToken)
+                        .putString("session_id", "")
+                        .apply()
+                    minecraftRelay = client
+                    minecraftAppToken = pairing.appToken
+                    runOnUiThread {
+                        web.evaluateJavascript(
+                            "window.onMinecraftPairingStarted && window.onMinecraftPairingStarted(" +
+                                JSONObject.quote(pairing.pairingCode) + "," + pairing.expiresInSeconds + ");",
+                            null
+                        )
+                    }
+                    minecraftPollJob?.cancel()
+                    minecraftPollJob = localScope.launch {
+                        notifyMinecraftStatus("AURION aguardando eventos do mundo Minecraft. O servidor Bedrock ainda precisa concluir o pareamento.")
+                        while (isActive) {
+                            try {
+                                val events = withContext(Dispatchers.IO) {
+                                    client.fetchEvents(pairing.appToken)
+                                }
+                                for (event in events) {
+                                    processMinecraftEvent(client, pairing.appToken, event)
+                                }
+                            } catch (e: Exception) {
+                                notifyMinecraftStatus("Ponte Minecraft: " + (e.message ?: "falha temporária de comunicação"))
+                            }
+                            delay(2000L)
+                        }
+                    }
+                } catch (e: Exception) {
+                    notifyMinecraftStatus("Não foi possível iniciar a ponte Minecraft: " + (e.message ?: "erro desconhecido"))
+                }
+            }
+        }
+
+        @JavascriptInterface fun stopMinecraftAssistant() {
+            minecraftPollJob?.cancel()
+            minecraftPollJob = null
+            minecraftRelay = null
+            minecraftAppToken = null
+            notifyMinecraftStatus("Ponte AURION Minecraft pausada.")
+        }
+
+        private suspend fun processMinecraftEvent(
+            client: MinecraftRelayClient,
+            appToken: String,
+            event: MinecraftRelayClient.GameEvent
+        ) {
+            inferenceMutex.withLock {
+                try {
+                    val active = localModel ?: loadLocalModel()
+                    val prompt = buildString {
+                        append("MENSAGEM RECEBIDA NO MUNDO MINECRAFT\\n")
+                        append("Jogador: ").append(event.player).append('\\n')
+                        append("Personagem: ").append(event.npc).append('\\n')
+                        append("Tipo: ").append(event.eventType).append('\\n')
+                        append("Mensagem: ").append(event.message.ifBlank { "O jogador interagiu com você." }).append("\\n\\n")
+                        append("Responda como esse personagem, em português brasileiro, com personalidade coerente. ")
+                        append("Não diga que executou ações no jogo. Seja breve e responda somente ao evento recebido.")
+                    }
+                    val result = withContext(Dispatchers.IO) {
+                        Llama.complete(
+                            active,
+                            prompt,
+                            systemPrompt = "Você é o motor de diálogo local AURION para NPCs do Minecraft. " +
+                                "Gere uma resposta natural, contextual e segura. Não invente ações ou fatos do mundo.",
+                            maxTokens = minOf(selectedProfile().maxTokens, 120)
+                        )
+                    }
+                    val answer = result.text.trim()
+                    if (answer.isNotBlank() && result.tokensGenerated > 0) {
+                        withContext(Dispatchers.IO) {
+                            client.submitReply(
+                                appToken,
+                                MinecraftRelayClient.NpcReply(event.eventId, event.npc, answer)
+                            )
+                        }
+                        notifyMinecraftStatus("Resposta local gerada para " + event.npc + " e enviada ao relay.")
+                    } else {
+                        notifyMinecraftStatus("O modelo local não gerou resposta para o evento " + event.eventId + ".")
+                    }
+                } catch (e: Exception) {
+                    notifyMinecraftStatus("Falha ao gerar diálogo local: " + (e.message ?: "erro de inferência"))
+                }
+            }
+        }
+
+        private fun notifyMinecraftStatus(message: String) {
+            runOnUiThread {
+                if (::web.isInitialized) {
+                    web.evaluateJavascript(
+                        "window.onMinecraftStatus && window.onMinecraftStatus(" + JSONObject.quote(message) + ");",
+                        null
+                    )
+                }
             }
         }
 
