@@ -6,6 +6,11 @@ on:
     paths:
       - "lumen-android/**"
       - ".github/workflows/lumen-android.yml"
+  pull_request:
+    branches: ["lumen-ai-core"]
+    paths:
+      - "lumen-android/**"
+      - ".github/workflows/lumen-android.yml"
   workflow_dispatch:
 
 permissions:
