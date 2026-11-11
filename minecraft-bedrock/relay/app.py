@@ -218,6 +218,8 @@ def server_event(body: GameEvent, authorization: str | None = Header(default=Non
     session = store.authenticate(authorization, "server")
     store.rate_limit(session, "server")
     with store.lock:
+        if len(session.events) >= QUEUE_LIMIT:
+            raise HTTPException(status_code=429, detail="Fila de eventos cheia. AURION precisa processar os eventos pendentes.")
         store.remember_event(session, body.event_id)
         session.events.append(body.model_dump())
     return {"accepted": body.event_id}
@@ -236,6 +238,8 @@ def app_reply(body: AURIONReply, authorization: str | None = Header(default=None
     session = store.authenticate(authorization, "app")
     store.rate_limit(session, "app")
     with store.lock:
+        if len(session.replies) >= QUEUE_LIMIT:
+            raise HTTPException(status_code=429, detail="Fila de respostas cheia. O servidor precisa entregar as respostas pendentes.")
         if body.event_id not in session.event_ids:
             raise HTTPException(status_code=404, detail="Evento não encontrado nesta sessão.")
         if body.event_id in session.reply_ids:
