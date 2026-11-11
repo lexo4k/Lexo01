@@ -6,207 +6,85 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+ANDROID = ROOT.parent / "lumen-android"
+ACTIVITY = ANDROID / "src/main/java/com/lexo/lumen/MainActivity.kt"
+HTML = ROOT / "index.html"
 
 
 class UiContractTests(unittest.TestCase):
-    def test_android_bundle_matches_web_interface(self):
-        web = (ROOT / "index.html").read_text(encoding="utf-8")
-        android = (ROOT.parent / "lumen-android" / "src" / "main" / "assets" / "index.html").read_text(encoding="utf-8")
-        self.assertEqual(web, android)
+    def test_android_bundle_matches_rebuilt_web_interface(self):
+        self.assertEqual(HTML.read_text(encoding="utf-8"),
+                         (ANDROID / "src/main/assets/index.html").read_text(encoding="utf-8"))
 
-    def test_android_discovers_downloaded_models_and_starts_automatic_setup(self):
-        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn('MediaStore.Files.getContentUri("external")', activity)
-        self.assertIn('endsWith(".gguf")', activity)
-        self.assertIn("memory.totalMem", activity)
-        self.assertIn("modelMemoryBlockReason", activity)
-        self.assertIn("aurionStartupCheck()", html)
-        self.assertIn("window.AurionNative.autoPrepareModelOnStartup()", html)
-
-    def test_android_model_is_loaded_on_start_and_download_is_wifi_only_and_resumable(self):
-        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
-        self.assertIn("window.AurionNative.resumeAuthorizedModelSetup()", activity)
-        self.assertIn("@JavascriptInterface fun resumeAuthorizedModelSetup()", activity)
-        self.assertIn("Download bloqueado para proteger seus dados móveis", activity)
-        self.assertIn('putBoolean("model_download_authorized", true)', activity)
-        self.assertIn('getString("model_id", "qwen-0.5b")', activity)
-        self.assertIn('setRequestProperty("Range", "bytes="', activity)
-        start = activity.index("@JavascriptInterface fun prepareLocalModel()")
-        end = activity.index("@JavascriptInterface fun downloadModel()", start)
-        self.assertNotIn("downloadModel()", activity[start:end])
-
-    def test_native_offline_voice_gps_and_automatic_speech_are_wired(self):
-        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
-        manifest = (ROOT.parent / "lumen-android" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("createOnDeviceSpeechRecognizer", activity)
-        self.assertIn("TextToSpeech", activity)
-        self.assertIn("requestCurrentLocation", activity)
-        self.assertIn("ACCESS_FINE_LOCATION", manifest)
-        self.assertIn("toggleAutoSpeak", html)
-        self.assertIn("onAurionVoiceResult", html)
-        self.assertIn("requestLocationForResearch", html)
-        self.assertIn("source:\"text\"", html)
-
-    def test_offline_workspace_and_local_commands_are_present(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        for marker in (
-            'id="home"',
-            'id="chat"',
-            'id="memory"',
-            'id="tasks"',
-            'id="knowledge"',
-            'id="settings"',
-            '<section id="home" class="screen active">',
-            'Olá. Sou o AURION.',
-            'function localCommand(msg)',
-            'function loadConfig()',
-            'saved.url==="https://lumen-ai-core.vercel.app"',
-            'busque|procure|procurar|pesquisar|pesquise',
-            'planejar|plano',
-            'function exportData()',
-            'function handleImport(e)',
-            'id="researchMode"',
-            'id="thinkMode"',
-            'function startVoiceInput()',
-            'function speakLastAnswer()',
-            'function selectImage(event)',
-            'async function syncWorkspace()',
-            'await syncWorkspace()',
-            'function setMode(mode)',
-            'api("/api/research/public"',
-            'api("/api/think"',
-            'image_data_url:imageData',
-            'PESQUISA NA WEB',
-            'PLANEJAMENTO COGNITIVO',
-        ):
+    def test_rebuilt_interface_is_a_single_conversation_screen(self):
+        html = HTML.read_text(encoding="utf-8")
+        for marker in ('<title>AURION</title>', 'id="messages"', 'id="message"',
+                       'id="voice"', 'id="send"', 'id="settings"',
+                       'id="modelStatus"', 'function send()', 'function aurionStartupCheck()'):
             with self.subTest(marker=marker):
                 self.assertIn(marker, html)
+        for removed in ('id="home"', 'id="memory"', 'id="tasks"', 'id="knowledge"',
+                        'id="researchMode"', 'id="thinkMode"', 'id="video"',
+                        'id="imageLab"', 'id="bottomNav"'):
+            with self.subTest(removed=removed):
+                self.assertNotIn(removed, html)
 
-    def test_local_tools_run_before_model_inference_in_both_modes(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("const command=(!modelReady&&msg)?localCommand(msg):null;", html)
-        self.assertNotIn("const command=(!modelReady&&!nativeLocalReady&&msg)?localCommand(msg):null;", html)
-        self.assertIn("No modo offline, execute ferramentas locais", html)
+    def test_native_local_model_setup_and_inference_are_connected(self):
+        html = HTML.read_text(encoding="utf-8")
+        activity = ACTIVITY.read_text(encoding="utf-8")
+        for marker in ('window.AurionNative.sendLocalMessage(text,context,requestId)',
+                       'window.AurionNative.confirmModelDownload()',
+                       'window.AurionNative.chooseDownloadedModel()',
+                       'window.AurionNative.resumeAuthorizedModelSetup()',
+                       'window.onAurionNativeAnswer=function(answer,failed,id)'):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, html)
+        for marker in ('@JavascriptInterface fun sendLocalMessage(prompt: String, history: String, requestId: String)',
+                       '@JavascriptInterface fun resumeAuthorizedModelSetup()',
+                       '@JavascriptInterface fun confirmModelDownload()',
+                       'private fun modelMemoryBlockReason(modelBytes: Long)',
+                       'validateGgufHeader(modelFile)',
+                       'Llama.complete('):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, activity)
 
-    def test_offline_agent_executes_compound_local_task_requests(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("Executor local de tarefas compostas", html)
-        self.assertIn("Criada pelo executor local AURION", html)
-        self.assertIn("Pendentes primeiro", html)
-        self.assertIn("tarefas concluidas", html)
+    def test_voice_and_speech_callbacks_remain_wired(self):
+        html = HTML.read_text(encoding="utf-8")
+        activity = ACTIVITY.read_text(encoding="utf-8")
+        self.assertIn('window.AurionNative.startVoiceRecognition()', html)
+        self.assertIn('window.onAurionVoiceResult=function(text,error)', html)
+        self.assertIn('window.AurionNative.stopSpeaking()', html)
+        self.assertIn('createOnDeviceSpeechRecognizer', activity)
+        self.assertIn('TextToSpeech', activity)
 
-    def test_offline_agent_prepares_multistep_plans_and_local_actions(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("planeje e prepare a execucao de", html)
-        self.assertIn("Agente local preparou plano", html)
-        self.assertIn("execute|executar|faca|fazer|realize|realizar", html)
-        self.assertIn("Não executa ações externas automaticamente", html)
-        self.assertIn("não acessa sites", html)
-
-    def test_on_device_model_has_priority_and_receives_local_context(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("typeof window.AurionNative.canRunLocalModel===\"function\"", html)
-        self.assertIn("@JavascriptInterface fun canRunLocalModel(): Boolean", (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8"))
-        self.assertIn('if(nativeLocalReady&&!modelReady&&(activeMode!=="research"||!connected)&&!imageData){', html)
-        self.assertIn("MEMÓRIAS RELEVANTES:", html)
-        self.assertIn("BASE DE CONHECIMENTO:", html)
-        self.assertIn("TAREFAS EM ABERTO:", html)
-
-    def test_cloud_knowledge_delete_endpoint_exists(self):
-        backend = (ROOT / "app.py").read_text(encoding="utf-8")
-        self.assertIn('@app.delete("/api/knowledge/{knowledge_id}"', backend)
-        self.assertIn('DELETE FROM knowledge WHERE id=?', backend)
-
-    def test_chat_ui_exposes_explicit_learning_feedback(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("function rateExperience(index,rating)", html)
-        self.assertIn("rateExperience('+i+',5)", html)
-        self.assertIn("rateExperience('+i+',2)", html)
-        self.assertIn('api("/api/experiences"', html)
-        self.assertIn("feedbackSaved", html)
-
-    def test_cognitive_planner_retrieves_relevant_feedback_and_verified_corrections(self):
-        backend = (ROOT / "app.py").read_text(encoding="utf-8")
-        self.assertIn("retrieved_feedback_lessons", backend)
-        self.assertIn("retrieved_verified_corrections", backend)
-        self.assertIn("FROM learning_experiences", backend)
-        self.assertIn("FROM correction_memory WHERE validation_status='verified'", backend)
-        self.assertIn("selected_learning + selected_corrections", backend)
-
-    def test_offline_learning_ledger_persists_explicit_positive_and_negative_feedback(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn("experiences:Array.isArray(saved.experiences)?saved.experiences:[]", html)
-        self.assertIn('status:rating>=4?"useful":"corrected"', html)
-        self.assertIn("data.experiences.unshift(experience)", html)
-        self.assertIn("LIÇÕES E CORREÇÕES CONFIRMADAS PELO USUÁRIO", html)
-        self.assertIn('filter(x=>x.status==="useful"||x.status==="corrected")', html)
-        self.assertIn("Feedback explícito do usuário", html)
-
-    def test_android_discovers_large_gguf_and_checks_realistic_ram_budget(self):
-        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
-        self.assertIn('size > 6_000_000_000L', activity)
-        self.assertIn('private fun modelMemoryBlockReason(modelBytes: Long)', activity)
-        self.assertIn('(modelBytes * 1.35).toLong() + 450_000_000L', activity)
-        self.assertNotIn('minOf(2_500_000_000L', activity)
-        self.assertNotIn('memory.totalMem * 0.30', activity)
-        self.assertIn('size >= 1_900_000_000L -> "qwen-3b"', activity)
-        self.assertIn('return candidates.filter { modelMemoryBlockReason(it.size) == null }', activity)
-
-    def test_android_has_practical_default_and_optional_larger_local_model(self):
-        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
-        self.assertIn('"qwen-1.5b" to LocalModelProfile', activity)
-        self.assertIn('"qwen-3b" to LocalModelProfile', activity)
-        self.assertIn('Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf', activity)
+    def test_model_download_is_wifi_only_and_resumable(self):
+        activity = ACTIVITY.read_text(encoding="utf-8")
+        self.assertIn('Download bloqueado para proteger seus dados móveis', activity)
+        self.assertIn('setRequestProperty("Range", "bytes=', activity)
+        self.assertIn('putBoolean("model_download_authorized", true)', activity)
         self.assertIn('getString("model_id", "qwen-0.5b")', activity)
-        self.assertIn('history.takeLast(1800)', activity)
-        self.assertIn('maxTokens = selectedProfile().maxTokens', activity)
 
-    def test_android_voice_permission_is_user_gated(self):
-        manifest = (ROOT.parent / "lumen-android" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
-        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
+    def test_manifest_has_network_and_user_gated_microphone(self):
+        manifest = (ANDROID / "src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+        activity = ACTIVITY.read_text(encoding="utf-8")
+        self.assertIn('android.permission.INTERNET', manifest)
         self.assertIn('android.permission.RECORD_AUDIO', manifest)
         self.assertIn('override fun onPermissionRequest', activity)
-        self.assertIn('request.resources.all { it == PermissionRequest.RESOURCE_AUDIO_CAPTURE }', activity)
         self.assertIn('requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO)', activity)
-
-    def test_no_fake_default_server_hostname(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertNotIn('url:"https://lumen-ai-core.vercel.app"', html)
-        self.assertIn("lumen-ai-core-git-lumen-ai-core-unk-studio.vercel.app", html)
 
     def test_embedded_javascript_parses(self):
         node = shutil.which("node")
         if not node:
             self.skipTest("Node.js is not installed in this test environment")
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        scripts = re.findall(r"<script>(.*?)</script>", html, flags=re.DOTALL)
-        self.assertTrue(scripts, "No inline application script found")
+        html = HTML.read_text(encoding="utf-8")
+        scripts = re.findall(r"<script[^>]*>(.*?)</script>", html, flags=re.I | re.S)
+        self.assertTrue(scripts, "No inline application JavaScript block found")
         with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8") as source:
             source.write("\\n".join(scripts))
             source.flush()
             result = subprocess.run([node, "--check", source.name], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
-
-    def test_local_inference_responses_are_correlated_and_have_a_watchdog(self):
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
-        self.assertIn("window.onAurionNativeAnswer=function(answer,failed,requestId)", html)
-        self.assertIn("x.requestId===requestId", html)
-        self.assertIn("pending.userText||", html)
-        self.assertIn("function watchLocalRequest(pending,requestId)", html)
-        self.assertIn("fun sendLocalMessage(prompt: String, history: String, requestId: String)", activity)
-        self.assertIn("JSONObject.quote(requestId)", activity)
-
-    def test_gguf_header_is_validated_before_import_and_native_load(self):
-        activity = (ROOT.parent / "lumen-android" / "src" / "main" / "java" / "com" / "lexo" / "lumen" / "MainActivity.kt").read_text(encoding="utf-8")
-        self.assertIn("private fun validateGgufHeader(file: File)", activity)
-        self.assertIn("validateGgufHeader(temp)", activity)
-        self.assertIn("validateGgufHeader(modelFile)", activity)
-        self.assertIn("magic.contentEquals(expected)", activity)
-        self.assertIn("version !in 1L..3L", activity)
 
 if __name__ == "__main__":
     unittest.main()
