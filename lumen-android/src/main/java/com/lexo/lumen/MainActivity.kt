@@ -169,9 +169,9 @@ class MainActivity : Activity() {
         }
         bar.addView(title, LinearLayout.LayoutParams(0, 46, 1f))
         val config = Button(this).apply {
-            text = "Configurar"
+            text = "Núcleo"
             isAllCaps = false
-            setOnClickListener { web.evaluateJavascript("show('settings')", null) }
+            setOnClickListener { web.evaluateJavascript("openSettings()", null) }
         }
         bar.addView(config)
         root.addView(bar)
