@@ -11,6 +11,7 @@ def setup_function():
         store.pairings.clear()
         store.sessions.clear()
         store.token_index.clear()
+        store.ip_requests.clear()
 
 
 def pair():
