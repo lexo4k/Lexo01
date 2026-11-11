@@ -671,7 +671,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun resumeMinecraftAssistant() {
             val prefs = getSharedPreferences("aurion_minecraft", MODE_PRIVATE)
             val endpoint = prefs.getString("relay_url", null)?.trim()?.trimEnd('/') ?: return
-            val token = SecureTokenStore.get(this, "minecraft_app_token") ?: run {
+            val token = SecureTokenStore.get(this@MainActivity, "minecraft_app_token") ?: run {
                 notifyMinecraftStatus("A conexão salva precisa ser refeita. Inicie o pareamento novamente.")
                 return
             }
