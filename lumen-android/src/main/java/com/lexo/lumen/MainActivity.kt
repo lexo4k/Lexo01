@@ -876,12 +876,19 @@ class MainActivity : Activity() {
         // GGUF pode exigir memória adicional para buffers, contexto e estruturas nativas.
         // Usa RAM física com margem, em vez de um teto fixo que bloqueava qualquer arquivo >2,5 GB.
         val estimatedRequired = (modelBytes * 1.35).toLong() + 450_000_000L
-        val usableBudget = (memory.totalMem * 0.82).toLong()
-        if (estimatedRequired > usableBudget) {
+        val totalBudget = (memory.totalMem * 0.82).toLong()
+        // Reserva RAM para Android e apps em primeiro plano. O limite total, sozinho,
+        // podia aprovar um modelo mesmo quando quase toda a RAM já estava ocupada.
+        val androidReserve = 350_000_000L
+        val availableBudget = (memory.availMem - androidReserve).coerceAtLeast(0L)
+        val usableBudget = minOf(totalBudget, availableBudget)
+        if (memory.lowMemory || estimatedRequired > usableBudget) {
             return "Modelo detectado (" + String.format(Locale.US, "%.2f", modelBytes / 1_000_000_000.0) +
                 " GB), mas a estimativa de memória para executá-lo é " +
                 String.format(Locale.US, "%.2f", estimatedRequired / 1_000_000_000.0) +
-                " GB. A RAM física do aparelho não oferece margem segura para o Android e o modelo juntos. O arquivo não foi apagado nem baixado novamente."
+                " GB. RAM disponível agora: " + String.format(Locale.US, "%.2f", memory.availMem / 1_000_000_000.0) +
+                " GB; o AURION preserva 350 MB de margem para o Android. A RAM atual não oferece margem segura para carregar este modelo. " +
+                "Feche outros aplicativos e tente novamente quando houver mais memória livre. O arquivo não foi apagado nem baixado novamente."
         }
         return null
     }
