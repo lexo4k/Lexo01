@@ -831,7 +831,19 @@ class MainActivity : Activity() {
                                 maxTokens = selectedProfile().maxTokens
                             )
                         }
-                        notifyAnswer(result.text.ifBlank { "Não consegui formular uma resposta. Tente novamente com uma pergunta mais curta." }, false, requestId)
+                        val answer = result.text.trim()
+                        if (answer.isBlank() || result.tokensGenerated <= 0) {
+                            val detail = "O runtime local terminou sem gerar texto. Verifique se o GGUF é compatível com esta versão do llama.cpp e se há memória suficiente."
+                            android.util.Log.w("AurionInference", "Inferência sem tokens: generated=${result.tokensGenerated}, promptMs=${result.promptEvalTimeMs}, generateMs=${result.generateTimeMs}")
+                            notifyAnswer(detail, true, requestId)
+                        } else {
+                            android.util.Log.i("AurionInference", "Inferência concluída: tokens=${result.tokensGenerated}, tok/s=${result.tokensPerSecond}")
+                            notifyAnswer(answer, false, requestId)
+                        }
+                    } catch (e: LinkageError) {
+                        val detail = nativeRuntimeFailure(e)
+                        notifyModel("error", detail)
+                        notifyAnswer(detail, true, requestId)
                     } catch (e: Exception) {
                         notifyAnswer("A IA local encontrou um erro: ${e.message ?: "falha de inferência"}", true, requestId)
                     }
@@ -894,11 +906,29 @@ class MainActivity : Activity() {
             modelBusy = false
             notifyModel("ready", "${selectedProfile().name} pronto no aparelho. Contexto configurado: ${selectedProfile().contextSize} tokens. As conversas podem funcionar sem servidor.")
             loaded
+        } catch (e: LinkageError) {
+            modelBusy = false
+            val detail = nativeRuntimeFailure(e)
+            notifyModel("error", detail)
+            throw IllegalStateException(detail, e)
         } catch (e: Exception) {
             modelBusy = false
             notifyModel("error", e.message ?: "Não foi possível carregar o modelo")
             throw e
         }
+    }
+
+    private fun nativeRuntimeFailure(error: LinkageError): String {
+        android.util.Log.e("AurionRuntime", "Falha ao inicializar ou executar o runtime nativo llama.cpp", error)
+        val cause = error.cause?.message
+        val details = listOfNotNull(error.message, cause)
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString(" | ")
+            .take(320)
+        return "O runtime nativo llama.cpp não conseguiu iniciar ou executar neste aparelho (${error.javaClass.simpleName}). " +
+            "O APK pode conter bibliotecas ausentes ou incompatíveis com a arquitetura do dispositivo. " +
+            "O modelo GGUF foi preservado. " + details
     }
 
     private fun notifyModel(state: String, detail: String) {
