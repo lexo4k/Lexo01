@@ -25,7 +25,7 @@ object ArtifactStore {
         }
 
         val cleaned = requestedName
-            .replace(Regex("[\\\\/:*?\"<>|\\\\p{Cntrl}]"), "_")
+            .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
             .trim()
             .trim('.')
             .take(80)
