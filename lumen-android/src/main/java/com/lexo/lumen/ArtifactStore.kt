@@ -76,7 +76,13 @@ object ArtifactStore {
         return "Arquivo salvo em " + output.absolutePath
     }
 
-    fun readConversationBackup(context: Context): String? {
+    fun readConversationBackup(context: Context): String? =
+        readSharedTextFile(context, "aurion-conversation.json")
+
+    fun readMemoryBackup(context: Context): String? =
+        readSharedTextFile(context, "aurion-memory.json")
+
+    private fun readSharedTextFile(context: Context, fileName: String): String? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
         val relativePath = Environment.DIRECTORY_DOWNLOADS + "/AURION AI/"
@@ -84,7 +90,7 @@ object ArtifactStore {
             collection,
             arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE),
             MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + MediaStore.MediaColumns.RELATIVE_PATH + "=?",
-            arrayOf("aurion-conversation.json", relativePath),
+            arrayOf(fileName, relativePath),
             MediaStore.MediaColumns.DATE_MODIFIED + " DESC"
         )?.use { cursor ->
             if (!cursor.moveToFirst()) return@use null
