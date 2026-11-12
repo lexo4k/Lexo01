@@ -67,19 +67,19 @@ function artifactContent(text){const match=String(text).match(/```[a-zA-Z0-9+#-]
 function decorateAiMessage(node,text){node.replaceChildren();const body=document.createElement("span");body.textContent=text;node.appendChild(body);const tools=document.createElement("div");tools.className="message-tools";const save=document.createElement("button");save.textContent="Salvar arquivo";save.addEventListener("click",()=>{if(window.AurionNative?.saveTextArtifact){window.AurionNative.saveTextArtifact(suggestedFileName(text),artifactContent(text));$("statusLine").textContent="Salvando criação em Downloads/AURION AI…"}else $("statusLine").textContent="Exportação nativa disponível no APK Android."});const listen=document.createElement("button");listen.textContent="Ouvir";listen.addEventListener("click",()=>window.AurionNative?.speakText?.(text));tools.append(save,listen);node.appendChild(tools)}
 function persist(){try{const snapshot=JSON.stringify(history.slice(-80));localStorage.setItem(STORE,snapshot);window.AurionNative?.saveConversationBackup?.(snapshot)}catch{}}
 function persistMemory(){try{const snapshot=JSON.stringify(memory.slice(-200));localStorage.setItem("aurion_memory_v1",snapshot);window.AurionNative?.saveMemoryBackup?.(snapshot)}catch{}}
-function memoryTerms(value){return String(value).toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").split(/[^a-z0-9]+/).filter(w=>w.length>2&&!["que","para","com","uma","uns","das","dos","por","como","meu","minha","sobre","isso","essa","este","esta","the","and","you"].includes(w))}
+function memoryTerms(value){return String(value).toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/[^a-z0-9]+/).filter(w=>w.length>2&&!["que","para","com","uma","uns","das","dos","por","como","meu","minha","sobre","isso","essa","este","esta","the","and","you"].includes(w))}
 function relevantMemories(question){const terms=new Set(memoryTerms(question));if(!terms.size)return [];return memory.map(item=>({...item,score:memoryTerms(item.text).filter(w=>terms.has(w)).length})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score).slice(0,8).map(item=>item.text)}
 function handleMemoryCommand(raw){
  const text=String(raw).trim();
- const save=text.match(/^(?:aurion[, ]*)?(?:lembre-se de que|lembre que|guarde na mem[oó]ria que|salve na mem[oó]ria que|memorize que)\\s+(.+)$/i);
+ const save=text.match(/^(?:aurion[, ]*)?(?:lembre-se de que|lembre que|guarde na mem[oó]ria que|salve na mem[oó]ria que|memorize que)\s+(.+)$/i);
  if(save){
-  const fact=save[1].trim().replace(/[.\\s]+$/,"");
-  if(/\\b(senha|password|token secreto|cart[aã]o|cvv|c[oó]digo de acesso|chave privada)\\b/i.test(fact)){addMessage("ai","Não vou guardar senhas, credenciais ou dados financeiros secretos. Posso guardar preferências e informações não sensíveis.");return true}
+  const fact=save[1].trim().replace(/[.\s]+$/,"");
+  if(/\b(senha|password|token secreto|cart[aã]o|cvv|c[oó]digo de acesso|chave privada)\b/i.test(fact)){addMessage("ai","Não vou guardar senhas, credenciais ou dados financeiros secretos. Posso guardar preferências e informações não sensíveis.");return true}
   if(fact.length<4||fact.length>500){addMessage("ai","Essa memória precisa ter entre 4 e 500 caracteres.");return true}
   if(memory.some(m=>m.text.toLocaleLowerCase("pt-BR")===fact.toLocaleLowerCase("pt-BR"))){addMessage("ai","Essa informação já está na minha memória.");return true}
   memory.push({text:fact,createdAt:new Date().toISOString()});memory=memory.slice(-200);persistMemory();addMessage("ai","Memória guardada neste aparelho. Vou recuperá-la quando for relevante.");return true;
  }
- const remove=text.match(/^(?:aurion[, ]*)?(?:esqueça da mem[oó]ria|apague da mem[oó]ria|remova da mem[oó]ria)\\s+(.+)$/i);
+ const remove=text.match(/^(?:aurion[, ]*)?(?:esqueça da mem[oó]ria|apague da mem[oó]ria|remova da mem[oó]ria)\s+(.+)$/i);
  if(remove){const q=memoryTerms(remove[1]);memory=memory.filter(m=>!q.every(w=>memoryTerms(m.text).includes(w)));persistMemory();addMessage("ai","Atualizei a memória e removi as informações correspondentes.");return true}
  if(/^(?:aurion[, ]*)?(?:apague toda a mem[oó]ria|limpe minha mem[oó]ria|esqueça todas as mem[oó]rias)$/i.test(text)){memory=[];persistMemory();addMessage("ai","A memória local foi limpa.");return true}
  if(/^(?:aurion[, ]*)?(?:o que voc[eê] lembra|mostrar mem[oó]rias|minhas mem[oó]rias)$/i.test(text)){addMessage("ai",memory.length?"Memórias guardadas:\\n"+memory.map((m,i)=>(i+1)+". "+m.text).join("\\n"):"Ainda não há memórias guardadas.");return true}
@@ -109,7 +109,7 @@ function send(){
  const pending=addMessage("ai","AURION está pensando…",true);
  pending.dataset.request=requestId;waiting=true;$("send").disabled=true;
  $("statusLine").textContent="Gerando resposta no modelo local…";
- const recalled=relevantMemories(text);const conversation=history.slice(-12,-1).map(m=>(m.role==="user"?"Pessoa: ":"AURION: ")+m.text).join("\n");const context=(conversation+"\nMEMÓRIAS PERSISTENTES RELEVANTES (fatos salvos explicitamente pela pessoa):\n"+recalled.map(x:"- "+x).join("\n")).slice(-5000);
+ const recalled=relevantMemories(text);const conversation=history.slice(-12,-1).map(m=>(m.role==="user"?"Pessoa: ":"AURION: ")+m.text).join("\n");const context=(conversation+"\nMEMÓRIAS PERSISTENTES RELEVANTES (fatos salvos explicitamente pela pessoa):\n"+recalled.map(x=>"- "+x).join("\n")).slice(-5000);
  try{window.AurionNative.sendLocalMessage(text,context,requestId)}
  catch(e){finishError(requestId,"Falha ao iniciar o motor: "+e.message)}
 }
