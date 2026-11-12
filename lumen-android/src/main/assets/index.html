@@ -65,7 +65,7 @@ let waiting=false,voiceOn=false;
 function suggestedFileName(text){const match=String(text).match(/```([a-zA-Z0-9+#-]*)/);const ext=({js:"js",javascript:"js",ts:"txt",typescript:"txt",kt:"kt",kotlin:"kt",py:"py",python:"py",html:"html",css:"css",json:"json",xml:"xml",csv:"csv"})[(match?.[1]||"").toLowerCase()]||"md";return "aurion-criacao-"+new Date().toISOString().slice(0,10)+"."+ext}
 function artifactContent(text){const match=String(text).match(/```[a-zA-Z0-9+#-]*\s*\n([\s\S]*?)```/);return match?match[1].trim():String(text)}
 function decorateAiMessage(node,text){node.replaceChildren();const body=document.createElement("span");body.textContent=text;node.appendChild(body);const tools=document.createElement("div");tools.className="message-tools";const save=document.createElement("button");save.textContent="Salvar arquivo";save.addEventListener("click",()=>{if(window.AurionNative?.saveTextArtifact){window.AurionNative.saveTextArtifact(suggestedFileName(text),artifactContent(text));$("statusLine").textContent="Salvando criação em Downloads/AURION AI…"}else $("statusLine").textContent="Exportação nativa disponível no APK Android."});const listen=document.createElement("button");listen.textContent="Ouvir";listen.addEventListener("click",()=>window.AurionNative?.speakText?.(text));tools.append(save,listen);node.appendChild(tools)}
-function persist(){try{localStorage.setItem(STORE,JSON.stringify(history.slice(-80)))}catch{}}
+function persist(){try{const snapshot=JSON.stringify(history.slice(-80));localStorage.setItem(STORE,snapshot);window.AurionNative?.saveConversationBackup?.(snapshot)}catch{}}
 function addMessage(role,text,pending=false){
  $("welcome").classList.add("hidden");
  const node=document.createElement("div");node.className="message "+(role==="user"?"user":"ai")+(pending?" pending":"");if(role==="user")node.textContent=text;else if(!pending)decorateAiMessage(node,text);else node.textContent=text;node.dataset.pending=pending?"1":"0";$("messages").appendChild(node);$("messages").scrollTop=$("messages").scrollHeight;return node;
@@ -112,6 +112,13 @@ window.onAurionSpeechStatus=function(message){$("statusLine").textContent=messag
 window.onAurionVoiceResult=function(text,error){
  if(error){$("statusLine").textContent=error;return}
  if(text){$("message").value=voiceOn?text:($("message").value+" "+text).trim();resizeInput();if(voiceOn)send();else $("message").focus()}
+};
+window.onAurionConversationBackup=function(serialized){
+ if(history.length)return;
+ try{const restored=JSON.parse(serialized);if(!Array.isArray(restored))return;
+ history=restored.filter(m=>m&&["user","assistant"].includes(m.role)&&typeof m.text==="string").slice(-80);
+ if(history.length){localStorage.setItem(STORE,JSON.stringify(history));render();$("statusLine").textContent="Histórico recuperado do backup em Downloads/AURION AI."}
+ }catch(e){$("statusLine").textContent="O backup de conversa existe, mas não pôde ser lido."}
 };
 window.onAurionArtifactSaved=function(ok,message){$("statusLine").textContent=message||(ok?"Arquivo salvo.":"Falha ao salvar arquivo.")};
 window.onMinecraftStatus=function(message){$("statusLine").textContent=message};
