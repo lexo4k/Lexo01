@@ -67,6 +67,7 @@ class MainActivity : Activity() {
     @Volatile private var localModel: LlamaModel? = null
     @Volatile private var modelBusy = false
     private val inferenceMutex = Mutex()
+    private val artifactWriteMutex = Mutex()
     // Serializa a carga nativa: a inicialização da tela e o primeiro envio podem ocorrer juntos.
     private val modelLoadMutex = Mutex()
     @Volatile private var minecraftRelay: MinecraftRelayClient? = null
@@ -193,7 +194,7 @@ class MainActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.AurionNative.resumeAuthorizedModelSetup();window.AurionNative.resumeMinecraftAssistant();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
+                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.loadConversationBackup&&window.loadConversationBackup();window.AurionNative.resumeAuthorizedModelSetup();window.AurionNative.resumeMinecraftAssistant();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
                 }
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val uri = request?.url ?: return true
@@ -248,13 +249,47 @@ class MainActivity : Activity() {
     private data class DownloadedModel(val uri: Uri, val name: String, val size: Long)
 
     inner class AurionBridge {
+        @JavascriptInterface fun saveConversationBackup(content: String) {
+            val safeContent = content.take(1_048_576)
+            localScope.launch {
+                try {
+                    artifactWriteMutex.withLock {
+                        withContext(Dispatchers.IO) {
+                            ArtifactStore.save(this@MainActivity, "aurion-conversation.json", safeContent)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("AurionBackup", "Não foi possível atualizar o backup compartilhado", e)
+                }
+            }
+        }
+
+        @JavascriptInterface fun loadConversationBackup() {
+            localScope.launch {
+                try {
+                    val backup = withContext(Dispatchers.IO) {
+                        ArtifactStore.readConversationBackup(this@MainActivity)
+                    } ?: return@launch
+                    web.evaluateJavascript(
+                        "window.onAurionConversationBackup && window.onAurionConversationBackup(" +
+                            JSONObject.quote(backup) + ");",
+                        null
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("AurionBackup", "Não foi possível ler o backup compartilhado", e)
+                }
+            }
+        }
+
         @JavascriptInterface fun saveTextArtifact(name: String, content: String) {
             val safeName = name.take(120)
             val safeContent = content.take(1_100_000)
             localScope.launch {
                 try {
-                    val result = withContext(Dispatchers.IO) {
-                        ArtifactStore.save(this@MainActivity, safeName, safeContent)
+                    val result = artifactWriteMutex.withLock {
+                        withContext(Dispatchers.IO) {
+                            ArtifactStore.save(this@MainActivity, safeName, safeContent)
+                        }
                     }
                     runOnUiThread {
                         web.evaluateJavascript(
