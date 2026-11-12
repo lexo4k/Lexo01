@@ -248,6 +248,32 @@ class MainActivity : Activity() {
     private data class DownloadedModel(val uri: Uri, val name: String, val size: Long)
 
     inner class AurionBridge {
+        @JavascriptInterface fun saveTextArtifact(name: String, content: String) {
+            val safeName = name.take(120)
+            val safeContent = content.take(1_100_000)
+            localScope.launch {
+                try {
+                    val result = withContext(Dispatchers.IO) {
+                        ArtifactStore.save(this@MainActivity, safeName, safeContent)
+                    }
+                    runOnUiThread {
+                        web.evaluateJavascript(
+                            "window.onAurionArtifactSaved && window.onAurionArtifactSaved(true," + JSONObject.quote(result) + ");",
+                            null
+                        )
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        web.evaluateJavascript(
+                            "window.onAurionArtifactSaved && window.onAurionArtifactSaved(false," +
+                                JSONObject.quote(e.message ?: "Falha ao salvar arquivo") + ");",
+                            null
+                        )
+                    }
+                }
+            }
+        }
+
         @JavascriptInterface fun chooseDownloadedModel() {
             runOnUiThread {
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
