@@ -92,8 +92,8 @@ function send(){
 function finishError(id,text){const el=[...$("messages").children].find(n=>n.dataset.request===id);if(el){decorateAiMessage(el,text);el.classList.remove("pending");el.dataset.pending="0"}waiting=false;$("send").disabled=false;$("statusLine").textContent=text}
 window.onAurionNativeAnswer=function(answer,failed,id){
  const el=[...$("messages").children].find(n=>n.dataset.request===id);if(!el)return;
- const text=String(answer||"");el.textContent=text;el.classList.remove("pending");el.dataset.pending="0";
- if(!failed){history.push({role:"assistant",text});persist();$("statusLine").textContent="Resposta gerada localmente."}
+ const text=String(answer||"");decorateAiMessage(el,text);el.classList.remove("pending");el.dataset.pending="0";
+ if(!failed){history.push({role:"assistant",text});persist();$("statusLine").textContent="Resposta gerada localmente.";if(voiceOn)window.AurionNative?.speakText?.(text)}
  else $("statusLine").textContent="O núcleo encontrou um erro.";
  waiting=false;$("send").disabled=false;$("messages").scrollTop=$("messages").scrollHeight;
 };
@@ -107,8 +107,9 @@ window.onAurionModelState=function(state,detail){
 window.onAurionSpeechStatus=function(message){$("statusLine").textContent=message||""};
 window.onAurionVoiceResult=function(text,error){
  if(error){$("statusLine").textContent=error;return}
- if(text){$("message").value=($("message").value+" "+text).trim();$("message").focus();resizeInput()}
+ if(text){$("message").value=voiceOn?text:($("message").value+" "+text).trim();resizeInput();if(voiceOn)send();else $("message").focus()}
 };
+window.onAurionArtifactSaved=function(ok,message){$("statusLine").textContent=message||(ok?"Arquivo salvo.":"Falha ao salvar arquivo.")};
 window.onMinecraftStatus=function(message){$("statusLine").textContent=message};
 function resizeInput(){const el=$("message");el.style.height="42px";el.style.height=Math.min(el.scrollHeight,130)+"px"}
 $("send").addEventListener("click",send);
