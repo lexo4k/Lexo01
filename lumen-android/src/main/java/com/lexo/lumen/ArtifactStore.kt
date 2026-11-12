@@ -37,23 +37,34 @@ object ArtifactStore {
         val displayName = if (cleaned.contains('.')) cleaned else "$cleaned.md"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            val relativePath = Environment.DIRECTORY_DOWNLOADS + "/AURION AI/"
+            val existing = context.contentResolver.query(
+                collection,
+                arrayOf(MediaStore.MediaColumns._ID),
+                MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + MediaStore.MediaColumns.RELATIVE_PATH + "=?",
+                arrayOf(displayName, relativePath),
+                MediaStore.MediaColumns.DATE_MODIFIED + " DESC"
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) android.content.ContentUris.withAppendedId(collection, cursor.getLong(0)) else null
+            }
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                 put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/AURION AI/")
-                put(MediaStore.MediaColumns.IS_PENDING, 1)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                if (existing == null) put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            val uri = existing ?: context.contentResolver.insert(collection, values)
                 ?: error("O Android não conseguiu criar o arquivo em Downloads/AURION AI.")
             try {
-                context.contentResolver.openOutputStream(uri, "w")?.bufferedWriter(Charsets.UTF_8)?.use {
+                context.contentResolver.openOutputStream(uri, if (existing == null) "w" else "wt")?.bufferedWriter(Charsets.UTF_8)?.use {
                     it.write(safeContent)
                 } ?: error("Não foi possível gravar o conteúdo.")
                 val ready = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
                 context.contentResolver.update(uri, ready, null, null)
                 return "Arquivo salvo em Downloads/AURION AI/$displayName"
             } catch (error: Exception) {
-                context.contentResolver.delete(uri, null, null)
+                if (existing == null) context.contentResolver.delete(uri, null, null)
                 throw error
             }
         }
@@ -63,5 +74,23 @@ object ArtifactStore {
         val output = File(directory, displayName)
         FileOutputStream(output).bufferedWriter(Charsets.UTF_8).use { it.write(safeContent) }
         return "Arquivo salvo em " + output.absolutePath
+    }
+
+    fun readConversationBackup(context: Context): String? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        val relativePath = Environment.DIRECTORY_DOWNLOADS + "/AURION AI/"
+        val uri = context.contentResolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE),
+            MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + MediaStore.MediaColumns.RELATIVE_PATH + "=?",
+            arrayOf("aurion-conversation.json", relativePath),
+            MediaStore.MediaColumns.DATE_MODIFIED + " DESC"
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) return@use null
+            if (cursor.getLong(1) !in 1..MAX_BYTES) return@use null
+            android.content.ContentUris.withAppendedId(collection, cursor.getLong(0))
+        } ?: return null
+        return context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
     }
 }
