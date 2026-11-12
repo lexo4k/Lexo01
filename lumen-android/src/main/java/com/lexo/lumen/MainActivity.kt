@@ -847,14 +847,6 @@ class MainActivity : Activity() {
             }
         }
 
-        @JavascriptInterface fun stopMinecraftAssistant() {
-            minecraftPollJob?.cancel()
-            minecraftPollJob = null
-            minecraftRelay = null
-            minecraftAppToken = null
-            notifyMinecraftStatus("Ponte AURION Minecraft pausada.")
-        }
-
         private suspend fun processMinecraftEvent(
             client: MinecraftRelayClient,
             appToken: String,
