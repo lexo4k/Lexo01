@@ -40,7 +40,7 @@ class HostBridgeTests(unittest.TestCase):
     def test_tellraw_escapes_untrusted_dialogue_as_json(self):
         command = host.build_tellraw_command("Player One", "Guia", 'Olá "viajante"\\nBem-vindo!')
         self.assertTrue(command.startswith('tellraw @a[name="Player One"] '))
-        payload_text = command.split(" ", 2)[2]
+        payload_text = command.split("] ", 1)[1]
         payload = json.loads(payload_text)
         self.assertEqual(payload["rawtext"][0]["text"], '§bGuia§r §7»§r Olá "viajante"\\nBem-vindo!')
         self.assertNotIn("\n", command)
