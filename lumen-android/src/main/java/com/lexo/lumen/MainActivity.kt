@@ -194,7 +194,7 @@ class MainActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.loadConversationBackup&&window.loadConversationBackup();window.AurionNative.resumeAuthorizedModelSetup();window.AurionNative.resumeMinecraftAssistant();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
+                    view?.evaluateJavascript("if(window.AurionNative){window.refreshLocalModel&&window.refreshLocalModel();window.loadConversationBackup&&window.loadConversationBackup();window.loadMemoryBackup&&window.loadMemoryBackup();window.AurionNative.resumeAuthorizedModelSetup();window.AurionNative.resumeMinecraftAssistant();}window.aurionStartupCheck&&window.aurionStartupCheck();", null)
                 }
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val uri = request?.url ?: return true
@@ -277,6 +277,38 @@ class MainActivity : Activity() {
                     )
                 } catch (e: Exception) {
                     android.util.Log.w("AurionBackup", "Não foi possível ler o backup compartilhado", e)
+                }
+            }
+        }
+
+        @JavascriptInterface fun saveMemoryBackup(content: String) {
+            val safeContent = content.take(1_048_576)
+            localScope.launch {
+                try {
+                    artifactWriteMutex.withLock {
+                        withContext(Dispatchers.IO) {
+                            ArtifactStore.save(this@MainActivity, "aurion-memory.json", safeContent)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("AurionMemory", "Não foi possível atualizar a memória persistente", e)
+                }
+            }
+        }
+
+        @JavascriptInterface fun loadMemoryBackup() {
+            localScope.launch {
+                try {
+                    val backup = withContext(Dispatchers.IO) {
+                        ArtifactStore.readMemoryBackup(this@MainActivity)
+                    } ?: return@launch
+                    web.evaluateJavascript(
+                        "window.onAurionMemoryBackup && window.onAurionMemoryBackup(" +
+                            JSONObject.quote(backup) + ");",
+                        null
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("AurionMemory", "Não foi possível ler a memória persistente", e)
                 }
             }
         }
