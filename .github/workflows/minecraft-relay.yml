@@ -7,6 +7,7 @@ on:
       - "minecraft-bedrock/**"
       - ".github/workflows/minecraft-relay.yml"
   pull_request:
+    branches: ["lumen-ai-core"]
     paths:
       - "minecraft-bedrock/**"
       - ".github/workflows/minecraft-relay.yml"
@@ -20,13 +21,30 @@ jobs:
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: minecraft-bedrock/relay
+        working-directory: minecraft-bedrock
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install relay dependencies
-        run: python -m pip install -r requirements.txt pytest httpx
-      - name: Run relay security and contract tests
-        run: python -m pytest -q
+      - name: Install relay test dependencies
+        run: python -m pip install -r relay/requirements.txt pytest httpx
+      - name: Run relay, host companion and add-on contract tests
+        run: python -m pytest -q relay host tests
+      - name: Validate Python and Bedrock Script API sources
+        run: |
+          python -m py_compile host/aurion_bds_host.py
+          python -m json.tool behavior-pack/manifest.json > /dev/null
+          node --check behavior-pack/scripts/main.js
+      - name: Package Bedrock behavior pack
+        run: |
+          mkdir -p dist
+          cd behavior-pack
+          zip -qr ../dist/AURION-Bedrock-BDS.mcpack .
+      - name: Upload behavior pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: AURION-Bedrock-BDS-mcpack
+          path: minecraft-bedrock/dist/AURION-Bedrock-BDS.mcpack
+          if-no-files-found: error
+          retention-days: 14

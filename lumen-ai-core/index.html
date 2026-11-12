@@ -31,6 +31,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .primary{width:100%;border:0;border-radius:13px;background:#e4e8ed;color:#17191d;padding:13px;font-weight:650;margin-top:12px}
 .secondary{width:100%;border:1px solid var(--line);border-radius:13px;background:var(--surface2);padding:12px;margin-top:9px;font-size:12px}
 .note{font-size:11px;color:var(--muted);line-height:1.55;margin:12px 2px 0}
+.field{width:100%;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#121419;color:var(--text);font:13px system-ui,sans-serif}
+.pairing-code{display:block;text-align:center;color:var(--good);font-size:25px;font-weight:700;letter-spacing:.22em;padding:10px 0}
 .hidden{display:none!important}
 @media(min-width:700px){main{padding:0 24px}.composer{padding-bottom:18px}.welcome{padding-bottom:70px}}
 </style>
@@ -54,6 +56,19 @@ button{font:inherit;color:inherit;cursor:pointer}
   <button class="primary" id="prepare">Preparar / ativar modelo</button>
   <button class="secondary" id="chooseModel">Importar modelo GGUF existente</button>
   <p class="note">O instalador contém o aplicativo e o motor de inferência. O modelo de linguagem é um arquivo separado, armazenado no celular. Depois de instalado, a conversa pode funcionar sem internet. A primeira transferência exige Wi-Fi e espaço livre.</p>
+  <div class="sheet-head" style="margin-top:22px"><h2>Minecraft Bedrock</h2></div>
+  <div class="statebox">AURION usa o modelo GGUF deste aparelho para gerar falas. A conexão exige um mundo em Bedrock Dedicated Server compatível. Mundo local de um jogador e Realms não recebem esta ponte.</div>
+  <label class="note" for="minecraftRelayUrl">Endereço HTTPS do relay AURION</label>
+  <input class="field" id="minecraftRelayUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://seu-relay-aurion">
+  <button class="secondary" id="minecraftConnect">Verificar modelo e gerar código de pareamento</button>
+  <div class="statebox hidden" id="minecraftPairingBox" style="margin-top:10px">
+   Código para o companion do servidor:
+   <strong class="pairing-code" id="minecraftPairingCode">--------</strong>
+   <div class="note" id="minecraftPairingExpiry">O código expira em cinco minutos.</div>
+  </div>
+  <div class="note" id="minecraftStatus">A ponte fica ativa somente enquanto AURION estiver aberto em primeiro plano.</div>
+  <button class="secondary" id="minecraftStop">Desconectar ponte Minecraft</button>
+  <p class="note">O código é de uso único. O token do servidor fica fora do add-on e é guardado pelo companion no computador/servidor BDS. O APK não contém chaves privadas.</p>
  </section>
 </div>
 <script>
@@ -145,7 +160,16 @@ window.onAurionConversationBackup=function(serialized){
  }catch(e){$("statusLine").textContent="O backup de conversa existe, mas não pôde ser lido."}
 };
 window.onAurionArtifactSaved=function(ok,message){$("statusLine").textContent=message||(ok?"Arquivo salvo.":"Falha ao salvar arquivo.")};
-window.onMinecraftStatus=function(message){$("statusLine").textContent=message};
+window.onMinecraftPairingStarted=function(code,expiresIn){
+ $("minecraftPairingCode").textContent=String(code||"--------");
+ $("minecraftPairingExpiry").textContent="Código de uso único. Expira em "+Math.max(1,Math.ceil(Number(expiresIn||300)/60))+" min. Digite-o no companion BDS.";
+ $("minecraftPairingBox").classList.remove("hidden");
+ $("minecraftStatus").textContent="Modelo local carregado. Aguardando o companion do servidor concluir o pareamento.";
+};
+window.onMinecraftStatus=function(message){
+ $("statusLine").textContent=message||"";
+ $("minecraftStatus").textContent=message||"";
+};
 function resizeInput(){const el=$("message");el.style.height="42px";el.style.height=Math.min(el.scrollHeight,130)+"px"}
 $("send").addEventListener("click",send);
 $("message").addEventListener("input",resizeInput);
@@ -158,6 +182,19 @@ $("coreButton").addEventListener("click",openSettings);$("closeSettings").addEve
 $("settings").addEventListener("click",e=>{if(e.target===$("settings"))closeSettings()});
 $("prepare").addEventListener("click",()=>{if(window.AurionNative)window.AurionNative.confirmModelDownload();else setStatus("Abra a versão Android para preparar o modelo.","error")});
 $("chooseModel").addEventListener("click",()=>{if(window.AurionNative)window.AurionNative.chooseDownloadedModel();else setStatus("Importação disponível no Android.","error")});
+$("minecraftConnect").addEventListener("click",()=>{
+ const url=$("minecraftRelayUrl").value.trim();
+ if(!url.startsWith("https://")){$("minecraftStatus").textContent="Informe uma URL HTTPS válida do relay.";return}
+ if(!window.AurionNative?.startMinecraftAssistant){$("minecraftStatus").textContent="A ponte Minecraft está disponível no APK Android.";return}
+ $("minecraftPairingBox").classList.add("hidden");
+ $("minecraftStatus").textContent="Verificando e carregando o modelo local…";
+ window.AurionNative.startMinecraftAssistant(url);
+});
+$("minecraftStop").addEventListener("click",()=>{
+ if(window.AurionNative?.stopMinecraftAssistant)window.AurionNative.stopMinecraftAssistant();
+ else $("minecraftStatus").textContent="Desconexão disponível no APK Android.";
+});
+try{$("minecraftRelayUrl").value=window.AurionNative?.getMinecraftRelayUrl?.()||""}catch{}
 render();
 function aurionStartupCheck(){
  if(!window.AurionNative)return;

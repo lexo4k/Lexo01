@@ -72,6 +72,8 @@ class MainActivity : Activity() {
     private val modelLoadMutex = Mutex()
     @Volatile private var minecraftRelay: MinecraftRelayClient? = null
     @Volatile private var minecraftAppToken: String? = null
+    @Volatile private var minecraftStarting = false
+    @Volatile private var activityForeground = false
     private var minecraftPollJob: Job? = null
     private var textToSpeech: TextToSpeech? = null
     @Volatile private var ttsReady = false
@@ -730,19 +732,38 @@ class MainActivity : Activity() {
             }
         }
 
+        @JavascriptInterface fun getMinecraftRelayUrl(): String =
+            getSharedPreferences("aurion_minecraft", MODE_PRIVATE).getString("relay_url", "") ?: ""
+
         @JavascriptInterface fun startMinecraftAssistant(relayUrl: String) {
             val endpoint = relayUrl.trim().trimEnd('/')
             if (!endpoint.startsWith("https://") || endpoint.length > 512) {
                 notifyMinecraftStatus("Informe o endereço HTTPS do relay AURION Minecraft.")
                 return
             }
+            if (!activityForeground) {
+                notifyMinecraftStatus("Abra o AURION em primeiro plano para iniciar a ponte Minecraft.")
+                return
+            }
+            if (minecraftStarting) {
+                notifyMinecraftStatus("AURION já está preparando a conexão Minecraft.")
+                return
+            }
+            minecraftStarting = true
             localScope.launch {
                 try {
+                    notifyMinecraftStatus("Verificando e carregando o modelo GGUF local antes do pareamento…")
+                    inferenceMutex.withLock { localModel ?: loadLocalModel() }
+                    if (!activityForeground) return@launch
+
                     val client = withContext(Dispatchers.IO) { MinecraftRelayClient(endpoint) }
                     val pairing = withContext(Dispatchers.IO) { client.startPairing() }
+                    if (!activityForeground) return@launch
+
                     getSharedPreferences("aurion_minecraft", MODE_PRIVATE).edit()
                         .putString("relay_url", endpoint)
                         .putString("session_id", "")
+                        .putBoolean("minecraft_enabled", true)
                         .apply()
                     SecureTokenStore.put(this@MainActivity, "minecraft_app_token", pairing.appToken)
                     minecraftRelay = client
@@ -755,31 +776,59 @@ class MainActivity : Activity() {
                         )
                     }
                     beginMinecraftPolling(client, pairing.appToken)
+                } catch (e: LinkageError) {
+                    notifyMinecraftStatus("O motor local não pôde ser carregado: " + nativeRuntimeFailure(e))
                 } catch (e: Exception) {
                     notifyMinecraftStatus("Não foi possível iniciar a ponte Minecraft: " + (e.message ?: "erro desconhecido"))
+                } finally {
+                    minecraftStarting = false
                 }
             }
         }
 
         @JavascriptInterface fun resumeMinecraftAssistant() {
             val prefs = getSharedPreferences("aurion_minecraft", MODE_PRIVATE)
+            if (!prefs.getBoolean("minecraft_enabled", false) || !activityForeground) return
             val endpoint = prefs.getString("relay_url", null)?.trim()?.trimEnd('/') ?: return
             val token = SecureTokenStore.get(this@MainActivity, "minecraft_app_token") ?: run {
-                notifyMinecraftStatus("A conexão salva precisa ser refeita. Inicie o pareamento novamente.")
+                notifyMinecraftStatus("A conexão salva precisa ser refeita. Inicie um novo pareamento.")
                 return
             }
-            if (minecraftPollJob?.isActive == true) return
+            if (minecraftPollJob?.isActive == true || minecraftStarting) return
+            minecraftStarting = true
             localScope.launch {
                 try {
+                    inferenceMutex.withLock { localModel ?: loadLocalModel() }
+                    if (!activityForeground) return@launch
                     val client = withContext(Dispatchers.IO) { MinecraftRelayClient(endpoint) }
                     minecraftRelay = client
                     minecraftAppToken = token
                     beginMinecraftPolling(client, token)
-                    notifyMinecraftStatus("Conexão AURION Minecraft restaurada automaticamente.")
+                    notifyMinecraftStatus("Conexão AURION Minecraft restaurada em primeiro plano.")
+                } catch (e: LinkageError) {
+                    notifyMinecraftStatus("O motor local não pôde ser restaurado: " + nativeRuntimeFailure(e))
                 } catch (e: Exception) {
                     notifyMinecraftStatus("Não foi possível restaurar a conexão: " + (e.message ?: "erro desconhecido"))
+                } finally {
+                    minecraftStarting = false
                 }
             }
+        }
+
+        @JavascriptInterface fun pauseMinecraftAssistant() {
+            minecraftPollJob?.cancel()
+            minecraftPollJob = null
+            minecraftRelay = null
+            minecraftAppToken = null
+        }
+
+        @JavascriptInterface fun stopMinecraftAssistant() {
+            getSharedPreferences("aurion_minecraft", MODE_PRIVATE).edit()
+                .putBoolean("minecraft_enabled", false)
+                .apply()
+            SecureTokenStore.remove(this@MainActivity, "minecraft_app_token")
+            pauseMinecraftAssistant()
+            notifyMinecraftStatus("Ponte AURION Minecraft desconectada. O próximo início exigirá novo pareamento.")
         }
 
         private fun beginMinecraftPolling(client: MinecraftRelayClient, appToken: String) {
@@ -793,7 +842,7 @@ class MainActivity : Activity() {
                     } catch (e: Exception) {
                         notifyMinecraftStatus("Ponte Minecraft: " + (e.message ?: "falha temporária de comunicação"))
                     }
-                    delay(2000L)
+                    delay(3000L)
                 }
             }
         }
@@ -1298,6 +1347,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        activityForeground = true
+        if (::aurionBridge.isInitialized) aurionBridge.resumeMinecraftAssistant()
         if (::aurionBridge.isInitialized &&
             getSharedPreferences("aurion_permissions", MODE_PRIVATE).getBoolean("model_download_authorized", false) &&
             aurionBridge.modelState() == "missing") {
@@ -1305,6 +1356,12 @@ class MainActivity : Activity() {
                 if (::aurionBridge.isInitialized && aurionBridge.modelState() == "missing") aurionBridge.downloadModel()
             }, 700L)
         }
+    }
+
+    override fun onPause() {
+        activityForeground = false
+        if (::aurionBridge.isInitialized) aurionBridge.pauseMinecraftAssistant()
+        super.onPause()
     }
 
     override fun onStop() {

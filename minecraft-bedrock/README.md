@@ -1,68 +1,112 @@
 # AURION + Minecraft Bedrock Android
 
-## Status
+## Status desta entrega
 
-The relay prototype and automated contract tests are present. An Android HTTPS client and an initial AURION app bridge are now committed: the app can request a pairing code, poll game events, run the existing local GGUF inference path, and submit generated replies. This Android bridge has **not yet been build-validated or exercised against a live relay**. The Bedrock behavior pack, server-side pairing client, hosted relay deployment, and real game round-trip are still **not implemented or validated**. This directory is not yet an installable Minecraft add-on or a completed integration.
+Foi adicionado um primeiro caminho executável de integração para **Bedrock Dedicated Server (BDS)**:
 
-## User requirement
+- behavior pack com Script API estável para capturar a interação real do jogador com uma entidade identificada como NPC;
+- companion Python no host BDS que lê o evento estruturado no console do servidor, encaminha-o ao relay HTTPS e entrega a resposta recebida com \`tellraw\`;
+- painel de pareamento no APK AURION, que carrega o GGUF local antes de gerar o código;
+- polling Android limitado ao período em que AURION está em primeiro plano;
+- testes de contrato e empacotamento do behavior pack em CI.
 
-Keep the official Minecraft Bedrock Android app installed on the phone. AURION supplies the language model and speech; Minecraft remains the game client. Do not replace Minecraft with a clone or a separate game.
+Isso ainda não é uma integração validada dentro do jogo. O relay não está implantado, não houve execução de BDS nem teste com o Minecraft Android real nesta execução.
 
-## Verified platform constraint
+## Limite de plataforma
 
-Microsoft documents `@minecraft/server-net` as available only on Bedrock Dedicated Server. It does not run in the Minecraft game client or Realms. This means a normal behavior pack installed into a local Android world cannot directly make HTTP calls to AURION.
+A documentação oficial da Microsoft declara que \`@minecraft/server-net\` só funciona no Bedrock Dedicated Server e não funciona no cliente do jogo nem no Minecraft Realms. O módulo está em pré-lançamento e a versão documentada atualmente é específica de uma build Preview. Por isso, o pack desta entrega **não depende de \`@minecraft/server-net\`**.
 
-Reference: [Microsoft server-net module](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server-net/minecraft-server-net?view=minecraft-bedrock-experimental).
+O pack usa somente \`@minecraft/server\` e escreve um marcador estruturado no console do BDS. O companion Python, executado no mesmo host do BDS, faz o tráfego HTTPS com o relay. Isso evita fingir que um behavior pack comum pode abrir HTTP no mundo local do Android.
 
-The currently documented module is still pre-release and lists a preview-specific version. Microsoft also states that regular Bedrock clients must use a regular compatible server, while Preview clients use Preview servers. The exact client/BDS/API version combination must therefore be confirmed before selecting a pack manifest dependency. Do not assume a preview API pack will work with the user's ordinary Play Store client.
+O caminho mantém o aplicativo oficial Minecraft Bedrock Android como cliente do jogo, mas exige que ele entre em um mundo hospedado por BDS compatível. **Mundo local de um jogador e Realms não são suportados por esta arquitetura.**
 
-References:
-- [Microsoft server-net module and version notes](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server-net/minecraft-server-net?view=minecraft-bedrock-experimental)
-- [Microsoft Bedrock Dedicated Server setup and client compatibility](https://help.minecraft.net/hc/en-us/articles/49914677714957)
+Fontes oficiais:
+- [Módulo @minecraft/server-net e limite BDS/cliente/Realms](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server-net/minecraft-server-net)
+- [Script API para Bedrock Dedicated Server](https://learn.microsoft.com/en-us/minecraft/creator/documents/bedrockserver/scripting?view=minecraft-bedrock-stable)
+- [Ajuda oficial de configuração do BDS, clientes móveis e compatibilidade](https://help.minecraft.net/hc/en-us/articles/49914677714957)
 
-## Candidate integration route
+## Compatibilidade e versão
 
-The candidate architecture keeps the official Android Bedrock app as the game client, connected to a compatible Bedrock Dedicated Server world. A server-side behavior pack can observe supported player/entity interactions and exchange events with a relay service. AURION polls the relay while foregrounded, invokes its existing local GGUF inference method, and sends the generated response back. The server pack then displays the response in the same game session.
+- Manifesto do pack: \`min_engine_version = 1.26.60\`.
+- Dependência de script: \`@minecraft/server\` estável, versão mínima declarada \`2.0.0\`.
+- O servidor BDS precisa usar uma versão compatível com a versão instalada do cliente Bedrock Android. A Microsoft alerta que versões de protocolo diferentes podem impedir a conexão.
+- A ajuda oficial publicada em 2026-11-06 orienta BDS 26.60 ou mais novo para a mudança de transporte NetherNet e informa que o servidor oficial está disponível para Windows 64-bit e Ubuntu Linux, não para hosts ARM.
+- A versão exata do Minecraft instalada no telefone do usuário não está disponível nesta execução. Portanto, a compatibilidade final do manifesto ainda precisa ser confirmada com a versão real do cliente e do BDS.
 
-This keeps the original Minecraft app, but the AI-enabled world would be hosted on a compatible BDS server rather than an ordinary local single-player world. Compatibility with the user's exact Play Store game version is still an open gate.
+Não ative o pack em um mundo importante sem backup. A configuração e a instalação do pack precisam ser feitas no mundo hospedado pelo BDS.
 
-## Relay prototype
+## Componentes adicionados
 
-`relay/` contains a small FastAPI relay service and contract tests.
+### Behavior pack
 
-- Pairing codes are eight digits and expire after five minutes.
-- Claiming a code is one-time and creates separate high-entropy app and server bearer tokens.
-- App and server tokens are side-scoped and stored as SHA-256 digests in relay memory.
-- Events and replies are isolated by paired session.
-- Duplicate event IDs are rejected, event queues are bounded, and session/IP request rates are limited.
-- The relay transports messages only. It does not generate NPC dialogue or call a hosted AI model.
-- State is in-memory and will be lost on restart. This is a prototype, not a production persistence guarantee.
-- The service has not been deployed. The Render blueprint is supplied as a deployment starting point only.
+\`behavior-pack/\` captura \`world.afterEvents.playerInteractWithEntity\`. Ele considera NPCs nativos e entidades com \`nameTag\` não vazio. Um limite de 15 segundos por jogador reduz spam. O evento contém ID de correlação, jogador, identificação do NPC e mundo.
 
-The server token must remain in BDS server-side secret configuration, never in a downloadable behavior pack. The app token must be stored in Android private secure storage once the Android bridge is implemented.
+O script não envia HTTP, não guarda tokens e não cria respostas fictícias.
 
-## Implementation gates
+### Companion do host BDS
 
-1. Confirm the exact Minecraft Bedrock Android client version and a compatible BDS/API version, including whether the required server-net module is available to that release.
-2. Implement a minimal BDS behavior pack that detects one explicit interaction and emits a structured event.
-3. Deploy and harden the relay, including persistent storage or an explicit session-recovery policy.
-4. Finish and validate the opt-in Android bridge screen and foreground polling already started in the app. Route prompts through the existing local inference method; only return generated text after successful inference.
-5. Add server-side response delivery and test a full round trip with a real Android Bedrock client.
-6. Add NPC identity and conversation memory only after the round trip is reliable.
-7. Demonstrate Android voice playback for returned NPC dialogue. Do not claim that speech is audible inside Minecraft until that separate audio path is demonstrated.
+\`host/aurion_bds_host.py\`:
 
-## Acceptance criteria
+1. recebe o código de uso único mostrado pelo AURION;
+2. reivindica o pareamento no relay e salva o token do lado do servidor em arquivo local privado;
+3. inicia o executável oficial BDS na pasta indicada;
+4. lê os eventos emitidos pelo behavior pack no console;
+5. encaminha eventos ao relay e consulta respostas;
+6. entrega cada resposta ao jogador associado por meio de um comando \`tellraw\` enviado ao console do BDS.
 
-- The official Minecraft Bedrock Android client joins the compatible test world.
-- An actual in-game interaction creates a server event with a unique correlation ID.
-- The event reaches the paired AURION app.
-- AURION's local model generates a non-template response.
-- The response returns to the same game session and is visible in-game.
-- A second interaction proves conversation context is preserved.
-- The Android voice path is demonstrated separately and its limitations are stated.
-- CI builds the Android app and validates the add-on/relay contracts.
-- No milestone is marked complete based on documentation, mock responses, or an APK build alone.
+O token do servidor nunca entra no behavior pack. Em sistemas POSIX, o arquivo de credenciais é criado com permissão \`0600\`. No Windows, mantenha o arquivo na pasta privada da conta que executa o BDS.
 
-## Important boundary
+Exemplo de inicialização:
 
-If the requirement is that the existing single-player local world on Android must work without joining a BDS server, the current candidate route does not meet it. That capability needs a separately verified client-side bridge; do not ship a fake or unsupported workaround.
+\`\`\`bash
+python minecraft-bedrock/host/aurion_bds_host.py \
+  --server-dir "/caminho/para/bedrock-server" \
+  --relay-url "https://SEU-RELAY-HTTPS" \
+  --pairing-code "12345678"
+\`\`\`
+
+O companion inicia o BDS por conta própria. Não abra outra instância do mesmo servidor. Para novo pareamento, forneça o novo código em \`--pairing-code\`; sem esse argumento, o companion tenta reutilizar as credenciais salvas.
+
+### Aplicativo Android AURION
+
+Em **Núcleo → Minecraft Bedrock**, informe a URL HTTPS do relay e toque em gerar código. O aplicativo carrega o GGUF local antes de iniciar o pareamento. O token do aplicativo fica criptografado pelo Android Keystore.
+
+AURION consulta o relay a cada três segundos somente enquanto o app está em primeiro plano. Ao sair do app, o polling é pausado; ao retornar, é retomado se a conexão estiver habilitada.
+
+### Relay
+
+\`relay/\` mantém códigos de pareamento de uso único, tokens separados por lado, isolamento de sessão, deduplicação, filas limitadas e rate limiting.
+
+**Limitação atual:** o armazenamento do relay ainda é em memória. Reinicialização ou suspensão do serviço pode invalidar sessões e perder filas. O blueprint Render é apenas uma configuração de partida e ainda não foi implantado. Não é um serviço de produção persistente.
+
+## Como o fluxo deve funcionar
+
+1. O Minecraft Bedrock Android entra no mundo BDS compatível.
+2. O jogador interage com um NPC nativo ou entidade nomeada.
+3. O behavior pack emite o evento real no console do BDS.
+4. O companion encaminha o evento ao relay.
+5. O APK AURION recebe o evento e chama o mesmo motor local \`Llama.complete\` usado pelo chat.
+6. A resposta gerada pelo GGUF retorna ao relay.
+7. O companion envia \`tellraw\` ao jogador no mesmo mundo.
+
+A resposta é texto de chat do jogo identificada com o nome do NPC. Ainda não há animação de fala, voz dentro do Minecraft ou memória conversacional individual por NPC nesta entrega.
+
+## CI e testes
+
+O workflow \`.github/workflows/minecraft-relay.yml\` executa os testes do relay, do companion e do contrato do pack, valida a sintaxe JavaScript/Python e publica o arquivo \`.mcpack\` como artefato. O workflow Android valida o APK separadamente.
+
+Essas verificações não substituem o teste de compatibilidade dentro do cliente oficial.
+
+## Critérios ainda pendentes
+
+- implantação do relay com armazenamento durável e URL HTTPS real;
+- host x64 com BDS oficial e versão compatível com o cliente do telefone;
+- ativação do behavior pack no mundo BDS;
+- conexão do Minecraft Android oficial ao mundo;
+- confirmação de que uma interação real aparece no console e chega ao AURION;
+- confirmação de que o GGUF real gera texto não padronizado;
+- confirmação de que a resposta retorna ao jogador no mesmo mundo;
+- segunda interação demonstrando memória/contexto do NPC;
+- teste separado da voz Android, sem alegar que o áudio sai pelo Minecraft.
+
+Nenhum desses critérios de execução física é marcado como concluído apenas por passar CI ou gerar um \`.mcpack\`/APK.
