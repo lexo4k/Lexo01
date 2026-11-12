@@ -30,7 +30,7 @@ Fontes oficiais:
 - Manifesto do pack: \`min_engine_version = 1.26.60\`.
 - Dependência de script: \`@minecraft/server\` estável, versão mínima declarada \`2.0.0\`.
 - O servidor BDS precisa usar uma versão compatível com a versão instalada do cliente Bedrock Android. A Microsoft alerta que versões de protocolo diferentes podem impedir a conexão.
-- A ajuda oficial publicada em 2026-11-06 orienta BDS 26.60 ou mais novo para a mudança de transporte NetherNet e informa que o servidor oficial está disponível para Windows 64-bit e Ubuntu Linux, não para hosts ARM.
+- A ajuda oficial consultada em 2026-11-12 orienta BDS 26.60 ou mais novo para a mudança de transporte NetherNet e informa que o servidor oficial está disponível para Windows 64-bit e Ubuntu Linux, não para hosts ARM.
 - A versão exata do Minecraft instalada no telefone do usuário não está disponível nesta execução. Portanto, a compatibilidade final do manifesto ainda precisa ser confirmada com a versão real do cliente e do BDS.
 
 Não ative o pack em um mundo importante sem backup. A configuração e a instalação do pack precisam ser feitas no mundo hospedado pelo BDS.
