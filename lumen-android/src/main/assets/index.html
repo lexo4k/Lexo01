@@ -44,7 +44,7 @@ button{font:inherit;color:inherit;cursor:pointer}
  <div id="statusLine">Verificando o núcleo local…</div>
  <section class="composer">
   <div class="compose"><textarea id="message" rows="1" placeholder="Escreva para AURION…" enterkeyhint="send"></textarea><button class="action" id="voice" title="Falar">◉</button><button class="send" id="send" title="Enviar">↑</button></div>
-  <div class="tools"><button id="liveVoice">Conversa ao vivo: desligada</button><button id="stopVoice">Parar voz</button><button id="coreButton">Núcleo e armazenamento</button></div>
+  <div class="tools"><button id="liveVoice">Conversa ao vivo: desligada</button><button id="stopVoice">Parar voz</button><button id="memoryButton">Memória</button><button id="coreButton">Núcleo</button></div>
  </section>
 </main>
 <div id="settings" role="dialog" aria-modal="true">
@@ -153,7 +153,7 @@ $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.p
 $("voice").addEventListener("click",()=>{if(window.AurionNative&&window.AurionNative.startVoiceRecognition)window.AurionNative.startVoiceRecognition();else $("statusLine").textContent="Voz disponível no aplicativo Android."});
 $("liveVoice").addEventListener("click",()=>{voiceOn=!voiceOn;$("liveVoice").textContent="Conversa ao vivo: "+(voiceOn?"ligada":"desligada");if(voiceOn){window.AurionNative?.startLiveConversation?.();}else{window.AurionNative?.stopLiveConversation?.();window.AurionNative?.stopSpeaking?.()}});
 $("stopVoice").addEventListener("click",()=>{voiceOn=false;$("liveVoice").textContent="Conversa ao vivo: desligada";if(window.AurionNative&&window.AurionNative.stopSpeaking)window.AurionNative.stopSpeaking();if(window.AurionNative&&window.AurionNative.stopLiveConversation)window.AurionNative.stopLiveConversation()});
-$("coreButton").addEventListener("click",openSettings);$("closeSettings").addEventListener("click",closeSettings);
+$("memoryButton").addEventListener("click",()=>{$("statusLine").textContent=""+memory.length+" memórias salvas. Diga: ‘lembre que ...’ para guardar, ‘minhas memórias’ para listar ou ‘apague toda a memória’ para limpar."});\n$("coreButton").addEventListener("click",openSettings);$("closeSettings").addEventListener("click",closeSettings);
 $("settings").addEventListener("click",e=>{if(e.target===$("settings"))closeSettings()});
 $("prepare").addEventListener("click",()=>{if(window.AurionNative)window.AurionNative.confirmModelDownload();else setStatus("Abra a versão Android para preparar o modelo.","error")});
 $("chooseModel").addEventListener("click",()=>{if(window.AurionNative)window.AurionNative.chooseDownloadedModel();else setStatus("Importação disponível no Android.","error")});
