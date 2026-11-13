@@ -43,6 +43,8 @@ world.afterEvents.playerInteractWithEntity.subscribe((event) => {
             event_type: "interaction",
             player: safeLabel(player.name, "Jogador", 48),
             npc: npcName,
+            npc_id: safeLabel(target.id, "", 128),
+            npc_type: typeId,
             message: "",
             world_id: WORLD_ID
         };

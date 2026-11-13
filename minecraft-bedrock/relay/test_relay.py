@@ -40,6 +40,8 @@ def test_event_round_trip_stays_inside_paired_session():
         "event_type": "interaction",
         "player": "PlayerOne",
         "npc": "Villager",
+        "npc_id": "entity-7f31",
+        "npc_type": "minecraft:villager",
         "message": "Olá!",
         "world_id": "test-world",
     }

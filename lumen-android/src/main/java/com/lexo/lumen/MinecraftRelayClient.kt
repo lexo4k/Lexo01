@@ -42,7 +42,9 @@ internal class MinecraftRelayClient(baseUrl: String) {
         val player: String,
         val npc: String,
         val message: String,
-        val worldId: String
+        val worldId: String,
+        val npcId: String,
+        val npcType: String
     )
 
     data class NpcReply(
@@ -86,7 +88,9 @@ internal class MinecraftRelayClient(baseUrl: String) {
                         player = item.getString("player"),
                         npc = item.getString("npc"),
                         message = item.optString("message"),
-                        worldId = item.optString("world_id", "default")
+                        worldId = item.optString("world_id", "default"),
+                        npcId = item.optString("npc_id", ""),
+                        npcType = item.optString("npc_type", "")
                     )
                 )
             }

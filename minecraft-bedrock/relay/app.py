@@ -172,6 +172,8 @@ class GameEvent(BaseModel):
     event_type: str = Field(pattern=r"^(interaction|chat)$")
     player: str = Field(min_length=1, max_length=48)
     npc: str = Field(min_length=1, max_length=80)
+    npc_id: str = Field(default="", max_length=128)
+    npc_type: str = Field(default="", max_length=80)
     message: str = Field(default="", max_length=500)
     world_id: str = Field(default="default", min_length=1, max_length=80)
 
@@ -221,7 +223,7 @@ def server_event(body: GameEvent, authorization: str | None = Header(default=Non
         if len(session.events) >= QUEUE_LIMIT:
             raise HTTPException(status_code=429, detail="Fila de eventos cheia. AURION precisa processar os eventos pendentes.")
         store.remember_event(session, body.event_id)
-        session.events.append(body.model_dump())
+        session.events.append(body.model_dump(exclude_defaults=True))
     return {"accepted": body.event_id}
 
 

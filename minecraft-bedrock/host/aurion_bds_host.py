@@ -68,6 +68,8 @@ def validate_game_event(value: Any) -> dict[str, str]:
         "event_type": event_type,
         "player": _bounded_text(value.get("player"), "player", 48),
         "npc": _bounded_text(value.get("npc"), "npc", 80),
+        "npc_id": _bounded_text(value.get("npc_id", ""), "npc_id", 128, allow_empty=True),
+        "npc_type": _bounded_text(value.get("npc_type", ""), "npc_type", 80, allow_empty=True),
         "message": _bounded_text(value.get("message", ""), "message", 500, allow_empty=True),
         "world_id": _bounded_text(value.get("world_id", "aurion-bds-world"), "world_id", 80),
     }

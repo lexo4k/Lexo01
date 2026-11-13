@@ -32,6 +32,9 @@ class BehaviorPackContractTests(unittest.TestCase):
         self.assertIn("world.afterEvents.playerInteractWithEntity.subscribe", script)
         self.assertIn("AURION_EVENT ", script)
         self.assertIn("target.nameTag", script)
+        self.assertIn("target.id", script)
+        self.assertIn("npc_id:", script)
+        self.assertIn("npc_type:", script)
         self.assertIn("PLAYER_COOLDOWN_MS", script)
 
 

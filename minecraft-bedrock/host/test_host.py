@@ -17,6 +17,8 @@ class HostBridgeTests(unittest.TestCase):
             "event_type": "interaction",
             "player": "Player One",
             "npc": "Aldeão da Vila",
+            "npc_id": "entity-7f31",
+            "npc_type": "minecraft:villager",
             "message": "",
             "world_id": "aurion-bds-world",
         }

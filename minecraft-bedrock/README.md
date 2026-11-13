@@ -39,7 +39,7 @@ Não ative o pack em um mundo importante sem backup. A configuração e a instal
 
 ### Behavior pack
 
-\`behavior-pack/\` captura \`world.afterEvents.playerInteractWithEntity\`. Ele considera NPCs nativos e entidades com \`nameTag\` não vazio. Um limite de 15 segundos por jogador reduz spam. O evento contém ID de correlação, jogador, identificação do NPC e mundo.
+\`behavior-pack/\` captura \`world.afterEvents.playerInteractWithEntity\`. Ele considera NPCs nativos e entidades com \`nameTag\` não vazio. Um limite de 15 segundos por jogador reduz spam. O evento contém ID de correlação, jogador, nome, ID estável da entidade (npc_id), tipo (npc_type) e mundo. O ID da entidade separa dois NPCs que tenham o mesmo nome visível.
 
 O script não envia HTTP, não guarda tokens e não cria respostas fictícias.
 
@@ -71,7 +71,7 @@ O companion inicia o BDS por conta própria. Não abra outra instância do mesmo
 
 Em **Núcleo → Minecraft Bedrock**, informe a URL HTTPS do relay e toque em gerar código. O aplicativo carrega o GGUF local antes de iniciar o pareamento. O token do aplicativo fica criptografado pelo Android Keystore.
 
-AURION consulta o relay a cada três segundos somente enquanto o app está em primeiro plano. Ao sair do app, o polling é pausado; ao retornar, é retomado se a conexão estiver habilitada.
+AURION consulta o relay a cada três segundos somente enquanto o app está em primeiro plano. Ao sair do app, o polling é pausado; ao retornar, é retomado se a conexão estiver habilitada. O aplicativo mantém localmente até seis turnos por combinação de mundo, jogador e identidade da entidade, para preservar contexto sem misturar NPCs. Respostas já geradas também entram em uma pequena caixa de saída local antes do envio, evitando gerar outra fala se uma tentativa de rede falhar.
 
 ### Relay
 
@@ -89,7 +89,13 @@ AURION consulta o relay a cada três segundos somente enquanto o app está em pr
 6. A resposta gerada pelo GGUF retorna ao relay.
 7. O companion envia \`tellraw\` ao jogador no mesmo mundo.
 
-A resposta é texto de chat do jogo identificada com o nome do NPC. Ainda não há animação de fala, voz dentro do Minecraft ou memória conversacional individual por NPC nesta entrega.
+A resposta é texto de chat do jogo identificada com o nome do NPC. A memória individual local por entidade está implementada no APK, mas ainda precisa de teste real em duas interações. Ainda não há animação de fala nem voz dentro do Minecraft.
+
+### Entrada de texto do jogador
+
+O pack atual registra a interação com o NPC, mas ainda não captura uma mensagem livre digitada pelo jogador. O manifesto permanece em @minecraft/server estável 2.0.0; o evento de chat documentado pela Microsoft aparece apenas na versão beta 2.13.0-beta.1.26.70-preview.24 no changelog consultado. Não elevamos o pack para uma API Preview sem confirmar que o BDS e o cliente Android instalados suportam essa versão. Portanto, nesta etapa o modelo recebe o evento de interação e o histórico local, não uma pergunta digitada.
+
+Referência: [changelog oficial de @minecraft/server](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/changelog?view=minecraft-bedrock-stable).
 
 ## CI e testes
 
