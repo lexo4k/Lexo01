@@ -5,6 +5,9 @@ on:
     branches: ["lumen-ai-core"]
     paths:
       - "minecraft-bedrock/**"
+      - "lumen-android/src/main/java/com/lexo/lumen/MinecraftRelayClient.kt"
+      - "lumen-android/src/main/java/com/lexo/lumen/MainActivity.kt"
+      - "lumen-ai-core/tests/test_minecraft_ui_contract.py"
       - ".github/workflows/minecraft-relay.yml"
   pull_request:
     branches: ["lumen-ai-core"]
