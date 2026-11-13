@@ -7,6 +7,7 @@ on:
       - "lumen-ai-core/**"
       - "lumen-android/src/main/assets/index.html"
       - "lumen-android/src/main/java/com/lexo/lumen/MainActivity.kt"
+      - "lumen-android/src/main/java/com/lexo/lumen/MinecraftRelayClient.kt"
       - ".github/workflows/lumen-core-tests.yml"
   workflow_dispatch:
 
