@@ -1,0 +1,77 @@
+name: AURION Android APK
+
+on:
+  push:
+    branches: ["lumen-ai-core"]
+    paths:
+      - "lumen-android/**"
+      - "lumen-ai-core/tests/test_minecraft_ui_contract.py"
+      - ".github/workflows/lumen-android.yml"
+  pull_request:
+    branches: ["lumen-ai-core"]
+    paths:
+      - "lumen-android/**"
+      - ".github/workflows/lumen-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lumen-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-lumen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout only the AURION Android module
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: lumen-android
+          sparse-checkout-cone-mode: true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android platform and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Build only the AURION Android app
+        working-directory: lumen-android
+        run: gradle --no-daemon --parallel --build-cache assembleDebug
+
+      - name: Verify generated APK archive
+        working-directory: lumen-android
+        shell: bash
+        run: |
+          apk="$(find build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          test -s "$apk"
+          unzip -t "$apk"
+          unzip -l "$apk" | grep -q 'AndroidManifest.xml'
+          unzip -l "$apk" | grep -Eq 'classes[0-9]*[.]dex'
+          # AURION precisa levar o runtime nativo llama.cpp no APK, não apenas a interface.
+          unzip -l "$apk" | grep -q 'lib/arm64-v8a/libllama.so'
+          unzip -l "$apk" | grep -q 'lib/arm64-v8a/libllama_jni.so'
+          unzip -l "$apk" | grep -q 'lib/arm64-v8a/libggml-base.so'
+
+      - name: Upload AURION APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aurion-AI-debug
+          path: lumen-android/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

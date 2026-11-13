@@ -1,0 +1,39 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "AURION Bedrock BDS Bridge",
+    "description": "Captura interações com NPCs identificados e encaminha eventos ao AURION por meio do companion do servidor.",
+    "uuid": "da9355e1-bd3f-4d9c-aef3-4ffa44264db5",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 60]
+  },
+  "modules": [
+    {
+      "description": "AURION Bedrock data module",
+      "type": "data",
+      "uuid": "13313b1c-d00c-4a5c-a1bb-1285bfe5eef7",
+      "version": [1, 0, 0]
+    },
+    {
+      "description": "AURION Bedrock stable script module",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "fc9b0a4e-e953-4678-9b67-24553f2834f3",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.0.0"
+    }
+  ],
+  "metadata": {
+    "authors": ["AURION"],
+    "license": "MIT",
+    "generated_with": {
+      "aurion": ["1.0.0"]
+    }
+  }
+}

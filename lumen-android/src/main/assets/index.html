@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101114">
+<title>AURION</title>
+<style>
+:root{color-scheme:dark;--bg:#101114;--surface:#191b20;--surface2:#22252b;--line:#30343b;--text:#f1f2f4;--muted:#9a9fa8;--accent:#c7d2df;--good:#91d5b5;--warn:#e5c58a}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,"Segoe UI",sans-serif}
+body{display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+header{height:58px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 17px;border-bottom:1px solid var(--line);background:#121317}
+.brand{font-size:15px;font-weight:650;letter-spacing:.16em}.status{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:7px}.dot{width:7px;height:7px;border-radius:50%;background:#777}.dot.ready{background:var(--good)}
+main{width:100%;max-width:820px;margin:0 auto;flex:1;min-height:0;display:flex;flex-direction:column;padding:0 16px}
+#messages{flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:22px 0 16px;overscroll-behavior:contain}
+.welcome{margin:auto 0;text-align:center;padding:28px 8px 42px}.welcome-mark{font-size:13px;letter-spacing:.3em;color:#cbd3dc;margin-bottom:17px}.welcome h1{font-size:25px;font-weight:500;letter-spacing:-.03em;margin:0 0 9px}.welcome p{max-width:330px;margin:auto;color:var(--muted);font-size:13px;line-height:1.6}
+.message{max-width:88%;padding:12px 15px;border-radius:17px;line-height:1.58;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}.message.user{align-self:flex-end;background:#30343b;border-bottom-right-radius:5px}.message.ai{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:5px}.message.pending{color:var(--muted)}
+.message-tools{display:flex;gap:7px;margin-top:9px}.message-tools button{border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:9px;padding:6px 9px;font-size:10px}
+#statusLine{min-height:22px;color:var(--muted);font-size:11px;padding:0 4px 8px}
+.composer{flex:none;padding:9px 0 calc(12px + env(safe-area-inset-bottom));background:var(--bg)}
+.compose{background:var(--surface);border:1px solid #3b4049;border-radius:21px;padding:8px 9px 8px 15px;display:flex;align-items:flex-end;gap:8px}
+textarea{flex:1;resize:none;min-height:42px;max-height:130px;border:0;outline:0;background:transparent;color:var(--text);font:14px/1.5 inherit;padding:10px 0}
+button{font:inherit;color:inherit;cursor:pointer}
+.action{height:40px;min-width:40px;border:1px solid var(--line);background:var(--surface2);border-radius:13px;font-size:12px}
+.send{width:42px;height:42px;border:0;border-radius:14px;background:#e4e8ed;color:#17191d;font-size:18px;font-weight:700}
+.tools{display:flex;justify-content:space-between;align-items:center;padding:9px 3px 0}.tools button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:5px}
+#settings{position:fixed;inset:0;background:#0009;display:none;align-items:flex-end;justify-content:center;z-index:5}
+#settings.open{display:flex}.sheet{width:100%;max-width:600px;background:#191b20;border:1px solid var(--line);border-radius:22px 22px 0 0;padding:21px 19px calc(22px + env(safe-area-inset-bottom));max-height:82vh;overflow:auto}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.sheet h2{font-size:17px;font-weight:600;margin:0}.close{border:0;background:transparent;color:var(--muted);font-size:22px}
+.statebox{border:1px solid var(--line);background:#121419;border-radius:14px;padding:13px;font-size:12px;line-height:1.6;color:var(--muted);white-space:pre-wrap}
+.primary{width:100%;border:0;border-radius:13px;background:#e4e8ed;color:#17191d;padding:13px;font-weight:650;margin-top:12px}
+.secondary{width:100%;border:1px solid var(--line);border-radius:13px;background:var(--surface2);padding:12px;margin-top:9px;font-size:12px}
+.note{font-size:11px;color:var(--muted);line-height:1.55;margin:12px 2px 0}
+.field{width:100%;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#121419;color:var(--text);font:13px system-ui,sans-serif}
+.pairing-code{display:block;text-align:center;color:var(--good);font-size:25px;font-weight:700;letter-spacing:.22em;padding:10px 0}
+.hidden{display:none!important}
+@media(min-width:700px){main{padding:0 24px}.composer{padding-bottom:18px}.welcome{padding-bottom:70px}}
+</style>
+</head>
+<body>
+<header><div class="brand">AURION</div><div class="status"><span id="dot" class="dot"></span><span id="connection">INICIALIZANDO</span></div></header>
+<main>
+ <section id="messages" aria-live="polite">
+  <div class="welcome" id="welcome"><div class="welcome-mark">A U R I O N</div><h1>Estou aqui.</h1><p>Uma conversa direta. Seu modelo roda no aparelho e suas mensagens ficam neste dispositivo.</p></div>
+ </section>
+ <div id="statusLine">Verificando o núcleo local…</div>
+ <section class="composer">
+  <div class="compose"><textarea id="message" rows="1" placeholder="Escreva para AURION…" enterkeyhint="send"></textarea><button class="action" id="voice" title="Falar">◉</button><button class="send" id="send" title="Enviar">↑</button></div>
+  <div class="tools"><button id="liveVoice">Conversa ao vivo: desligada</button><button id="stopVoice">Parar voz</button><button id="memoryButton">Memória</button><button id="coreButton">Núcleo</button></div>
+ </section>
+</main>
+<div id="settings" role="dialog" aria-modal="true">
+ <section class="sheet">
+  <div class="sheet-head"><h2>Núcleo AURION</h2><button class="close" id="closeSettings">×</button></div>
+  <div class="statebox" id="modelStatus">Verificando modelo…</div>
+  <button class="primary" id="prepare">Preparar / ativar modelo</button>
+  <button class="secondary" id="chooseModel">Importar modelo GGUF existente</button>
+  <p class="note">O instalador contém o aplicativo e o motor de inferência. O modelo de linguagem é um arquivo separado, armazenado no celular. Depois de instalado, a conversa pode funcionar sem internet. A primeira transferência exige Wi-Fi e espaço livre.</p>
+  <div class="sheet-head" style="margin-top:22px"><h2>Minecraft Bedrock</h2></div>
+  <div class="statebox">AURION usa o modelo GGUF deste aparelho para gerar falas. A conexão exige um mundo em Bedrock Dedicated Server compatível. Mundo local de um jogador e Realms não recebem esta ponte.</div>
+  <label class="note" for="minecraftRelayUrl">Endereço HTTPS do relay AURION</label>
+  <input class="field" id="minecraftRelayUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://seu-relay-aurion">
+  <button class="secondary" id="minecraftConnect">Verificar modelo e gerar código de pareamento</button>
+  <div class="statebox hidden" id="minecraftPairingBox" style="margin-top:10px">
+   Código para o companion do servidor:
+   <strong class="pairing-code" id="minecraftPairingCode">--------</strong>
+   <div class="note" id="minecraftPairingExpiry">O código expira em cinco minutos.</div>
+  </div>
+  <div class="note" id="minecraftStatus">A ponte fica ativa somente enquanto AURION estiver aberto em primeiro plano.</div>
+  <button class="secondary" id="minecraftStop">Desconectar ponte Minecraft</button>
+  <p class="note">O código é de uso único. O token do servidor fica fora do add-on e é guardado pelo companion no computador/servidor BDS. O APK não contém chaves privadas.</p>
+ </section>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const STORE="aurion_rebuilt_chat_v1";
+let history=[];
+try{history=JSON.parse(localStorage.getItem(STORE)||"[]");if(!Array.isArray(history))history=[]}catch{history=[]}
+let waiting=false,voiceOn=false;
+function suggestedFileName(text){const match=String(text).match(/```([a-zA-Z0-9+#-]*)/);const ext=({js:"js",javascript:"js",ts:"txt",typescript:"txt",kt:"kt",kotlin:"kt",py:"py",python:"py",html:"html",css:"css",json:"json",xml:"xml",csv:"csv"})[(match?.[1]||"").toLowerCase()]||"md";return "aurion-criacao-"+new Date().toISOString().slice(0,10)+"."+ext}
+function artifactContent(text){const match=String(text).match(/```[a-zA-Z0-9+#-]*\s*\n([\s\S]*?)```/);return match?match[1].trim():String(text)}
+function decorateAiMessage(node,text){node.replaceChildren();const body=document.createElement("span");body.textContent=text;node.appendChild(body);const tools=document.createElement("div");tools.className="message-tools";const save=document.createElement("button");save.textContent="Salvar arquivo";save.addEventListener("click",()=>{if(window.AurionNative?.saveTextArtifact){window.AurionNative.saveTextArtifact(suggestedFileName(text),artifactContent(text));$("statusLine").textContent="Salvando criação em Downloads/AURION AI…"}else $("statusLine").textContent="Exportação nativa disponível no APK Android."});const listen=document.createElement("button");listen.textContent="Ouvir";listen.addEventListener("click",()=>window.AurionNative?.speakText?.(text));tools.append(save,listen);node.appendChild(tools)}
+function persist(){try{const snapshot=JSON.stringify(history.slice(-80));localStorage.setItem(STORE,snapshot);window.AurionNative?.saveConversationBackup?.(snapshot)}catch{}}
+function persistMemory(){try{const snapshot=JSON.stringify(memory.slice(-200));localStorage.setItem("aurion_memory_v1",snapshot);window.AurionNative?.saveMemoryBackup?.(snapshot)}catch{}}
+function memoryTerms(value){return String(value).toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/[^a-z0-9]+/).filter(w=>w.length>2&&!["que","para","com","uma","uns","das","dos","por","como","meu","minha","sobre","isso","essa","este","esta","the","and","you"].includes(w))}
+function relevantMemories(question){const terms=new Set(memoryTerms(question));if(!terms.size)return [];return memory.map(item=>({...item,score:memoryTerms(item.text).filter(w=>terms.has(w)).length})).filter(item=>item.score>0).sort((a,b)=>b.score-a.score).slice(0,8).map(item=>item.text)}
+function handleMemoryCommand(raw){
+ const text=String(raw).trim();
+ const save=text.match(/^(?:aurion[, ]*)?(?:lembre-se de que|lembre que|guarde na mem[oó]ria que|salve na mem[oó]ria que|memorize que)\s+(.+)$/i);
+ if(save){
+  const fact=save[1].trim().replace(/[.\s]+$/,"");
+  if(/\b(senha|password|token secreto|cart[aã]o|cvv|c[oó]digo de acesso|chave privada)\b/i.test(fact)){addMessage("ai","Não vou guardar senhas, credenciais ou dados financeiros secretos. Posso guardar preferências e informações não sensíveis.");return true}
+  if(fact.length<4||fact.length>500){addMessage("ai","Essa memória precisa ter entre 4 e 500 caracteres.");return true}
+  if(memory.some(m=>m.text.toLocaleLowerCase("pt-BR")===fact.toLocaleLowerCase("pt-BR"))){addMessage("ai","Essa informação já está na minha memória.");return true}
+  memory.push({text:fact,createdAt:new Date().toISOString()});memory=memory.slice(-200);persistMemory();addMessage("ai","Memória guardada neste aparelho. Vou recuperá-la quando for relevante.");return true;
+ }
+ const remove=text.match(/^(?:aurion[, ]*)?(?:esqueça da mem[oó]ria|apague da mem[oó]ria|remova da mem[oó]ria)\s+(.+)$/i);
+ if(remove){const q=memoryTerms(remove[1]);memory=memory.filter(m=>!q.every(w=>memoryTerms(m.text).includes(w)));persistMemory();addMessage("ai","Atualizei a memória e removi as informações correspondentes.");return true}
+ if(/^(?:aurion[, ]*)?(?:apague toda a mem[oó]ria|limpe minha mem[oó]ria|esqueça todas as mem[oó]rias)$/i.test(text)){memory=[];persistMemory();addMessage("ai","A memória local foi limpa.");return true}
+ if(/^(?:aurion[, ]*)?(?:o que voc[eê] lembra|mostrar mem[oó]rias|minhas mem[oó]rias)$/i.test(text)){addMessage("ai",memory.length?"Memórias guardadas:\\n"+memory.map((m,i)=>(i+1)+". "+m.text).join("\\n"):"Ainda não há memórias guardadas.");return true}
+ return false;
+}
+function addMessage(role,text,pending=false){
+ $("welcome").classList.add("hidden");
+ const node=document.createElement("div");node.className="message "+(role==="user"?"user":"ai")+(pending?" pending":"");if(role==="user")node.textContent=text;else if(!pending)decorateAiMessage(node,text);else node.textContent=text;node.dataset.pending=pending?"1":"0";$("messages").appendChild(node);$("messages").scrollTop=$("messages").scrollHeight;return node;
+}
+function render(){if(!history.length)return; $("welcome").classList.add("hidden");history.forEach(m=>addMessage(m.role,m.text));}
+function setStatus(text,state){
+ $("statusLine").textContent=text||"";
+ $("connection").textContent=state==="ready"?"NO APARELHO":state==="downloading"?"BAIXANDO":state==="error"?"VERIFICAR":"NÚCLEO";
+ $("dot").className="dot"+(state==="ready"?" ready":"");
+ $("modelStatus").textContent=text||"";
+}
+function openSettings(){$("settings").classList.add("open");}
+function closeSettings(){$("settings").classList.remove("open");}
+function send(){
+ if(waiting)return;
+ const input=$("message"),text=input.value.trim();if(!text)return;
+ if(handleMemoryCommand(text)){input.value="";input.style.height="42px";return}
+ if(!window.AurionNative){setStatus("O motor nativo está disponível no aplicativo Android.","error");return}
+ input.value="";input.style.height="42px";
+ history.push({role:"user",text});persist();addMessage("user",text);
+ const requestId="r"+Date.now()+Math.random().toString(16).slice(2);
+ const pending=addMessage("ai","AURION está pensando…",true);
+ pending.dataset.request=requestId;waiting=true;$("send").disabled=true;
+ $("statusLine").textContent="Gerando resposta no modelo local…";
+ const recalled=relevantMemories(text);const conversation=history.slice(-12,-1).map(m=>(m.role==="user"?"Pessoa: ":"AURION: ")+m.text).join("\n");const context=(conversation+"\nMEMÓRIAS PERSISTENTES RELEVANTES (fatos salvos explicitamente pela pessoa):\n"+recalled.map(x=>"- "+x).join("\n")).slice(-5000);
+ try{window.AurionNative.sendLocalMessage(text,context,requestId)}
+ catch(e){finishError(requestId,"Falha ao iniciar o motor: "+e.message)}
+}
+function finishError(id,text){const el=[...$("messages").children].find(n=>n.dataset.request===id);if(el){decorateAiMessage(el,text);el.classList.remove("pending");el.dataset.pending="0"}waiting=false;$("send").disabled=false;$("statusLine").textContent=text}
+window.onAurionNativeAnswer=function(answer,failed,id){
+ const el=[...$("messages").children].find(n=>n.dataset.request===id);if(!el)return;
+ const text=String(answer||"");decorateAiMessage(el,text);el.classList.remove("pending");el.dataset.pending="0";
+ if(!failed){history.push({role:"assistant",text});persist();$("statusLine").textContent="Resposta gerada localmente.";if(voiceOn)window.AurionNative?.speakText?.(text)}
+ else $("statusLine").textContent="O núcleo encontrou um erro.";
+ waiting=false;$("send").disabled=false;$("messages").scrollTop=$("messages").scrollHeight;
+};
+window.onAurionModelState=function(state,detail){
+ setStatus(detail,state);
+ if(state==="ready")$("statusLine").textContent="Pronta para conversar. O modelo está carregado neste aparelho.";
+ else if(state==="downloading"||state==="loading"||state==="restoring")$("statusLine").textContent=detail;
+ else if(state==="missing")$("statusLine").textContent="O modelo local ainda não está instalado.";
+ else if(state==="error"||state==="blocked")$("statusLine").textContent=detail;
+};
+window.onAurionSpeechStatus=function(message){$("statusLine").textContent=message||""};
+window.onAurionVoiceResult=function(text,error){
+ if(error){$("statusLine").textContent=error;return}
+ if(text){$("message").value=voiceOn?text:($("message").value+" "+text).trim();resizeInput();if(voiceOn)send();else $("message").focus()}
+};
+window.onAurionMemoryBackup=function(serialized){
+ if(memory.length)return;
+ try{const restored=JSON.parse(serialized);if(!Array.isArray(restored))return;memory=restored.filter(m=>m&&typeof m.text==="string"&&m.text.length<=500).slice(-200);localStorage.setItem("aurion_memory_v1",JSON.stringify(memory));$("statusLine").textContent="Memória persistente recuperada: "+memory.length+" registros."}catch(e){$("statusLine").textContent="O arquivo de memória existe, mas não pôde ser lido."}
+};
+window.onAurionConversationBackup=function(serialized){
+ if(history.length)return;
+ try{const restored=JSON.parse(serialized);if(!Array.isArray(restored))return;
+ history=restored.filter(m=>m&&["user","assistant"].includes(m.role)&&typeof m.text==="string").slice(-80);
+ if(history.length){localStorage.setItem(STORE,JSON.stringify(history));render();$("statusLine").textContent="Histórico recuperado do backup em Downloads/AURION AI."}
+ }catch(e){$("statusLine").textContent="O backup de conversa existe, mas não pôde ser lido."}
+};
+window.onAurionArtifactSaved=function(ok,message){$("statusLine").textContent=message||(ok?"Arquivo salvo.":"Falha ao salvar arquivo.")};
+window.onMinecraftPairingStarted=function(code,expiresIn){
+ $("minecraftPairingCode").textContent=String(code||"--------");
+ $("minecraftPairingExpiry").textContent="Código de uso único. Expira em "+Math.max(1,Math.ceil(Number(expiresIn||300)/60))+" min. Digite-o no companion BDS.";
+ $("minecraftPairingBox").classList.remove("hidden");
+ $("minecraftStatus").textContent="Modelo local carregado. Aguardando o companion do servidor concluir o pareamento.";
+};
+window.onMinecraftStatus=function(message){
+ $("statusLine").textContent=message||"";
+ $("minecraftStatus").textContent=message||"";
+};
+function resizeInput(){const el=$("message");el.style.height="42px";el.style.height=Math.min(el.scrollHeight,130)+"px"}
+$("send").addEventListener("click",send);
+$("message").addEventListener("input",resizeInput);
+$("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}});
+$("voice").addEventListener("click",()=>{if(window.AurionNative&&window.AurionNative.startVoiceRecognition)window.AurionNative.startVoiceRecognition();else $("statusLine").textContent="Voz disponível no aplicativo Android."});
+$("liveVoice").addEventListener("click",()=>{voiceOn=!voiceOn;$("liveVoice").textContent="Conversa ao vivo: "+(voiceOn?"ligada":"desligada");if(voiceOn){window.AurionNative?.startLiveConversation?.();}else{window.AurionNative?.stopLiveConversation?.();window.AurionNative?.stopSpeaking?.()}});
+$("stopVoice").addEventListener("click",()=>{voiceOn=false;$("liveVoice").textContent="Conversa ao vivo: desligada";if(window.AurionNative&&window.AurionNative.stopSpeaking)window.AurionNative.stopSpeaking();if(window.AurionNative&&window.AurionNative.stopLiveConversation)window.AurionNative.stopLiveConversation()});
+$("memoryButton").addEventListener("click",()=>{$("statusLine").textContent=""+memory.length+" memórias salvas. Diga: ‘lembre que ...’ para guardar, ‘minhas memórias’ para listar ou ‘apague toda a memória’ para limpar."});
+$("coreButton").addEventListener("click",openSettings);$("closeSettings").addEventListener("click",closeSettings);
+$("settings").addEventListener("click",e=>{if(e.target===$("settings"))closeSettings()});
+$("prepare").addEventListener("click",()=>{if(window.AurionNative)window.AurionNative.confirmModelDownload();else setStatus("Abra a versão Android para preparar o modelo.","error")});
+$("chooseModel").addEventListener("click",()=>{if(window.AurionNative)window.AurionNative.chooseDownloadedModel();else setStatus("Importação disponível no Android.","error")});
+$("minecraftConnect").addEventListener("click",()=>{
+ const url=$("minecraftRelayUrl").value.trim();
+ if(!url.startsWith("https://")){$("minecraftStatus").textContent="Informe uma URL HTTPS válida do relay.";return}
+ if(!window.AurionNative?.startMinecraftAssistant){$("minecraftStatus").textContent="A ponte Minecraft está disponível no APK Android.";return}
+ $("minecraftPairingBox").classList.add("hidden");
+ $("minecraftStatus").textContent="Verificando e carregando o modelo local…";
+ window.AurionNative.startMinecraftAssistant(url);
+});
+$("minecraftStop").addEventListener("click",()=>{
+ if(window.AurionNative?.stopMinecraftAssistant)window.AurionNative.stopMinecraftAssistant();
+ else $("minecraftStatus").textContent="Desconexão disponível no APK Android.";
+});
+try{$("minecraftRelayUrl").value=window.AurionNative?.getMinecraftRelayUrl?.()||""}catch{}
+render();
+function aurionStartupCheck(){
+ if(!window.AurionNative)return;
+ try{
+  const state=window.AurionNative.modelState();
+  if(state==="ready"){window.onAurionModelState("ready","Modelo carregado no aparelho.");return}
+  if(state==="working"||state==="downloaded"||state==="shared"){window.AurionNative.prepareLocalModel();return}
+  window.AurionNative.resumeAuthorizedModelSetup();
+ }catch(e){setStatus("Não foi possível iniciar o núcleo: "+e.message,"error")}
+};
+</script>
+</body>
+</html>

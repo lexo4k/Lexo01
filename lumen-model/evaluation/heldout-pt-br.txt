@@ -1,0 +1,24 @@
+# Conjunto de avaliação separado para LÚMEN-1
+# Este arquivo não deve ser incluído no treinamento. Conteúdo autoral, criado para medir
+# previsão de texto em exemplos que ficam fora do corpus de treinamento.
+
+Uma boa explicação apresenta primeiro a ideia principal, depois os motivos e por fim um exemplo verificável.
+Quando uma pergunta não contém informação suficiente, a resposta responsável identifica a incerteza em vez de inventar um dado.
+
+Em programação, uma função recebe entradas, executa uma transformação definida e devolve uma saída. Um teste unitário verifica um comportamento pequeno e isolado. Um teste de integração verifica se componentes diferentes conseguem trabalhar juntos.
+
+A água pura, ao nível do mar, congela aproximadamente a zero grau Celsius. A temperatura de ebulição depende da pressão atmosférica, portanto não é correto tratar cem graus Celsius como um valor universal em qualquer altitude.
+
+No Brasil, o território é dividido em cinco grandes regiões: Norte, Nordeste, Centro-Oeste, Sudeste e Sul. A capital federal é Brasília, localizada no Distrito Federal.
+
+Uma hipótese científica precisa ser confrontável com observações. Se os resultados não combinam com a hipótese, os pesquisadores devem revisar a explicação ou reunir novas evidências.
+
+Para resolver um problema matemático, registre os dados conhecidos, escolha uma operação adequada, calcule e confira se a resposta faz sentido na situação descrita.
+
+Privacidade digital significa controlar a coleta, o uso e o compartilhamento de informações pessoais. Uma aplicação deve guardar apenas os dados necessários, proteger credenciais e explicar claramente como as informações são utilizadas.
+
+Uma resposta útil não precisa ser longa. Ela precisa ser correta, compreensível, relevante para a pergunta e transparente sobre seus limites.
+
+Planejar uma tarefa envolve definir o resultado esperado, dividir o trabalho em etapas pequenas, estimar recursos, executar e conferir o resultado. Uma etapa só deve ser marcada como concluída depois de ser verificada.
+
+Na leitura crítica, diferencie uma afirmação, a evidência que a sustenta e a conclusão. Uma correlação observada não prova, por si só, que um evento causou o outro.
