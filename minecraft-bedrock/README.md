@@ -77,7 +77,9 @@ AURION consulta o relay a cada três segundos somente enquanto o app está em pr
 
 \`relay/\` mantém códigos de pareamento de uso único, tokens separados por lado, isolamento de sessão, deduplicação, filas limitadas e rate limiting.
 
-**Limitação atual:** o armazenamento do relay ainda é em memória. Reinicialização ou suspensão do serviço pode invalidar sessões e perder filas. O blueprint Render é apenas uma configuração de partida e ainda não foi implantado. Não é um serviço de produção persistente.
+**Persistência configurável:** o relay agora usa SQLite quando a variável `AURION_RELAY_DB_PATH` aponta para um arquivo. Pairings, sessões, filas, deduplicação e janelas de rate limit sobrevivem a reinicializações do processo; os tokens são armazenados somente como hashes. Em POSIX, o arquivo do banco recebe permissão `0600`. O modo pode ser conferido em `GET /health`: `sqlite_file` ou `memory_ephemeral`.
+
+**Limite de hospedagem:** sem `AURION_RELAY_DB_PATH`, o relay continua em memória. O blueprint Render deste repositório usa o plano gratuito e não declara disco persistente; portanto, ele ainda não oferece retenção durável. Para produção, configure `AURION_RELAY_DB_PATH=/var/data/aurion-minecraft.sqlite3` apontando para um disco persistente privado montado nesse caminho. Não configure apenas um caminho no filesystem efêmero e interprete isso como backup. O banco SQLite não criptografa o conteúdo das filas em repouso, então o volume deve ser privado e protegido. O relay ainda não foi implantado.
 
 ## Como o fluxo deve funcionar
 
