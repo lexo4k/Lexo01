@@ -1,19 +1,22 @@
-"""Small authenticated relay between a Bedrock Dedicated Server and AURION.
+"""Authenticated, session-isolated relay between Bedrock Dedicated Server and AURION.
 
-The relay never generates dialogue. AURION remains responsible for local GGUF
-inference. State is intentionally in-memory for the prototype; production
-persistence and the Android bridge are separate acceptance gates.
+AURION remains responsible for local GGUF inference. Set
+AURION_RELAY_DB_PATH to a file on persistent storage to retain pairings,
+sessions, queues and rate limits across process restarts. Without that setting
+the relay deliberately runs in ephemeral in-memory mode.
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import secrets
+import sqlite3
 import time
-from collections import deque
-from dataclasses import dataclass, field
+from contextlib import contextmanager
+from pathlib import Path
 from threading import RLock
-from typing import Deque
+from typing import Iterator
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -32,135 +35,370 @@ def _digest(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-@dataclass
-class Pairing:
-    app_token: str
-    expires_at: float
-
-
-@dataclass
-class Session:
-    session_id: str
-    app_token_hash: str
-    server_token_hash: str
-    created_at: float
-    last_activity: float
-    events: Deque[dict] = field(default_factory=lambda: deque(maxlen=QUEUE_LIMIT))
-    replies: Deque[dict] = field(default_factory=lambda: deque(maxlen=QUEUE_LIMIT))
-    event_ids: set[str] = field(default_factory=set)
-    event_order: Deque[str] = field(default_factory=deque)
-    reply_ids: set[str] = field(default_factory=set)
-    request_times: dict[str, Deque[float]] = field(default_factory=dict)
-
-
 class RelayStore:
-    """Thread-safe, bounded prototype store. Tokens are indexed by SHA-256."""
+    """SQLite-backed store with atomic writes and bounded session queues.
 
-    def __init__(self) -> None:
+    SQLite coordinates concurrent requests from multiple processes. The
+    configured database file must live on a persistent, private volume if
+    sessions are expected to survive host replacement or machine loss.
+    """
+
+    def __init__(self, db_path: str | None = None) -> None:
+        configured = db_path if db_path is not None else os.environ.get("AURION_RELAY_DB_PATH", "")
+        configured = configured.strip()
+        self.db_path = configured or ":memory:"
+        if self.db_path != ":memory:":
+            path = Path(self.db_path).expanduser()
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+            self.db_path = str(path)
         self.lock = RLock()
-        self.pairings: dict[str, Pairing] = {}
-        self.sessions: dict[str, Session] = {}
-        self.token_index: dict[str, tuple[str, str]] = {}
-        self.ip_requests: dict[str, Deque[float]] = {}
+        self.connection = sqlite3.connect(
+            self.db_path,
+            timeout=15,
+            check_same_thread=False,
+            isolation_level=None,
+        )
+        self.connection.row_factory = sqlite3.Row
+        with self.lock:
+            self.connection.execute("PRAGMA foreign_keys = ON")
+            self.connection.execute("PRAGMA busy_timeout = 15000")
+            if self.db_path != ":memory:":
+                self.connection.execute("PRAGMA journal_mode = WAL")
+                self.connection.execute("PRAGMA synchronous = FULL")
+            self._create_schema()
+            if self.db_path != ":memory:" and os.name == "posix":
+                try:
+                    os.chmod(self.db_path, 0o600)
+                except OSError:
+                    pass
+
+    @property
+    def storage_mode(self) -> str:
+        return "sqlite_file" if self.db_path != ":memory:" else "memory_ephemeral"
+
+    def _create_schema(self) -> None:
+        self.connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS pairings (
+                code_hash TEXT PRIMARY KEY,
+                app_token_hash TEXT NOT NULL,
+                expires_at REAL NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS pairings_expiry ON pairings(expires_at);
+
+            CREATE TABLE IF NOT EXISTS sessions (
+                session_id TEXT PRIMARY KEY,
+                app_token_hash TEXT NOT NULL UNIQUE,
+                server_token_hash TEXT NOT NULL UNIQUE,
+                created_at REAL NOT NULL,
+                last_activity REAL NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS sessions_activity ON sessions(last_activity);
+
+            CREATE TABLE IF NOT EXISTS events (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+                event_id TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                UNIQUE(session_id, event_id)
+            );
+            CREATE INDEX IF NOT EXISTS events_session_order ON events(session_id, sequence);
+
+            CREATE TABLE IF NOT EXISTS event_dedupe (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+                event_id TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                UNIQUE(session_id, event_id)
+            );
+            CREATE INDEX IF NOT EXISTS event_dedupe_session_order ON event_dedupe(session_id, sequence);
+
+            CREATE TABLE IF NOT EXISTS replies (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+                event_id TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                UNIQUE(session_id, event_id)
+            );
+            CREATE INDEX IF NOT EXISTS replies_session_order ON replies(session_id, sequence);
+
+            CREATE TABLE IF NOT EXISTS reply_dedupe (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+                event_id TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                UNIQUE(session_id, event_id)
+            );
+            CREATE INDEX IF NOT EXISTS reply_dedupe_session_order ON reply_dedupe(session_id, sequence);
+
+            CREATE TABLE IF NOT EXISTS rate_limits (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                scope TEXT NOT NULL,
+                rate_key TEXT NOT NULL,
+                requested_at REAL NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS rate_limits_lookup
+                ON rate_limits(scope, rate_key, requested_at);
+            """
+        )
+
+    @contextmanager
+    def _transaction(self) -> Iterator[sqlite3.Connection]:
+        with self.lock:
+            self.connection.execute("BEGIN IMMEDIATE")
+            try:
+                yield self.connection
+            except Exception:
+                self.connection.rollback()
+                raise
+            else:
+                self.connection.commit()
+
+    def _purge(self, connection: sqlite3.Connection, now: float) -> None:
+        connection.execute("DELETE FROM pairings WHERE expires_at <= ?", (now,))
+        connection.execute(
+            "DELETE FROM sessions WHERE last_activity <= ?",
+            (now - SESSION_IDLE_TTL_SECONDS,),
+        )
+        connection.execute(
+            "DELETE FROM rate_limits WHERE requested_at < ?",
+            (now - RATE_WINDOW_SECONDS,),
+        )
+
+    def _consume_rate(
+        self,
+        connection: sqlite3.Connection,
+        scope: str,
+        key: str,
+        limit: int,
+        now: float,
+    ) -> None:
+        connection.execute(
+            "DELETE FROM rate_limits WHERE scope = ? AND rate_key = ? AND requested_at < ?",
+            (scope, key, now - RATE_WINDOW_SECONDS),
+        )
+        count = connection.execute(
+            "SELECT COUNT(*) AS amount FROM rate_limits WHERE scope = ? AND rate_key = ?",
+            (scope, key),
+        ).fetchone()["amount"]
+        if count >= limit:
+            raise HTTPException(
+                status_code=429,
+                detail="Muitas tentativas. Aguarde antes de tentar novamente."
+                if scope == "ip"
+                else "Limite temporário de solicitações atingido.",
+            )
+        connection.execute(
+            "INSERT INTO rate_limits(scope, rate_key, requested_at) VALUES (?, ?, ?)",
+            (scope, key, now),
+        )
 
     def rate_limit_ip(self, address: str, limit: int = PAIR_RATE_LIMIT_PER_MINUTE) -> None:
-        now = time.monotonic()
-        with self.lock:
-            times = self.ip_requests.setdefault(address, deque())
-            while times and now - times[0] >= RATE_WINDOW_SECONDS:
-                times.popleft()
-            if len(times) >= limit:
-                raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde antes de tentar novamente.")
-            times.append(now)
+        now = time.time()
+        with self._transaction() as connection:
+            self._purge(connection, now)
+            self._consume_rate(connection, "ip", address, limit, now)
 
     def start_pairing(self) -> dict[str, str | int]:
-        now = time.monotonic()
+        now = time.time()
         code = f"{secrets.randbelow(100_000_000):08d}"
         app_token = secrets.token_urlsafe(32)
-        with self.lock:
-            self._purge(now)
-            if len(self.pairings) >= SESSION_LIMIT:
+        with self._transaction() as connection:
+            self._purge(connection, now)
+            count = connection.execute("SELECT COUNT(*) AS amount FROM pairings").fetchone()["amount"]
+            if count >= SESSION_LIMIT:
                 raise HTTPException(status_code=503, detail="Serviço ocupado. Tente novamente mais tarde.")
-            self.pairings[_digest(code)] = Pairing(app_token, now + PAIRING_TTL_SECONDS)
+            connection.execute(
+                "INSERT INTO pairings(code_hash, app_token_hash, expires_at) VALUES (?, ?, ?)",
+                (_digest(code), _digest(app_token), now + PAIRING_TTL_SECONDS),
+            )
         return {"pairing_code": code, "app_token": app_token, "expires_in": PAIRING_TTL_SECONDS}
 
     def claim_pairing(self, code: str) -> dict[str, str]:
-        now = time.monotonic()
-        key = _digest(code)
-        with self.lock:
-            self._purge(now)
-            pairing = self.pairings.pop(key, None)
-            if pairing is None or pairing.expires_at <= now:
+        now = time.time()
+        server_token = secrets.token_urlsafe(32)
+        session_id = secrets.token_urlsafe(18)
+        with self._transaction() as connection:
+            self._purge(connection, now)
+            pairing = connection.execute(
+                "SELECT app_token_hash, expires_at FROM pairings WHERE code_hash = ?",
+                (_digest(code),),
+            ).fetchone()
+            if pairing is None or pairing["expires_at"] <= now:
                 raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
-            if len(self.sessions) >= SESSION_LIMIT:
+            count = connection.execute("SELECT COUNT(*) AS amount FROM sessions").fetchone()["amount"]
+            if count >= SESSION_LIMIT:
                 raise HTTPException(status_code=503, detail="Limite de sessões temporárias atingido.")
-            server_token = secrets.token_urlsafe(32)
-            session_id = secrets.token_urlsafe(18)
-            session = Session(
-                session_id=session_id,
-                app_token_hash=_digest(pairing.app_token),
-                server_token_hash=_digest(server_token),
-                created_at=now,
-                last_activity=now,
+            connection.execute("DELETE FROM pairings WHERE code_hash = ?", (_digest(code),))
+            connection.execute(
+                """
+                INSERT INTO sessions(
+                    session_id, app_token_hash, server_token_hash, created_at, last_activity
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (session_id, pairing["app_token_hash"], _digest(server_token), now, now),
             )
-            self.sessions[session_id] = session
-            self.token_index[session.app_token_hash] = (session_id, "app")
-            self.token_index[session.server_token_hash] = (session_id, "server")
-            return {"session_id": session_id, "server_token": server_token}
+        return {"session_id": session_id, "server_token": server_token}
 
-    def authenticate(self, authorization: str | None, side: str) -> Session:
+    def authenticate(self, authorization: str | None, side: str) -> str:
+        if side not in {"app", "server"}:
+            raise ValueError("Lado de autenticação inválido.")
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Autorização ausente.")
         token = authorization[7:].strip()
         if len(token) < 32:
             raise HTTPException(status_code=401, detail="Credencial inválida.")
         token_hash = _digest(token)
-        with self.lock:
-            now = time.monotonic()
-            self._purge(now)
-            indexed = self.token_index.get(token_hash)
-            if indexed is None or indexed[1] != side:
+        token_column = "app_token_hash" if side == "app" else "server_token_hash"
+        now = time.time()
+        with self._transaction() as connection:
+            self._purge(connection, now)
+            row = connection.execute(
+                f"SELECT session_id, {token_column}, last_activity FROM sessions WHERE {token_column} = ?",
+                (token_hash,),
+            ).fetchone()
+            if row is None or now - row["last_activity"] > SESSION_IDLE_TTL_SECONDS:
+                raise HTTPException(status_code=401, detail="Sessão expirada ou credencial inválida.")
+            if not hmac.compare_digest(token_hash, row[token_column]):
                 raise HTTPException(status_code=401, detail="Credencial inválida.")
-            session = self.sessions.get(indexed[0])
-            if session is None or now - session.last_activity > SESSION_IDLE_TTL_SECONDS:
-                raise HTTPException(status_code=401, detail="Sessão expirada.")
-            expected = session.app_token_hash if side == "app" else session.server_token_hash
-            if not hmac.compare_digest(token_hash, expected):
-                raise HTTPException(status_code=401, detail="Credencial inválida.")
-            session.last_activity = now
-            return session
+            connection.execute(
+                "UPDATE sessions SET last_activity = ? WHERE session_id = ?",
+                (now, row["session_id"]),
+            )
+            return str(row["session_id"])
 
-    def rate_limit(self, session: Session, side: str) -> None:
-        now = time.monotonic()
+    def rate_limit(self, session_id: str, side: str) -> None:
+        now = time.time()
+        with self._transaction() as connection:
+            self._purge(connection, now)
+            self._consume_rate(connection, "session:" + side, session_id, RATE_LIMIT_PER_MINUTE, now)
+
+    def enqueue_event(self, session_id: str, event_id: str, payload: dict) -> None:
+        import json
+
+        with self._transaction() as connection:
+            amount = connection.execute(
+                "SELECT COUNT(*) AS amount FROM events WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()["amount"]
+            if amount >= QUEUE_LIMIT:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Fila de eventos cheia. AURION precisa processar os eventos pendentes.",
+                )
+            duplicate = connection.execute(
+                "SELECT 1 FROM event_dedupe WHERE session_id = ? AND event_id = ?",
+                (session_id, event_id),
+            ).fetchone()
+            if duplicate is not None:
+                raise HTTPException(status_code=409, detail="Evento duplicado.")
+            connection.execute(
+                "INSERT INTO event_dedupe(session_id, event_id, created_at) VALUES (?, ?, ?)",
+                (session_id, event_id, time.time()),
+            )
+            connection.execute(
+                """
+                DELETE FROM event_dedupe
+                WHERE sequence IN (
+                    SELECT sequence FROM event_dedupe
+                    WHERE session_id = ?
+                    ORDER BY sequence DESC LIMIT -1 OFFSET ?
+                )
+                """,
+                (session_id, EVENT_DEDUPE_LIMIT),
+            )
+            connection.execute(
+                "INSERT INTO events(session_id, event_id, payload) VALUES (?, ?, ?)",
+                (session_id, event_id, json.dumps(payload, ensure_ascii=False, separators=(",", ":"))),
+            )
+
+    def get_events(self, session_id: str) -> list[dict]:
+        import json
+
         with self.lock:
-            times = session.request_times.setdefault(side, deque())
-            while times and now - times[0] >= RATE_WINDOW_SECONDS:
-                times.popleft()
-            if len(times) >= RATE_LIMIT_PER_MINUTE:
-                raise HTTPException(status_code=429, detail="Limite temporário de solicitações atingido.")
-            times.append(now)
+            rows = self.connection.execute(
+                "SELECT payload FROM events WHERE session_id = ? ORDER BY sequence",
+                (session_id,),
+            ).fetchall()
+            return [json.loads(row["payload"]) for row in rows]
 
-    def remember_event(self, session: Session, event_id: str) -> None:
-        if event_id in session.event_ids:
-            raise HTTPException(status_code=409, detail="Evento duplicado.")
-        if len(session.event_order) >= EVENT_DEDUPE_LIMIT:
-            expired_id = session.event_order.popleft()
-            session.event_ids.discard(expired_id)
-        session.event_order.append(event_id)
-        session.event_ids.add(event_id)
+    def enqueue_reply(self, session_id: str, event_id: str, payload: dict) -> None:
+        import json
 
-    def _purge(self, now: float) -> None:
-        expired_pairings = [key for key, value in self.pairings.items() if value.expires_at <= now]
-        for key in expired_pairings:
-            self.pairings.pop(key, None)
-        expired_sessions = [
-            sid for sid, session in self.sessions.items()
-            if now - session.last_activity > SESSION_IDLE_TTL_SECONDS
-        ]
-        for sid in expired_sessions:
-            session = self.sessions.pop(sid)
-            self.token_index.pop(session.app_token_hash, None)
-            self.token_index.pop(session.server_token_hash, None)
+        with self._transaction() as connection:
+            event = connection.execute(
+                "SELECT 1 FROM event_dedupe WHERE session_id = ? AND event_id = ?",
+                (session_id, event_id),
+            ).fetchone()
+            if event is None:
+                raise HTTPException(status_code=404, detail="Evento não encontrado nesta sessão.")
+            duplicate = connection.execute(
+                "SELECT 1 FROM reply_dedupe WHERE session_id = ? AND event_id = ?",
+                (session_id, event_id),
+            ).fetchone()
+            if duplicate is not None:
+                raise HTTPException(status_code=409, detail="Resposta para este evento já registrada.")
+            amount = connection.execute(
+                "SELECT COUNT(*) AS amount FROM replies WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()["amount"]
+            if amount >= QUEUE_LIMIT:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Fila de respostas cheia. O servidor precisa entregar as respostas pendentes.",
+                )
+            connection.execute(
+                "INSERT INTO reply_dedupe(session_id, event_id, created_at) VALUES (?, ?, ?)",
+                (session_id, event_id, time.time()),
+            )
+            connection.execute(
+                """
+                DELETE FROM reply_dedupe
+                WHERE sequence IN (
+                    SELECT sequence FROM reply_dedupe
+                    WHERE session_id = ?
+                    ORDER BY sequence DESC LIMIT -1 OFFSET ?
+                )
+                """,
+                (session_id, EVENT_DEDUPE_LIMIT),
+            )
+            connection.execute(
+                "INSERT INTO replies(session_id, event_id, payload) VALUES (?, ?, ?)",
+                (session_id, event_id, json.dumps(payload, ensure_ascii=False, separators=(",", ":"))),
+            )
+            connection.execute(
+                "DELETE FROM events WHERE session_id = ? AND event_id = ?",
+                (session_id, event_id),
+            )
+
+    def get_replies(self, session_id: str) -> list[dict]:
+        import json
+
+        with self.lock:
+            rows = self.connection.execute(
+                "SELECT payload FROM replies WHERE session_id = ? ORDER BY sequence",
+                (session_id,),
+            ).fetchall()
+            return [json.loads(row["payload"]) for row in rows]
+
+    def acknowledge_reply(self, session_id: str, event_id: str) -> bool:
+        with self._transaction() as connection:
+            result = connection.execute(
+                "DELETE FROM replies WHERE session_id = ? AND event_id = ?",
+                (session_id, event_id),
+            )
+            return result.rowcount > 0
+
+    def reset(self) -> None:
+        with self._transaction() as connection:
+            connection.execute("DELETE FROM sessions")
+            connection.execute("DELETE FROM pairings")
+            connection.execute("DELETE FROM rate_limits")
+
+    def close(self) -> None:
+        with self.lock:
+            self.connection.close()
 
 
 class PairClaim(BaseModel):
@@ -189,7 +427,7 @@ class ReplyAck(BaseModel):
 
 
 store = RelayStore()
-app = FastAPI(title="AURION Minecraft Relay", version="0.1.0")
+app = FastAPI(title="AURION Minecraft Relay", version="0.2.0")
 
 
 def _client_address(request: Request) -> str:
@@ -200,7 +438,11 @@ def _client_address(request: Request) -> str:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "component": "aurion-minecraft-relay"}
+    return {
+        "status": "ok",
+        "component": "aurion-minecraft-relay",
+        "storage": store.storage_mode,
+    }
 
 
 @app.post("/v1/pair/start")
@@ -217,66 +459,43 @@ def pair_claim(body: PairClaim, request: Request) -> dict[str, str]:
 
 @app.post("/v1/server/events", status_code=202)
 def server_event(body: GameEvent, authorization: str | None = Header(default=None)) -> dict[str, str]:
-    session = store.authenticate(authorization, "server")
-    store.rate_limit(session, "server")
-    with store.lock:
-        if len(session.events) >= QUEUE_LIMIT:
-            raise HTTPException(status_code=429, detail="Fila de eventos cheia. AURION precisa processar os eventos pendentes.")
-        store.remember_event(session, body.event_id)
-        session.events.append(body.model_dump(exclude_defaults=True))
+    session_id = store.authenticate(authorization, "server")
+    store.rate_limit(session_id, "server")
+    store.enqueue_event(
+        session_id,
+        body.event_id,
+        body.model_dump(exclude_defaults=True),
+    )
     return {"accepted": body.event_id}
 
 
 @app.get("/v1/app/events")
 def app_events(authorization: str | None = Header(default=None)) -> dict[str, list[dict]]:
-    session = store.authenticate(authorization, "app")
-    store.rate_limit(session, "app")
-    with store.lock:
-        return {"events": list(session.events)}
+    session_id = store.authenticate(authorization, "app")
+    store.rate_limit(session_id, "app")
+    return {"events": store.get_events(session_id)}
 
 
 @app.post("/v1/app/replies", status_code=202)
 def app_reply(body: AURIONReply, authorization: str | None = Header(default=None)) -> dict[str, str]:
-    session = store.authenticate(authorization, "app")
-    store.rate_limit(session, "app")
-    with store.lock:
-        if len(session.replies) >= QUEUE_LIMIT:
-            raise HTTPException(status_code=429, detail="Fila de respostas cheia. O servidor precisa entregar as respostas pendentes.")
-        if body.event_id not in session.event_ids:
-            raise HTTPException(status_code=404, detail="Evento não encontrado nesta sessão.")
-        if body.event_id in session.reply_ids:
-            raise HTTPException(status_code=409, detail="Resposta para este evento já registrada.")
-        session.reply_ids.add(body.event_id)
-        session.replies.append(body.model_dump())
-        # Once AURION has generated and submitted the answer, the event no
-        # longer needs to be offered for inference on every poll.
-        session.events = deque(
-            (event for event in session.events if event["event_id"] != body.event_id),
-            maxlen=QUEUE_LIMIT,
-        )
+    session_id = store.authenticate(authorization, "app")
+    store.rate_limit(session_id, "app")
+    store.enqueue_reply(session_id, body.event_id, body.model_dump())
     return {"accepted": body.event_id}
 
 
 @app.get("/v1/server/replies")
 def server_replies(authorization: str | None = Header(default=None)) -> dict[str, list[dict]]:
-    session = store.authenticate(authorization, "server")
-    store.rate_limit(session, "server")
-    with store.lock:
-        # Non-destructive reads allow the BDS script to retry after a network
-        # interruption. It acknowledges each reply only after in-game delivery.
-        return {"replies": list(session.replies)}
+    session_id = store.authenticate(authorization, "server")
+    store.rate_limit(session_id, "server")
+    # Non-destructive reads let the BDS companion retry until delivery succeeds.
+    return {"replies": store.get_replies(session_id)}
 
 
 @app.post("/v1/server/ack")
 def server_ack(body: ReplyAck, authorization: str | None = Header(default=None)) -> dict[str, str]:
-    session = store.authenticate(authorization, "server")
-    store.rate_limit(session, "server")
-    with store.lock:
-        before = len(session.replies)
-        session.replies = deque(
-            (reply for reply in session.replies if reply["event_id"] != body.event_id),
-            maxlen=QUEUE_LIMIT,
-        )
-        if len(session.replies) == before:
-            raise HTTPException(status_code=404, detail="Resposta não encontrada nesta sessão.")
+    session_id = store.authenticate(authorization, "server")
+    store.rate_limit(session_id, "server")
+    if not store.acknowledge_reply(session_id, body.event_id):
+        raise HTTPException(status_code=404, detail="Resposta não encontrada nesta sessão.")
     return {"acknowledged": body.event_id}
