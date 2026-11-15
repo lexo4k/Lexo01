@@ -1404,9 +1404,14 @@ class MainActivity : Activity() {
 
     private fun importChosenModel(uri: Uri) {
         localScope.launch {
-            modelBusy = true
-            var importedTemp: File? = null
-            try {
+            inferenceMutex.withLock {
+                if (modelBusy) {
+                    notifyModel("working", "Aguarde a operação atual do modelo terminar antes de importar outro GGUF.")
+                    return@withLock
+                }
+                modelBusy = true
+                var importedTemp: File? = null
+                try {
                 val displayName = withContext(Dispatchers.IO) {
                     contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
                         if (c.moveToFirst()) c.getString(0) else null
@@ -1475,12 +1480,13 @@ class MainActivity : Activity() {
                 // adicional de ativação depois de selecionar o GGUF.
                 notifyModel("loading", "Modelo " + displayName + " salvo. Carregando automaticamente no motor local…")
                 loadLocalModel()
-            } catch (e: Exception) {
-                importedTemp?.delete()
-                modelBusy = false
-                val savedButNotActivated = importedModelFileName != null && modelFile.isFile
-                val prefix = if (savedButNotActivated) "O GGUF foi salvo, mas não conseguiu ser ativado: " else "Falha ao anexar o modelo: "
-                notifyModel("error", prefix + (e.message ?: "erro desconhecido") + ". O arquivo original escolhido não foi apagado.")
+                } catch (e: Exception) {
+                    importedTemp?.delete()
+                    modelBusy = false
+                    val savedButNotActivated = importedModelFileName != null && modelFile.isFile
+                    val prefix = if (savedButNotActivated) "O GGUF foi salvo, mas não conseguiu ser ativado: " else "Falha ao anexar o modelo: "
+                    notifyModel("error", prefix + (e.message ?: "erro desconhecido") + ". O arquivo original escolhido não foi apagado.")
+                }
             }
         }
     }
