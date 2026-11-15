@@ -847,16 +847,19 @@ class MainActivity : Activity() {
             minecraftStarting = true
             localScope.launch {
                 try {
+                    // Depois que o serviço foi iniciado em primeiro plano, a troca para Minecraft
+                    // não deve cancelar a carga local nem o polling.
                     inferenceMutex.withLock { localModel ?: loadLocalModel() }
-                    if (!activityForeground) return@launch
                     val client = withContext(Dispatchers.IO) { MinecraftRelayClient(endpoint) }
                     minecraftRelay = client
                     minecraftAppToken = token
                     beginMinecraftPolling(client, token)
-                    notifyMinecraftStatus("Conexão AURION Minecraft restaurada em primeiro plano.")
+                    notifyMinecraftStatus("Conexão AURION Minecraft restaurada; ponte ativa com notificação Android.")
                 } catch (e: LinkageError) {
+                    stopMinecraftBridgeService()
                     notifyMinecraftStatus("O motor local não pôde ser restaurado: " + nativeRuntimeFailure(e))
                 } catch (e: Exception) {
+                    stopMinecraftBridgeService()
                     notifyMinecraftStatus("Não foi possível restaurar a conexão: " + (e.message ?: "erro desconhecido"))
                 } finally {
                     minecraftStarting = false
