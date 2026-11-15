@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "AURION Bedrock BDS Bridge",
-    "description": "Captura interações com NPCs identificados e encaminha eventos ao AURION por meio do companion do servidor.",
+    "description": "Abre uma entrada de conversa para NPCs identificados e encaminha mensagens ao AURION por meio do companion do servidor.",
     "uuid": "da9355e1-bd3f-4d9c-aef3-4ffa44264db5",
     "version": [1, 0, 0],
     "min_engine_version": [1, 26, 60]
@@ -26,6 +26,10 @@
   "dependencies": [
     {
       "module_name": "@minecraft/server",
+      "version": "2.0.0"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
       "version": "2.0.0"
     }
   ],
