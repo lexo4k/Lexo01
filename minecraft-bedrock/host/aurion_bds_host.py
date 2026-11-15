@@ -61,7 +61,7 @@ def validate_game_event(value: Any) -> dict[str, str]:
     if not EVENT_ID_RE.fullmatch(event_id):
         raise ValueError("Identificador de evento inválido.")
     event_type = _bounded_text(value.get("event_type"), "event_type", 20)
-    if event_type != "interaction":
+    if event_type not in {"interaction", "chat"}:
         raise ValueError("Tipo de evento ainda não suportado.")
     return {
         "event_id": event_id,
