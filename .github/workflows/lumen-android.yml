@@ -51,7 +51,7 @@ jobs:
 
       - name: Build only the AURION Android app
         working-directory: lumen-android
-        run: gradle --no-daemon --parallel --build-cache assembleDebug
+        run: gradle --no-daemon --parallel --build-cache testDebugUnitTest assembleDebug
 
       - name: Verify generated APK archive
         working-directory: lumen-android
