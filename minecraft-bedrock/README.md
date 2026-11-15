@@ -4,7 +4,7 @@
 
 Foi adicionado um primeiro caminho executável de integração para **Bedrock Dedicated Server (BDS)**:
 
-- behavior pack com Script API estável para capturar a interação real do jogador com uma entidade identificada como NPC;
+- behavior pack com Script API estável e formulário \`@minecraft/server-ui\` para capturar uma mensagem digitada ao interagir com um NPC identificado;
 - companion Python no host BDS que lê o evento estruturado no console do servidor, encaminha-o ao relay HTTPS e entrega a resposta recebida com \`tellraw\`;
 - painel de pareamento no APK AURION, que carrega o GGUF local antes de gerar o código;
 - polling Android limitado ao período em que AURION está em primeiro plano;
@@ -28,7 +28,7 @@ Fontes oficiais:
 ## Compatibilidade e versão
 
 - Manifesto do pack: \`min_engine_version = 1.26.60\`.
-- Dependência de script: \`@minecraft/server\` estável, versão mínima declarada \`2.0.0\`.
+- Dependências de script: \`@minecraft/server\` 2.0.0 e \`@minecraft/server-ui\` 2.0.0, ambas estáveis.
 - O servidor BDS precisa usar uma versão compatível com a versão instalada do cliente Bedrock Android. A Microsoft alerta que versões de protocolo diferentes podem impedir a conexão.
 - A ajuda oficial consultada em 2026-11-12 orienta BDS 26.60 ou mais novo para a mudança de transporte NetherNet e informa que o servidor oficial está disponível para Windows 64-bit e Ubuntu Linux, não para hosts ARM.
 - A versão exata do Minecraft instalada no telefone do usuário não está disponível nesta execução. Portanto, a compatibilidade final do manifesto ainda precisa ser confirmada com a versão real do cliente e do BDS.
@@ -39,7 +39,7 @@ Não ative o pack em um mundo importante sem backup. A configuração e a instal
 
 ### Behavior pack
 
-\`behavior-pack/\` captura \`world.afterEvents.playerInteractWithEntity\`. Ele considera NPCs nativos e entidades com \`nameTag\` não vazio. Um limite de 15 segundos por jogador reduz spam. O evento contém ID de correlação, jogador, nome, ID estável da entidade (npc_id), tipo (npc_type) e mundo. O ID da entidade separa dois NPCs que tenham o mesmo nome visível.
+\`behavior-pack/\` captura \`world.afterEvents.playerInteractWithEntity\`. Ele considera NPCs nativos e entidades com \`nameTag\` não vazio. Ao interagir, abre um formulário estável \`ModalFormData\` com um campo de texto. Depois do envio, o evento \`chat\` contém a mensagem digitada, jogador, nome, ID da entidade (npc_id), tipo (npc_type), mundo e ID de correlação. Um limite de 15 segundos por jogador reduz spam. O formulário evita depender do evento de chat Preview.
 
 O script não envia HTTP, não guarda tokens e não cria respostas fictícias.
 
@@ -95,7 +95,7 @@ A resposta é texto de chat do jogo identificada com o nome do NPC. A memória i
 
 ### Entrada de texto do jogador
 
-O pack atual registra a interação com o NPC, mas ainda não captura uma mensagem livre digitada pelo jogador. O manifesto permanece em @minecraft/server estável 2.0.0; o evento de chat documentado pela Microsoft aparece apenas na versão beta 2.13.0-beta.1.26.70-preview.24 no changelog consultado. Não elevamos o pack para uma API Preview sem confirmar que o BDS e o cliente Android instalados suportam essa versão. Portanto, nesta etapa o modelo recebe o evento de interação e o histórico local, não uma pergunta digitada.
+A entrada de texto usa \`@minecraft/server-ui\` estável 2.0.0 e \`ModalFormData.textField\`. Não usa \`world.beforeEvents.chatSend\`, que ainda aparece como pré-lançamento na documentação consultada, nem exige ativar APIs Preview. O cliente oficial recebe o formulário do próprio servidor; o texto enviado segue como \`event_type = chat\` até o AURION.
 
 Referência: [changelog oficial de @minecraft/server](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/changelog?view=minecraft-bedrock-stable).
 
