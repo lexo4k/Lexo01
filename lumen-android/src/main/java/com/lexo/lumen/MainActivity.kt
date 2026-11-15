@@ -52,6 +52,7 @@ import java.io.FileOutputStream
 import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.UUID
 import java.net.HttpURLConnection
 import java.net.URL
 import android.widget.Button
@@ -94,17 +95,27 @@ class MainActivity : Activity() {
         "qwen-3b" to LocalModelProfile("qwen-3b", "Qwen 3B · experimental", "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf", "aurion-qwen-3b-q4km.gguf", 1_900_000_000L, 2048, 160, "Modelo de 3 bilhões de parâmetros, arquivo de aproximadamente 2,1 GB. Experimental: pode ficar muito lento ou não carregar em celulares com pouca RAM. Escolha manualmente.")
     )
     @Volatile private var selectedModelId = "qwen-0.5b"
+    @Volatile private var importedModelFileName: String? = null
     @Volatile private var discoveredModelUri: Uri? = null
     @Volatile private var discoveredModelName: String = ""
     @Volatile private var discoveredModelSize: Long = 0L
     private fun selectedProfile() = modelProfiles[selectedModelId] ?: modelProfiles.getValue("qwen-1.5b")
-    private val modelFile: File get() = File(getExternalFilesDir("models") ?: File(filesDir, "models"), selectedProfile().fileName)
+    private val modelDirectory: File get() = getExternalFilesDir("models") ?: File(filesDir, "models")
+    private val modelFile: File get() = File(modelDirectory, importedModelFileName ?: selectedProfile().fileName)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.rgb(7, 17, 31)
         window.navigationBarColor = Color.rgb(7, 17, 31)
-        selectedModelId = getSharedPreferences("nexora_local", MODE_PRIVATE).getString("model_id", "qwen-0.5b")?.takeIf { modelProfiles.containsKey(it) } ?: "qwen-1.5b"
+        val modelPreferences = getSharedPreferences("nexora_local", MODE_PRIVATE)
+        selectedModelId = modelPreferences.getString("model_id", "qwen-0.5b")?.takeIf { modelProfiles.containsKey(it) } ?: "qwen-1.5b"
+        val savedImportedName = modelPreferences.getString("imported_model_file", null)
+        importedModelFileName = savedImportedName?.takeIf {
+            it.matches(Regex("aurion-import-[0-9a-fA-F-]{36}\\.gguf")) && File(modelDirectory, it).isFile
+        }
+        if (savedImportedName != null && importedModelFileName == null) {
+            modelPreferences.edit().remove("imported_model_file").apply()
+        }
         textToSpeech = TextToSpeech(applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 val languageStatus = textToSpeech?.setLanguage(Locale("pt", "BR")) ?: TextToSpeech.LANG_MISSING_DATA
@@ -372,11 +383,15 @@ class MainActivity : Activity() {
         @JavascriptInterface fun selectModel(id: String): String {
             if (modelBusy || inferenceMutex.isLocked) return "busy"
             if (!modelProfiles.containsKey(id)) return "invalid"
-            if (selectedModelId != id) {
+            if (selectedModelId != id || importedModelFileName != null) {
                 localModel?.let { Llama.releaseModel(it) }
                 localModel = null
                 selectedModelId = id
-                getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", id).apply()
+                importedModelFileName = null
+                getSharedPreferences("nexora_local", MODE_PRIVATE).edit()
+                    .putString("model_id", id)
+                    .remove("imported_model_file")
+                    .apply()
             }
             return modelState()
         }
@@ -482,7 +497,11 @@ class MainActivity : Activity() {
                 size >= 1_117_320_736L -> "qwen-1.5b"
                 else -> "qwen-0.5b"
             }
-            getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", selectedModelId).apply()
+            importedModelFileName = null
+            getSharedPreferences("nexora_local", MODE_PRIVATE).edit()
+                .putString("model_id", selectedModelId)
+                .remove("imported_model_file")
+                .apply()
         }
 
         private fun restoreDiscoveredModel(candidate: DownloadedModel) {
@@ -506,8 +525,10 @@ class MainActivity : Activity() {
                 temp.delete()
                 throw IllegalStateException("O arquivo " + candidate.name + " está incompleto para o perfil selecionado.")
             }
-            if (target.exists()) target.delete()
-            if (!temp.renameTo(target)) throw IllegalStateException("Não consegui preparar o modelo para o motor local.")
+            val backup = ModelFileInstaller.install(temp, target)
+            if (!ModelFileInstaller.discardBackup(backup)) {
+                android.util.Log.w("AurionModel", "A cópia anterior permaneceu como backup após a restauração.")
+            }
             discoveredModelUri = candidate.uri
             discoveredModelName = candidate.name
             discoveredModelSize = candidate.size
@@ -527,8 +548,10 @@ class MainActivity : Activity() {
                 temp.delete()
                 throw IllegalStateException("A cópia guardada em Downloads está incompleta ou foi removida.")
             }
-            if (target.exists()) target.delete()
-            if (!temp.renameTo(target)) throw IllegalStateException("Não foi possível preparar o modelo para esta instalação.")
+            val backup = ModelFileInstaller.install(temp, target)
+            if (!ModelFileInstaller.discardBackup(backup)) {
+                android.util.Log.w("AurionModel", "A cópia anterior permaneceu como backup após a restauração.")
+            }
         }
 
         private fun preserveModelAfterDownload(profile: LocalModelProfile, source: File) {
@@ -1415,18 +1438,27 @@ class MainActivity : Activity() {
                 if (size < 450_000_000L) throw IllegalArgumentException("O arquivo tem apenas " + size + " bytes. Parece incompleto ou não é um modelo GGUF completo.")
                 validateGgufHeader(temp)
                 if (size > 6_000_000_000L) throw IllegalArgumentException("O arquivo excede o limite de importação desta versão (6 GB).")
-                selectedModelId = when {
+                val nextModelId = when {
                     size >= 1_900_000_000L -> "qwen-3b"
                     size >= 1_117_320_736L -> "qwen-1.5b"
                     else -> "qwen-0.5b"
                 }
-                getSharedPreferences("nexora_local", MODE_PRIVATE).edit().putString("model_id", selectedModelId).apply()
-                val target = modelFile
+                val importedName = "aurion-import-" + UUID.randomUUID() + ".gguf"
+                val target = File(modelDirectory, importedName)
                 withContext(Dispatchers.IO) {
-                    if (target.exists() && !target.delete()) throw IllegalStateException("Não foi possível substituir o modelo anterior.")
-                    if (!temp.renameTo(target)) throw IllegalStateException("O arquivo foi copiado, mas o Android não conseguiu finalizá-lo no armazenamento do aplicativo.")
+                    ModelFileInstaller.install(temp, target)
                 }
                 importedTemp = null
+                // Um modelo recém-importado precisa substituir também a instância nativa em RAM.
+                // Sem liberar a instância anterior, loadLocalModel() poderia retornar o modelo velho.
+                localModel?.let { Llama.releaseModel(it) }
+                localModel = null
+                selectedModelId = nextModelId
+                importedModelFileName = importedName
+                getSharedPreferences("nexora_local", MODE_PRIVATE).edit()
+                    .putString("model_id", selectedModelId)
+                    .putString("imported_model_file", importedName)
+                    .apply()
                 val memoryWarning = modelMemoryBlockReason(size)
                 if (memoryWarning != null) {
                     modelBusy = false
@@ -1446,7 +1478,9 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 importedTemp?.delete()
                 modelBusy = false
-                notifyModel("error", "Falha ao anexar o modelo: " + (e.message ?: "erro desconhecido") + ". O arquivo original escolhido não foi apagado.")
+                val savedButNotActivated = importedModelFileName != null && modelFile.isFile
+                val prefix = if (savedButNotActivated) "O GGUF foi salvo, mas não conseguiu ser ativado: " else "Falha ao anexar o modelo: "
+                notifyModel("error", prefix + (e.message ?: "erro desconhecido") + ". O arquivo original escolhido não foi apagado.")
             }
         }
     }
