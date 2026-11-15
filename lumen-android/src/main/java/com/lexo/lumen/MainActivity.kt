@@ -167,6 +167,16 @@ class MainActivity : Activity() {
         web.loadUrl("file:///android_asset/index.html")
     }
 
+    private fun startMinecraftBridgeService() {
+        val intent = Intent(this, MinecraftBridgeService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
+        else startService(intent)
+    }
+
+    private fun stopMinecraftBridgeService() {
+        stopService(Intent(this, MinecraftBridgeService::class.java))
+    }
+
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -793,6 +803,10 @@ class MainActivity : Activity() {
                     SecureTokenStore.put(this@MainActivity, "minecraft_app_token", pairing.appToken)
                     minecraftRelay = client
                     minecraftAppToken = pairing.appToken
+                    getSharedPreferences("aurion_minecraft", MODE_PRIVATE).edit()
+                        .putBoolean("minecraft_service_expired", false)
+                        .apply()
+                    startMinecraftBridgeService()
                     runOnUiThread {
                         web.evaluateJavascript(
                             "window.onMinecraftPairingStarted && window.onMinecraftPairingStarted(" +
@@ -819,7 +833,17 @@ class MainActivity : Activity() {
                 notifyMinecraftStatus("A conexão salva precisa ser refeita. Inicie um novo pareamento.")
                 return
             }
-            if (minecraftPollJob?.isActive == true || minecraftStarting) return
+            if (minecraftStarting) return
+            getSharedPreferences("aurion_minecraft", MODE_PRIVATE).edit()
+                .putBoolean("minecraft_service_expired", false)
+                .apply()
+            try {
+                startMinecraftBridgeService()
+            } catch (e: Exception) {
+                notifyMinecraftStatus("O Android não conseguiu manter a ponte Minecraft ativa em segundo plano: " + (e.message ?: "serviço indisponível"))
+                return
+            }
+            if (minecraftPollJob?.isActive == true) return
             minecraftStarting = true
             localScope.launch {
                 try {
@@ -853,6 +877,7 @@ class MainActivity : Activity() {
                 .apply()
             SecureTokenStore.remove(this@MainActivity, "minecraft_app_token")
             pauseMinecraftAssistant()
+            stopMinecraftBridgeService()
             notifyMinecraftStatus("Ponte AURION Minecraft desconectada. O próximo início exigirá novo pareamento.")
         }
 
@@ -860,7 +885,12 @@ class MainActivity : Activity() {
             minecraftPollJob?.cancel()
             minecraftPollJob = localScope.launch {
                 notifyMinecraftStatus("AURION conectado ao relay. Aguardando eventos do mundo Minecraft.")
+                val bridgePreferences = getSharedPreferences("aurion_minecraft", MODE_PRIVATE)
                 while (isActive) {
+                    if (!activityForeground && bridgePreferences.getBoolean("minecraft_service_expired", false)) {
+                        notifyMinecraftStatus("A ponte pausou após o limite de serviço em segundo plano do Android. Abra AURION para retomá-la.")
+                        break
+                    }
                     try {
                         val events = withContext(Dispatchers.IO) { client.fetchEvents(appToken) }
                         for (event in events) processMinecraftEvent(client, appToken, event)
@@ -1510,7 +1540,8 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         activityForeground = false
-        if (::aurionBridge.isInitialized) aurionBridge.pauseMinecraftAssistant()
+        // A ponte permanece ativa pelo serviço em primeiro plano enquanto Minecraft
+        // ocupa a tela. O polling só pausa ao desconectar ou ao encerrar o serviço.
         super.onPause()
     }
 
@@ -1523,6 +1554,8 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        pauseMinecraftAssistant()
+        stopMinecraftBridgeService()
         localScope.cancel()
         activeLocationListener?.let { listener -> try { (getSystemService(LOCATION_SERVICE) as LocationManager).removeUpdates(listener) } catch (_: Exception) {} }
         locationTimeout?.let { mainHandler.removeCallbacks(it) }
