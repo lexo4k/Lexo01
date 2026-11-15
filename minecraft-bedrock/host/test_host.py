@@ -34,10 +34,23 @@ class HostBridgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             host.validate_game_event({
                 "event_id": "aurion-invalid-01",
-                "event_type": "chat",
+                "event_type": "teleport",
                 "player": "Player",
                 "npc": "Villager",
             })
+
+    def test_accepts_real_player_chat_event_from_bedrock_form(self):
+        event = {
+            "event_id": "aurion-chat-001-a1b2c3",
+            "event_type": "chat",
+            "player": "Player One",
+            "npc": "Guia",
+            "npc_id": "entity-7f31",
+            "npc_type": "minecraft:npc",
+            "message": "Onde encontro a vila?",
+            "world_id": "aurion-bds-world",
+        }
+        self.assertEqual(host.validate_game_event(event), event)
 
     def test_tellraw_escapes_untrusted_dialogue_as_json(self):
         command = host.build_tellraw_command("Player One", "Guia", 'Olá "viajante"\\nBem-vindo!')
