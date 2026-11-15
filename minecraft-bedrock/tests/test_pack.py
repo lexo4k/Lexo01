@@ -16,6 +16,10 @@ class BehaviorPackContractTests(unittest.TestCase):
             {"module_name": "@minecraft/server", "version": "2.0.0"},
             dependencies,
         )
+        self.assertIn(
+            {"module_name": "@minecraft/server-ui", "version": "2.0.0"},
+            dependencies,
+        )
         self.assertFalse(any(item.get("module_name") == "@minecraft/server-net" for item in dependencies))
         self.assertEqual(manifest["header"]["min_engine_version"], [1, 26, 60])
 
@@ -27,9 +31,12 @@ class BehaviorPackContractTests(unittest.TestCase):
         entry = PACK / manifest["modules"][1]["entry"]
         self.assertTrue(entry.is_file())
 
-    def test_script_emits_only_identified_npc_interactions(self):
+    def test_script_collects_typed_chat_for_identified_npcs(self):
         script = (PACK / "scripts" / "main.js").read_text(encoding="utf-8")
         self.assertIn("world.afterEvents.playerInteractWithEntity.subscribe", script)
+        self.assertIn("ModalFormData", script)
+        self.assertIn(".textField(\"Sua mensagem\"", script)
+        self.assertIn('event_type: "chat"', script)
         self.assertIn("AURION_EVENT ", script)
         self.assertIn("target.nameTag", script)
         self.assertIn("target.id", script)
