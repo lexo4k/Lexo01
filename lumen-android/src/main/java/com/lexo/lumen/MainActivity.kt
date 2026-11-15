@@ -1444,6 +1444,7 @@ class MainActivity : Activity() {
                 }
                 modelBusy = true
                 var importedTemp: File? = null
+                var importedModelSaved = false
                 try {
                 val displayName = withContext(Dispatchers.IO) {
                     contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
@@ -1487,6 +1488,7 @@ class MainActivity : Activity() {
                     ModelFileInstaller.install(temp, target)
                 }
                 importedTemp = null
+                importedModelSaved = true
                 // Um modelo recém-importado precisa substituir também a instância nativa em RAM.
                 // Sem liberar a instância anterior, loadLocalModel() poderia retornar o modelo velho.
                 localModel?.let { Llama.releaseModel(it) }
@@ -1516,7 +1518,7 @@ class MainActivity : Activity() {
                 } catch (e: Exception) {
                     importedTemp?.delete()
                     modelBusy = false
-                    val savedButNotActivated = importedModelFileName != null && modelFile.isFile
+                    val savedButNotActivated = importedModelSaved && importedModelFileName != null && modelFile.isFile
                     val prefix = if (savedButNotActivated) "O GGUF foi salvo, mas não conseguiu ser ativado: " else "Falha ao anexar o modelo: "
                     notifyModel("error", prefix + (e.message ?: "erro desconhecido") + ". O arquivo original escolhido não foi apagado.")
                 }
