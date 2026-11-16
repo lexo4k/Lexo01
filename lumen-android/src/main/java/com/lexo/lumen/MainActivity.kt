@@ -1559,7 +1559,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        pauseMinecraftAssistant()
+        if (::aurionBridge.isInitialized) aurionBridge.pauseMinecraftAssistant()
         stopMinecraftBridgeService()
         localScope.cancel()
         activeLocationListener?.let { listener -> try { (getSystemService(LOCATION_SERVICE) as LocationManager).removeUpdates(listener) } catch (_: Exception) {} }
