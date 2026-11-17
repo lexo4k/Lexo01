@@ -39,6 +39,8 @@ jobs:
           python -m py_compile host/aurion_bds_host.py
           python -m json.tool behavior-pack/manifest.json > /dev/null
           node --check behavior-pack/scripts/main.js
+      - name: Test persistent NPC identity and runtime fallback
+        run: node tests/test_npc_identity.cjs
       - name: Package Bedrock behavior pack
         run: |
           mkdir -p dist
