@@ -6,6 +6,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+import app as relay_module
 from app import RelayStore, app, store
 
 
@@ -200,6 +201,33 @@ def test_sqlite_store_persists_rate_limits_and_never_stores_plaintext_tokens():
             second.rate_limit_ip("198.51.100.10")
         assert error.value.status_code == 429
         second.close()
+
+
+def test_production_pairing_is_blocked_when_storage_is_ephemeral(monkeypatch):
+    monkeypatch.setenv("AURION_REQUIRE_PERSISTENT_STORAGE", "true")
+    health = client.get("/health").json()
+    assert health["status"] == "degraded"
+    assert health["storage"] == "memory_ephemeral"
+    assert health["pairing_available"] is False
+
+    response = client.post("/v1/pair/start")
+    assert response.status_code == 503
+    assert "volume persistente privado" in response.json()["detail"]
+
+
+def test_production_pairing_is_allowed_with_sqlite_file(monkeypatch, tmp_path):
+    monkeypatch.setenv("AURION_REQUIRE_PERSISTENT_STORAGE", "true")
+    durable = RelayStore(str(tmp_path / "relay.sqlite3"))
+    monkeypatch.setattr(relay_module, "store", durable)
+    try:
+        health = client.get("/health").json()
+        assert health["status"] == "ok"
+        assert health["storage"] == "sqlite_file"
+        assert health["pairing_available"] is True
+        response = client.post("/v1/pair/start")
+        assert response.status_code == 200
+    finally:
+        durable.close()
 
 
 def test_health_reports_ephemeral_mode_instead_of_claiming_durability():
