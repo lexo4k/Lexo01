@@ -436,23 +436,45 @@ def _client_address(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _persistent_storage_required() -> bool:
+    return os.environ.get("AURION_REQUIRE_PERSISTENT_STORAGE", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+
+
+def _ensure_pairing_storage() -> None:
+    if _persistent_storage_required() and store.storage_mode != "sqlite_file":
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Pareamento bloqueado: o relay está usando armazenamento efêmero. "
+                "Configure AURION_RELAY_DB_PATH em um volume persistente privado antes de parear."
+            ),
+        )
+
+
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, str | bool]:
+    durable = store.storage_mode == "sqlite_file"
+    pairing_available = durable or not _persistent_storage_required()
     return {
-        "status": "ok",
+        "status": "ok" if durable else "degraded",
         "component": "aurion-minecraft-relay",
         "storage": store.storage_mode,
+        "pairing_available": pairing_available,
     }
 
 
 @app.post("/v1/pair/start")
 def pair_start(request: Request) -> dict[str, str | int]:
+    _ensure_pairing_storage()
     store.rate_limit_ip(_client_address(request))
     return store.start_pairing()
 
 
 @app.post("/v1/pair/claim")
 def pair_claim(body: PairClaim, request: Request) -> dict[str, str]:
+    _ensure_pairing_storage()
     store.rate_limit_ip(_client_address(request))
     return store.claim_pairing(body.pairing_code)
 
