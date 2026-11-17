@@ -12,6 +12,7 @@ assert.ok(start >= 0 && end > start, "NPC identity helper must remain in the beh
 const context = {
     Date,
     Math,
+    NPC_ID_PROPERTY: "aurion:npc_identity",
     console: { warn() {} },
 };
 vm.runInNewContext(
