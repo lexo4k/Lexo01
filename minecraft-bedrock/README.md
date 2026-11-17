@@ -39,7 +39,7 @@ Não ative o pack em um mundo importante sem backup. A configuração e a instal
 
 ### Behavior pack
 
-\`behavior-pack/\` captura \`world.afterEvents.playerInteractWithEntity\`. Ele considera NPCs nativos e entidades com \`nameTag\` não vazio. Ao interagir, abre um formulário estável \`ModalFormData\` com um campo de texto. Depois do envio, o evento \`chat\` contém a mensagem digitada, jogador, nome, ID da entidade (npc_id), tipo (npc_type), mundo e ID de correlação. Um limite de 15 segundos por jogador reduz spam. O formulário evita depender do evento de chat Preview.
+\`behavior-pack/\` captura \`world.afterEvents.playerInteractWithEntity\`. Ele considera NPCs nativos e entidades com `nameTag` não vazio. Antes de emitir o evento, atribui à entidade a propriedade dinâmica `aurion:npc_identity`; o valor fica salvo nos dados do mundo e mantém a identidade do mesmo NPC após reinicializações do BDS, permitindo que a memória local do AURION continue associada a ele. Se a API não permitir ler ou gravar a propriedade, o script usa o ID de runtime com prefixo `runtime-` e registra um aviso. Nesse fallback a identidade pode mudar após a recriação da entidade, portanto a persistência não é garantida. Ao interagir, abre um formulário estável `ModalFormData` com um campo de texto. Depois do envio, o evento \`chat\` contém a mensagem digitada, jogador, nome, ID da entidade (npc_id), tipo (npc_type), mundo e ID de correlação. Um limite de 15 segundos por jogador reduz spam. O formulário evita depender do evento de chat Preview.
 
 O script não envia HTTP, não guarda tokens e não cria respostas fictícias.
 
