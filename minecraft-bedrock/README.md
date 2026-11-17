@@ -16,7 +16,7 @@ Isso ainda não é uma integração validada dentro do jogo. O relay não está 
 
 A documentação oficial da Microsoft declara que \`@minecraft/server-net\` só funciona no Bedrock Dedicated Server e não funciona no cliente do jogo nem no Minecraft Realms. O módulo está em pré-lançamento e a versão documentada atualmente é específica de uma build Preview. Por isso, o pack desta entrega **não depende de \`@minecraft/server-net\`**.
 
-O pack usa somente \`@minecraft/server\` e escreve um marcador estruturado no console do BDS. O companion Python, executado no mesmo host do BDS, faz o tráfego HTTPS com o relay. Isso evita fingir que um behavior pack comum pode abrir HTTP no mundo local do Android.
+O pack usa somente \`@minecraft/server\` e escreve um marcador estruturado no console do BDS. O companion Python, executado no mesmo host do BDS, faz o tráfego HTTPS com o relay. Isso evita fingir que um behavior pack comum pode abrir HTTP no mundo local do Android. A documentação oficial de scripts multiplayer também esclarece que os scripts do Bedrock executam no lado do servidor, não no cliente; as definições `client_entity` de resource packs tratam da apresentação visual, não criam uma ponte de rede executável dentro do app Android. Portanto, não há uma ponte client-side oficial suportada que substitua o BDS neste desenho. [Documentação de scripts multiplayer](https://learn.microsoft.com/en-us/minecraft/creator/documents/scripting/multiplayer-scripts?view=minecraft-bedrock-stable).
 
 O caminho mantém o aplicativo oficial Minecraft Bedrock Android como cliente do jogo, mas exige que ele entre em um mundo hospedado por BDS compatível. **Mundo local de um jogador e Realms não são suportados por esta arquitetura.**
 
