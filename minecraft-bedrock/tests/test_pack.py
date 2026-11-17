@@ -31,6 +31,16 @@ class BehaviorPackContractTests(unittest.TestCase):
         entry = PACK / manifest["modules"][1]["entry"]
         self.assertTrue(entry.is_file())
 
+    def test_npc_identity_uses_entity_dynamic_properties(self):
+        script = (PACK / "scripts" / "main.js").read_text(encoding="utf-8")
+        self.assertIn('const NPC_ID_PROPERTY = "aurion:npc_identity"', script)
+        self.assertIn("target.getDynamicProperty(NPC_ID_PROPERTY)", script)
+        self.assertIn("target.setDynamicProperty(NPC_ID_PROPERTY, created)", script)
+        self.assertIn("const npcId = stableNpcIdentity(target)", script)
+        # If the entity runtime does not support persistence, the pack labels
+        # the fallback as temporary instead of pretending it survives reloads.
+        self.assertIn('return "runtime-" + runtimeId', script)
+
     def test_script_collects_typed_chat_for_identified_npcs(self):
         script = (PACK / "scripts" / "main.js").read_text(encoding="utf-8")
         self.assertIn("world.afterEvents.playerInteractWithEntity.subscribe", script)
