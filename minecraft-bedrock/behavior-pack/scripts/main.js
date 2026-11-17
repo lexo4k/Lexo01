@@ -2,6 +2,7 @@ import { world, system } from "@minecraft/server";
 import { ModalFormData } from "@minecraft/server-ui";
 
 const EVENT_MARKER = "AURION_EVENT ";
+const NPC_ID_PROPERTY = "aurion:npc_identity";
 const WORLD_ID = "aurion-bds-world";
 const PLAYER_COOLDOWN_MS = 15000;
 const lastInteractionByPlayer = new Map();
@@ -12,6 +13,27 @@ function safeLabel(value, fallback, limit) {
     const text = typeof value === "string" ? value.trim() : "";
     if (!text) return fallback;
     return text.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, limit) || fallback;
+}
+
+function stableNpcIdentity(target) {
+    const runtimeId = safeLabel(target && target.id, "unknown", 112);
+    try {
+        const existing = target.getDynamicProperty(NPC_ID_PROPERTY);
+        if (typeof existing === "string" && /^aurion-npc-[a-z0-9-]{8,80}$/.test(existing)) {
+            return existing;
+        }
+
+        const created = "aurion-npc-" + Date.now().toString(36) + "-" +
+            Math.random().toString(36).slice(2, 14);
+        target.setDynamicProperty(NPC_ID_PROPERTY, created);
+        if (target.getDynamicProperty(NPC_ID_PROPERTY) === created) return created;
+        throw new Error("A identidade não foi confirmada pelo armazenamento da entidade.");
+    } catch (error) {
+        // A ID de runtime é apenas um fallback. Ela pode mudar quando a entidade
+        // é recriada, então a memória não deve ser considerada persistente nesse caso.
+        console.warn("[AURION] Não foi possível persistir a identidade do NPC; usando ID temporário: " + String(error));
+        return "runtime-" + runtimeId;
+    }
 }
 
 function makeEventId() {
@@ -58,7 +80,7 @@ world.afterEvents.playerInteractWithEntity.subscribe((event) => {
 
         const npcName = nameTag || typeId.replace(/^minecraft:/, "");
         const playerName = safeLabel(player.name, "Jogador", 48);
-        const npcId = safeLabel(target.id, "", 128);
+        const npcId = stableNpcIdentity(target);
         openFormsByPlayer.add(playerKey);
 
         // Defer the form until the interaction callback has returned to the game loop.
