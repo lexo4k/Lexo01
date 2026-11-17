@@ -81,6 +81,8 @@ AURION consulta o relay a cada três segundos. Ao concluir o pareamento, inicia 
 
 **Limite de hospedagem:** sem `AURION_RELAY_DB_PATH`, o relay continua em memória. O blueprint Render deste repositório usa o plano gratuito e não declara disco persistente; portanto, ele ainda não oferece retenção durável. Para produção, configure `AURION_RELAY_DB_PATH=/var/data/aurion-minecraft.sqlite3` apontando para um disco persistente privado montado nesse caminho. Não configure apenas um caminho no filesystem efêmero e interprete isso como backup. O banco SQLite não criptografa o conteúdo das filas em repouso, então o volume deve ser privado e protegido. O relay ainda não foi implantado.
 
+O blueprint `minecraft-bedrock/relay/render.yaml` define `AURION_REQUIRE_PERSISTENT_STORAGE=true`. Assim, a implantação Render atual não emite códigos nem aceita reivindicação de pareamento enquanto estiver em armazenamento efêmero: `/health` informa `degraded` e `pairing_available=false`, e os endpoints de pareamento retornam HTTP 503. Isso é intencional; não habilite o relay em produção até montar um volume persistente privado e apontar `AURION_RELAY_DB_PATH` para ele. O plano gratuito sem disco persistente não é tratado como pronto para uso.
+
 ## Como o fluxo deve funcionar
 
 1. O Minecraft Bedrock Android entra no mundo BDS compatível.
