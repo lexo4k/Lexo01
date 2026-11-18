@@ -59,9 +59,9 @@ def configure_script_console_logging(server_dir: Path) -> Path | None:
         )
 
     original_bytes = properties_path.read_bytes()
-    has_bom = original_bytes.startswith(b"\\xef\\xbb\\xbf")
+    has_bom = original_bytes.startswith(b"\xef\xbb\xbf")
     original_text = original_bytes.decode("utf-8-sig" if has_bom else "utf-8")
-    newline = "\\r\\n" if "\\r\\n" in original_text else "\\n"
+    newline = "\r\n" if "\r\n" in original_text else "\n"
     required = {
         "content-log-console-output-enabled": "true",
         # The pack emits console.warn(), so warning is the least noisy level
@@ -88,7 +88,7 @@ def configure_script_console_logging(server_dir: Path) -> Path | None:
             updated_lines.append(f"{key}={value}")
 
     rendered = newline.join(updated_lines) + newline
-    rendered_bytes = (b"\\xef\\xbb\\xbf" if has_bom else b"") + rendered.encode("utf-8")
+    rendered_bytes = (b"\xef\xbb\xbf" if has_bom else b"") + rendered.encode("utf-8")
     if rendered_bytes == original_bytes:
         return None
 
