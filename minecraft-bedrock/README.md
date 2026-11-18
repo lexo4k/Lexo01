@@ -49,8 +49,9 @@ O script não envia HTTP, não guarda tokens e não cria respostas fictícias.
 
 1. recebe o código de uso único mostrado pelo AURION;
 2. reivindica o pareamento no relay e salva o token do lado do servidor em arquivo local privado;
-3. inicia o executável oficial BDS na pasta indicada;
-4. lê os eventos emitidos pelo behavior pack no console;
+3. verifica e ajusta \`server.properties\` antes de iniciar o BDS: define \`content-log-console-output-enabled=true\` e \`content-log-level=warning\`, necessários para que os \`console.warn()\` do Script API cheguem ao stdout; se houver alteração, cria uma cópia \`server.properties.aurion-backup-*\` e preserva as demais configurações;
+4. inicia o executável oficial BDS na pasta indicada;
+5. lê os eventos emitidos pelo behavior pack no console;
 5. encaminha eventos ao relay e consulta respostas;
 6. entrega cada resposta ao jogador associado por meio de um comando \`tellraw\` enviado ao console do BDS.
 
@@ -65,7 +66,7 @@ python minecraft-bedrock/host/aurion_bds_host.py \
   --pairing-code "12345678"
 \`\`\`
 
-O companion inicia o BDS por conta própria. Não abra outra instância do mesmo servidor. Para novo pareamento, forneça o novo código em \`--pairing-code\`; sem esse argumento, o companion tenta reutilizar as credenciais salvas.
+O companion inicia o BDS por conta própria. Na primeira inicialização, ativa automaticamente a saída dos content logs no console, pois o padrão do BDS pode manter essa saída desativada e impedir a captura dos marcadores \`AURION_EVENT\`. A configuração original é copiada para \`server.properties.aurion-backup-*\` antes da alteração. Não abra outra instância do mesmo servidor. Para novo pareamento, forneça o novo código em \`--pairing-code\`; sem esse argumento, o companion tenta reutilizar as credenciais salvas.
 
 ### Aplicativo Android AURION
 
