@@ -79,6 +79,52 @@ class HostBridgeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 host.load_credentials(path, "https://other.example")
 
+    def test_bds_script_console_logging_is_enabled_and_original_config_is_backed_up(self):
+        with tempfile.TemporaryDirectory() as directory:
+            server_dir = Path(directory)
+            properties = server_dir / "server.properties"
+            original = (
+                "# keep comments and unrelated settings\\r\\n"
+                "server-name=World One\\r\\n"
+                "content-log-console-output-enabled=false\\r\\n"
+                "content-log-level=error\\r\\n"
+                "online-mode=true\\r\\n"
+            )
+            properties.write_bytes(original.encode("utf-8"))
+
+            backup = host.configure_script_console_logging(server_dir)
+
+            self.assertIsNotNone(backup)
+            self.assertEqual(backup.read_bytes(), original.encode("utf-8"))
+            updated = properties.read_text(encoding="utf-8")
+            self.assertIn("# keep comments and unrelated settings", updated)
+            self.assertIn("server-name=World One", updated)
+            self.assertIn("content-log-console-output-enabled=true", updated)
+            self.assertIn("content-log-level=warning", updated)
+            self.assertIn("online-mode=true", updated)
+            self.assertNotIn("content-log-console-output-enabled=false", updated)
+            self.assertNotIn("content-log-level=error", updated)
+
+    def test_bds_script_console_logging_configuration_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            server_dir = Path(directory)
+            properties = server_dir / "server.properties"
+            configured = (
+                "server-name=World One\\n"
+                "content-log-console-output-enabled=true\\n"
+                "content-log-level=warning\\n"
+            )
+            properties.write_text(configured, encoding="utf-8")
+
+            self.assertIsNone(host.configure_script_console_logging(server_dir))
+            self.assertEqual(properties.read_text(encoding="utf-8"), configured)
+            self.assertEqual(list(server_dir.glob("server.properties.aurion-backup-*")), [])
+
+    def test_bds_script_console_logging_requires_server_properties(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(FileNotFoundError):
+                host.configure_script_console_logging(Path(directory))
+
     def test_claim_pairing_sends_code_without_exposing_server_token(self):
         response = {"session_id": "session-2", "server_token": "t" * 48}
         with patch.object(host, "request_json", return_value=response) as request:
