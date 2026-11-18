@@ -12,6 +12,8 @@ import json
 import os
 import queue
 import re
+import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -41,6 +43,85 @@ def normalize_relay_url(value: str) -> str:
     if parsed.query or parsed.fragment:
         raise ValueError("O endereço do relay não pode conter query ou fragmento.")
     return value.strip().rstrip("/")
+
+
+def configure_script_console_logging(server_dir: Path) -> Path | None:
+    """Enable BDS content-log warnings on stdout so the companion can read pack events.
+
+    Bedrock script console.warn() messages are content logs. BDS commonly ships
+    with content-log-console-output-enabled=false, which makes the existing
+    stdout event reader silently miss every AURION_EVENT marker.
+    """
+    properties_path = server_dir / "server.properties"
+    if not properties_path.is_file():
+        raise FileNotFoundError(
+            "server.properties não encontrado na pasta do BDS: " + str(properties_path)
+        )
+
+    original_bytes = properties_path.read_bytes()
+    has_bom = original_bytes.startswith(b"\\xef\\xbb\\xbf")
+    original_text = original_bytes.decode("utf-8-sig" if has_bom else "utf-8")
+    newline = "\\r\\n" if "\\r\\n" in original_text else "\\n"
+    required = {
+        "content-log-console-output-enabled": "true",
+        # The pack emits console.warn(), so warning is the least noisy level
+        # that still forwards the structured event marker to stdout.
+        "content-log-level": "warning",
+    }
+
+    updated_lines: list[str] = []
+    found: set[str] = set()
+    for line in original_text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in line:
+            updated_lines.append(line)
+            continue
+        key = line.split("=", 1)[0].strip()
+        if key in required:
+            updated_lines.append(f"{key}={required[key]}")
+            found.add(key)
+        else:
+            updated_lines.append(line)
+
+    for key, value in required.items():
+        if key not in found:
+            updated_lines.append(f"{key}={value}")
+
+    rendered = newline.join(updated_lines) + newline
+    rendered_bytes = (b"\\xef\\xbb\\xbf" if has_bom else b"") + rendered.encode("utf-8")
+    if rendered_bytes == original_bytes:
+        return None
+
+    stamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
+    backup = properties_path.with_name(
+        properties_path.name + f".aurion-backup-{stamp}-{time.time_ns() % 1_000_000_000:09d}Z"
+    )
+    shutil.copy2(properties_path, backup)
+
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=properties_path.name + ".aurion-",
+        suffix=".tmp",
+        dir=str(server_dir),
+    )
+    try:
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, stat.S_IMODE(properties_path.stat().st_mode))
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(rendered_bytes)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary_name, properties_path)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.unlink(temporary_name)
+        except OSError:
+            pass
+        raise
+    return backup
 
 
 def _bounded_text(value: Any, field: str, limit: int, allow_empty: bool = False) -> str:
@@ -310,6 +391,10 @@ def run_bridge(args: argparse.Namespace) -> int:
     pending = load_pending(pending_path)
     server_dir = Path(args.server_dir).expanduser().resolve()
     binary = _server_binary(server_dir, args.server_executable)
+    backup = configure_script_console_logging(server_dir)
+    if backup is not None:
+        print("AURION: server.properties atualizado para encaminhar console.warn() do pack.")
+        print("AURION: cópia original preservada em " + str(backup))
     process = subprocess.Popen(
         [str(binary)],
         cwd=str(server_dir),
