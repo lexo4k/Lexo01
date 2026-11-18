@@ -1,0 +1,79 @@
+name: AURION Android APK (legacy workflow)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-nexora:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Build NEXORA AI only
+        run: gradle --no-daemon :lumen:assembleDebug
+
+      - name: Verify APK contents
+        id: verify
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          import os
+
+          candidates = sorted(Path("lumen-android").glob("build/outputs/apk/debug/*.apk"))
+          if not candidates:
+              candidates = sorted(Path(".").glob("**/build/outputs/apk/debug/*.apk"))
+          if not candidates:
+              raise SystemExit("Gradle concluiu, mas nenhum APK foi localizado. Verifique a configuração de output do módulo :lumen.")
+          source = candidates[0]
+          from shutil import copy2
+          target = Path("dist/lumen-debug.apk")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          copy2(source, target)
+          apk = target
+          print("APK localizado:", apk)
+
+          with ZipFile(apk) as z:
+              names = z.namelist()
+              native = [n for n in names if n.endswith(".so") and ("llama" in n.lower() or "ggml" in n.lower())]
+              if not native:
+                  raise SystemExit("Bibliotecas nativas llama/ggml não encontradas no APK: " + ", ".join(n for n in names if n.endswith(".so")))
+              html_paths = [n for n in names if n.endswith("assets/index.html")]
+              if not html_paths:
+                  raise SystemExit("Interface assets/index.html não encontrada no APK")
+              html = z.read(html_paths[0]).decode("utf-8", errors="replace")
+              for marker in ("sendLocalMessage", "downloadModel", "IA local"):
+                  if marker not in html:
+                      raise SystemExit(f"Recurso ausente no HTML empacotado: {marker}")
+              print("APK verificado:", apk.stat().st_size, "bytes")
+              print("Bibliotecas nativas:", ", ".join(native))
+              print("Interface:", html_paths[0])
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("apk_path=" + apk.as_posix() + chr(10))
+          PY
+
+      - name: Upload NEXORA AI APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXORA-AI-on-device-debug
+          path: dist/lumen-debug.apk
+          if-no-files-found: error
+          retention-days: 14

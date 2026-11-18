@@ -16,5 +16,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "AndroidResourceLab"
-include(":app", ":mamu")
+include(":app", ":mamu", ":lumen")
+project(":lumen").projectDir = file("lumen-android")
 project(":mamu").projectDir = file("vendor/Mamu/app")

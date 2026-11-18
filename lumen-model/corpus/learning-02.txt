@@ -1,0 +1,109 @@
+LÚMEN | CADERNO DE APRENDIZADO 02
+Material autoral complementar para experimentos de linguagem. Não substitui livros, documentação técnica ou fontes verificadas.
+
+COMPREENSÃO DE INSTRUÇÕES
+Exemplo:
+Usuário: Resuma o texto em duas frases.
+Resposta adequada: identificar as ideias centrais e apresentar exatamente duas frases, sem acrescentar fatos que não aparecem no texto.
+Princípio: respeitar formato, idioma, extensão e objetivo solicitados.
+
+Exemplo:
+Usuário: Explique como funciona uma bicicleta para uma criança.
+Resposta adequada: uma bicicleta se move quando a pessoa gira os pedais. A corrente transfere esse movimento para a roda traseira, e o guidão ajuda a mudar de direção.
+Princípio: adaptar a explicação ao público sem perder a precisão.
+
+Exemplo:
+Usuário: Liste três vantagens e duas limitações.
+Resposta adequada: produzir três itens de vantagens e dois itens de limitações. Conferir a contagem antes de finalizar.
+Princípio: validar requisitos explícitos.
+
+Exemplo:
+Usuário: Não sei qual opção escolher.
+Resposta adequada: identificar critérios relevantes, comparar consequências e indicar uma opção justificável. Se faltar uma informação decisiva, perguntar apenas por ela.
+Princípio: não transformar toda incerteza em um questionário longo.
+
+PORTUGUÊS E GRAMÁTICA
+Substantivos nomeiam seres, objetos, lugares, sentimentos e ideias. Verbos expressam ações, estados ou fenômenos. Adjetivos caracterizam substantivos. Advérbios podem modificar verbos, adjetivos ou outros advérbios.
+Uma frase precisa manter concordância entre seus elementos. Em “as casas antigas”, o artigo, o substantivo e o adjetivo estão no plural feminino. Em “os alunos estudam”, o sujeito plural concorda com o verbo.
+Pontuação organiza o sentido. O ponto encerra uma declaração. A vírgula separa elementos e pode marcar deslocamentos, mas não deve separar sujeito e verbo sem motivo sintático.
+Acentuação gráfica segue regras da língua. A forma correta é “público” quando se refere à população ou a algo destinado a todos; “publico” pode ser forma verbal de publicar, como em “eu publico um texto”.
+A linguagem formal é útil em documentos e situações profissionais. A linguagem informal é comum em conversas cotidianas. A escolha depende do contexto e do interlocutor.
+
+MATEMÁTICA FUNDAMENTAL
+A soma combina quantidades. A subtração calcula uma diferença. A multiplicação representa adição repetida em casos simples. A divisão distribui uma quantidade em partes iguais ou calcula quantas vezes uma quantidade cabe em outra.
+Frações representam partes de um todo. A fração três quartos equivale a 0,75 e a 75 por cento. Para somar frações com denominadores diferentes, primeiro encontre um denominador comum.
+A porcentagem é uma razão com denominador cem. Dez por cento de 250 é 25. Para aumentar 250 em dez por cento, some 25 e obtenha 275. Para reduzir 250 em dez por cento, subtraia 25 e obtenha 225.
+Uma média aritmética simples é a soma dos valores dividida pela quantidade de valores. Para 6, 8 e 10, a média é 8.
+A área de um retângulo é base multiplicada pela altura. Um retângulo de 5 metros por 3 metros tem área de 15 metros quadrados. O perímetro é a soma dos quatro lados, neste exemplo 16 metros.
+Uma equação mantém igualdade entre os dois lados. Se x + 7 = 12, subtraia 7 dos dois lados e obtenha x = 5. A solução pode ser conferida substituindo x por 5 na equação original.
+Arredondar simplifica um número, mas pode reduzir a precisão. Em cálculos financeiros, mantenha casas decimais suficientes durante as operações e arredonde no resultado final conforme a regra aplicável.
+
+CIÊNCIA E MÉTODO
+Uma observação descreve o que foi percebido ou medido. Uma hipótese propõe uma explicação testável. Um experimento controla variáveis para investigar uma relação. Uma conclusão deve corresponder aos dados observados.
+Massa e peso são conceitos diferentes. Massa mede a quantidade de matéria e é expressa em quilogramas. Peso é uma força gravitacional e é medido em newtons.
+A temperatura indica o estado térmico de um corpo. Calor é energia transferida por diferença de temperatura. Um objeto não “contém calor” no mesmo sentido em que contém energia interna.
+O som é uma onda mecânica e precisa de um meio material para se propagar. No vácuo ideal, o som não se propaga.
+A luz visível é uma faixa do espectro eletromagnético. Ondas eletromagnéticas podem se propagar no vácuo.
+Ecossistemas incluem organismos e fatores não vivos que interagem. Uma alteração em uma população pode afetar outras populações por relações alimentares, competição e cooperação.
+Biodiversidade é a variedade de vida em diferentes níveis, incluindo genes, espécies e ecossistemas. A conservação considera habitats, conectividade ecológica e impactos humanos.
+
+GEOGRAFIA E HISTÓRIA
+Latitude mede a posição angular ao norte ou ao sul do Equador. Longitude mede a posição angular a leste ou oeste do meridiano de referência. Coordenadas ajudam a localizar lugares na superfície terrestre.
+Clima descreve padrões atmosféricos observados ao longo de períodos extensos. Tempo meteorológico descreve condições atmosféricas em um momento ou período curto.
+O Brasil possui cinco grandes regiões geográficas: Norte, Nordeste, Centro-Oeste, Sudeste e Sul. Essa divisão ajuda a organizar estudos e estatísticas, mas cada região reúne grande diversidade interna.
+A Amazônia é uma região de enorme diversidade biológica e cultural. Sua conservação envolve ciência, políticas públicas, participação de comunidades locais e respeito aos direitos dos povos que vivem no território.
+A história estuda sociedades humanas por meio de fontes. Fontes escritas, materiais, orais e visuais precisam ser contextualizadas. Uma fonte isolada pode apresentar perspectiva parcial.
+A abolição legal da escravidão no Brasil ocorreu em 1888. A lei encerrou juridicamente a escravidão, mas não eliminou desigualdades sociais e econômicas acumuladas ao longo de séculos.
+
+PROGRAMAÇÃO E ENGENHARIA
+Uma variável associa um nome a um valor. Uma função agrupa uma operação reutilizável. Um parâmetro recebe um valor de entrada. Um retorno entrega o resultado de uma função.
+Uma lista guarda uma sequência ordenada de elementos. Um dicionário associa chaves a valores. Um conjunto representa elementos sem duplicação.
+Uma condição permite executar caminhos diferentes conforme uma expressão lógica. Um laço repete operações enquanto uma condição for satisfeita ou para cada elemento de uma coleção.
+Um erro de sintaxe impede que o programa seja interpretado corretamente. Um erro de execução acontece durante a execução. Um erro lógico produz resultado incorreto mesmo que o programa rode.
+Testes unitários verificam unidades pequenas de comportamento. Testes de integração verificam a comunicação entre componentes. Testes de sistema avaliam o produto completo em cenários representativos.
+Uma API define uma interface para que programas troquem informações. Uma API deve validar entradas, autenticar quando necessário, limitar permissões e responder a falhas de maneira previsível.
+Uma base de dados relacional organiza informações em tabelas. Chaves primárias identificam registros. Chaves estrangeiras representam relações. Restrições ajudam a manter integridade.
+Uma transação agrupa operações que devem obedecer às propriedades de atomicidade, consistência, isolamento e durabilidade, conforme o sistema de banco de dados.
+Controle de versão registra alterações ao longo do tempo. Um commit deve representar uma mudança compreensível. Mensagens claras facilitam auditoria e reversão.
+Integração contínua executa verificações automaticamente quando o código muda. Um pipeline saudável deve falhar quando testes importantes falham, em vez de ocultar o problema.
+
+PENSAMENTO CRÍTICO
+Uma afirmação factual deve poder ser examinada. Pergunte qual é a fonte, quando a informação foi publicada, qual método foi usado e se existem fontes independentes.
+Uma opinião expressa uma avaliação ou preferência. Um fato descreve algo verificável. Uma previsão estima algo futuro e deve explicitar incerteza.
+Uma amostra pequena pode não representar uma população inteira. Viés de seleção ocorre quando o modo de escolher participantes distorce os resultados.
+A ausência de evidência não é sempre evidência de ausência. A força de uma conclusão depende da qualidade do método e da sensibilidade da observação.
+Um argumento válido precisa que a conclusão decorra das premissas. Premissas falsas podem produzir uma conclusão logicamente derivada, mas não tornam o argumento factual.
+Evite falsa dicotomia: muitas situações possuem mais de duas alternativas. Evite generalização apressada: poucos exemplos não justificam uma regra universal.
+Quando duas explicações são possíveis, compare previsões observáveis e procure dados que possam distingui-las. Não escolha uma explicação apenas porque parece mais atraente.
+
+PLANEJAMENTO E EXECUÇÃO
+Um plano útil define objetivo, prazo, recursos, riscos, etapas e critério de sucesso. Divida tarefas grandes em entregas pequenas e verificáveis.
+Priorize tarefas considerando impacto, urgência, dependências e custo. Uma tarefa bloqueadora pode merecer prioridade mesmo que não seja a mais visível.
+Uma estimativa deve ser identificada como estimativa. Um resultado confirmado precisa de evidência, como teste concluído, registro de execução ou confirmação do sistema responsável.
+Ao editar um arquivo, leia a versão atual, faça uma alteração localizada, revise a diferença e rode testes. Não sobrescreva trabalho alheio sem compreender o contexto.
+Ao encontrar uma falha, preserve o erro original e procure reproduzi-lo. Uma correção deve resolver a causa sem quebrar comportamentos válidos.
+Ao encerrar uma tarefa, informe o que foi alterado, onde está, quais testes passaram, quais falharam e o que permanece pendente.
+
+ÉTICA, PRIVACIDADE E SEGURANÇA
+Privacidade significa tratar dados pessoais com cuidado e limitar seu uso ao necessário. Segurança inclui confidencialidade, integridade e disponibilidade.
+Uma senha forte deve ser exclusiva para cada serviço. Um gerenciador de senhas pode ajudar a criar e guardar credenciais. Autenticação multifator adiciona uma camada de proteção.
+Uma chave secreta não deve ser incluída em código público. Se uma chave for exposta, deve ser revogada e substituída. Logs devem evitar registrar segredos.
+Permissões devem ser mínimas. Uma ferramenta de leitura não precisa de permissão de escrita. Uma operação destrutiva deve exigir confirmação e ter possibilidade de recuperação quando viável.
+Conteúdo gerado por um modelo pode conter erros. Em decisões importantes, confira fontes confiáveis e não trate fluência como prova de verdade.
+Um sistema de IA deve respeitar pessoas, evitar discriminação e explicar limites relevantes. Deve corrigir informações incorretas quando receber evidência adequada.
+
+EXEMPLOS DE RESPOSTAS BEM CALIBRADAS
+Pergunta: Qual é a capital do Brasil?
+Resposta: Brasília.
+Pergunta: Quanto é 12 vezes 9?
+Resposta: 108.
+Pergunta: Você verificou meu telefone?
+Resposta: Não tenho acesso direto ao seu telefone nesta conversa. Posso analisar informações que você compartilhar ou orientar um teste.
+Pergunta: Esse resultado é garantido?
+Resposta: Não posso garantir sem evidências suficientes. Posso explicar o que foi testado e quais incertezas permanecem.
+Pergunta: Faça um plano de estudo de uma semana.
+Resposta: distribua o conteúdo em sete dias, alterne estudo e revisão, resolva exercícios e reserve o último dia para avaliar os pontos que ainda precisam de atenção.
+Pergunta: Corrija este programa.
+Resposta: primeiro reproduza o erro, identifique a causa, altere o trecho necessário e execute os testes existentes e novos testes para confirmar a correção.
+Pergunta: Qual fonte devo acreditar?
+Resposta: compare a autoridade da fonte, a data, o método, a transparência e a confirmação independente. Em assuntos oficiais, prefira o órgão responsável e documentos primários.

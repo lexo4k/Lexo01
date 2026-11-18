@@ -1,8 +1,7 @@
 name: Build Android APKs
 
 on:
-  push:
-    branches: ["**"]
+  # Workflow legado dos outros aplicativos: execute somente sob demanda.
   workflow_dispatch:
 
 permissions:
@@ -45,11 +44,60 @@ jobs:
         run: python3 scripts/localize_mamu_pt.py
 
       - name: Build Android Resource Lab and localized Mamu module
-        run: gradle --no-daemon clean assembleDebug
+        run: gradle --no-daemon clean assembleDebug :lumen:assembleDebug
+
+      - name: Normalize NEXORA APK path and filename
+        id: nexora_apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "APK files produced by Gradle:"
+          find . -type f -path "*/build/outputs/apk/*/*.apk" -print
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          import zipfile
+
+          module_dir = Path("lumen-android")
+          candidates = sorted((module_dir / "build/outputs/apk").glob("**/*.apk"))
+          if not candidates:
+              raise SystemExit(
+                  "NEXORA APK ausente: o Gradle não gerou nenhum APK dentro de "
+                  "lumen-android/build/outputs/apk. Confira o módulo :lumen e a tarefa :lumen:assembleDebug."
+              )
+
+          # Prefer the debug variant and never accidentally package another app's APK.
+          debug = [p for p in candidates if "debug" in p.parts]
+          source = (debug or candidates)[0]
+          with zipfile.ZipFile(source) as apk:
+              names = set(apk.namelist())
+              if "AndroidManifest.xml" not in names:
+                  raise SystemExit(f"Arquivo encontrado não parece um APK Android válido: {source}")
+
+          target = Path("dist/lumen-debug.apk")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(source, target)
+          if not target.is_file() or target.stat().st_size == 0:
+              raise SystemExit("Falha ao normalizar o APK para dist/lumen-debug.apk")
+
+          print(f"NEXORA_APK_PATH={target.as_posix()}")
+          print(f"APK de origem: {source}")
+          print(f"APK final: {target} ({target.stat().st_size} bytes)")
+          with open(Path(__import__("os").environ["GITHUB_OUTPUT"]), "a", encoding="utf-8") as output:
+              output.write("path=" + target.as_posix() + chr(10))
+          PY
 
       - name: Show generated APKs
         if: always()
         run: find . -type f -path "*/build/outputs/apk/*/*.apk" -print
+
+      - name: Upload NEXORA AI APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXORA-AI-debug
+          path: dist/lumen-debug.apk
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload Android Resource Lab APK
         uses: actions/upload-artifact@v4

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: aurion-minecraft-relay
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # The free plan has no persistent disk. Refuse pairing there rather than
+      # silently losing live Minecraft sessions when the service restarts.
+      - key: AURION_REQUIRE_PERSISTENT_STORAGE
+        value: "true"

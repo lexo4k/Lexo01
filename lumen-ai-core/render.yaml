@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: lumen-ai-core
+    runtime: docker
+    rootDir: lumen-ai-core
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: LUMEN_ACCESS_TOKEN
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: LUMEN_DB_PATH
+        value: /data/lumen.db
+      - key: DATABASE_URL
+        sync: false

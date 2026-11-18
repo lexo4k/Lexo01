@@ -1,0 +1,121 @@
+name: AURION Continuous Maintenance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: nexora-maintenance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate core and preserve failure evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: lumen-ai-core
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: lumen-ai-core/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pip-audit
+
+      - name: Compile, test, and audit with captured diagnostics
+        id: validation
+        shell: bash
+        run: |
+          set -uo pipefail
+          status=0
+          {
+            echo "NEXORA maintenance diagnostics"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+          } | tee validation.log
+
+          echo "===== Python compilation =====" | tee -a validation.log
+          python -m compileall -q . 2>&1 | tee -a validation.log || status=1
+
+          echo "===== Automated test suite =====" | tee -a validation.log
+          python -m unittest discover -s tests -v 2>&1 | tee -a validation.log || status=1
+
+          echo "===== Dependency security audit =====" | tee -a validation.log
+          pip-audit -r requirements.txt 2>&1 | tee -a validation.log || status=1
+
+          echo "validation_status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Preserve diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-maintenance-diagnostics-${{ github.run_id }}
+          path: lumen-ai-core/validation.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Open or update a maintenance issue when validation fails
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = `<!-- nexora-ci-failure:${context.sha} -->`;
+            const title = `NEXORA maintenance validation failed: ${context.sha.slice(0, 7)}`;
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100
+            });
+            const found = existing.data.find(issue =>
+              !issue.pull_request && issue.body && issue.body.includes(marker)
+            );
+            const body = [
+              marker,
+              "## Automated maintenance report",
+              "",
+              "The scheduled or commit-triggered validation detected a failure.",
+              "",
+              `- Commit: ${context.sha}`,
+              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "- Diagnostic artifact: nexora-maintenance-diagnostics (when upload succeeded)",
+              "",
+              "This report does not modify production code. Review the logs, reproduce the failure, propose a patch, and require passing tests before merging or deploying."
+            ].join("\n");
+            if (found) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: found.number,
+                body
+              });
+              core.info(`Updated existing maintenance issue #${found.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ["bug"]
+              });
+              core.info(`Created maintenance issue #${created.data.number}`);
+            }
