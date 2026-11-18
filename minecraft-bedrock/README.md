@@ -52,8 +52,8 @@ O script não envia HTTP, não guarda tokens e não cria respostas fictícias.
 3. verifica e ajusta \`server.properties\` antes de iniciar o BDS: define \`content-log-console-output-enabled=true\` e \`content-log-level=warning\`, necessários para que os \`console.warn()\` do Script API cheguem ao stdout; se houver alteração, cria uma cópia \`server.properties.aurion-backup-*\` e preserva as demais configurações;
 4. inicia o executável oficial BDS na pasta indicada;
 5. lê os eventos emitidos pelo behavior pack no console;
-5. encaminha eventos ao relay e consulta respostas;
-6. entrega cada resposta ao jogador associado por meio de um comando \`tellraw\` enviado ao console do BDS.
+6. encaminha eventos ao relay e consulta respostas;
+7. entrega cada resposta ao jogador associado por meio de um comando \`tellraw\` enviado ao console do BDS.
 
 O token do servidor nunca entra no behavior pack. Em sistemas POSIX, o arquivo de credenciais é criado com permissão \`0600\`. No Windows, mantenha o arquivo na pasta privada da conta que executa o BDS.
 
