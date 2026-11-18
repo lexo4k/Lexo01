@@ -84,11 +84,11 @@ class HostBridgeTests(unittest.TestCase):
             server_dir = Path(directory)
             properties = server_dir / "server.properties"
             original = (
-                "# keep comments and unrelated settings\\r\\n"
-                "server-name=World One\\r\\n"
-                "content-log-console-output-enabled=false\\r\\n"
-                "content-log-level=error\\r\\n"
-                "online-mode=true\\r\\n"
+                "# keep comments and unrelated settings\r\n"
+                "server-name=World One\r\n"
+                "content-log-console-output-enabled=false\r\n"
+                "content-log-level=error\r\n"
+                "online-mode=true\r\n"
             )
             properties.write_bytes(original.encode("utf-8"))
 
@@ -110,9 +110,9 @@ class HostBridgeTests(unittest.TestCase):
             server_dir = Path(directory)
             properties = server_dir / "server.properties"
             configured = (
-                "server-name=World One\\n"
-                "content-log-console-output-enabled=true\\n"
-                "content-log-level=warning\\n"
+                "server-name=World One\n"
+                "content-log-console-output-enabled=true\n"
+                "content-log-level=warning\n"
             )
             properties.write_text(configured, encoding="utf-8")
 
